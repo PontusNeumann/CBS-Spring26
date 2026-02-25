@@ -3,7 +3,7 @@
 # ## *Natural Language Processing and Text Analytics (KAN-CDSCO1002U)*
 # *Group: MA-01 1*
 # 
-# *Student IDs: 185912, 161989, 160363 & 160714*
+# *Student IDs: 185912, 161989, 160714 & 160363*
 # 
 # *Dataset: sample.xlsx*
 
