@@ -1,0 +1,376 @@
+---
+title: "Compulsory Assignment 1"
+subtitle: "Predictive Analytics (KAN-CDSCO1005U)"
+author: "Alejandro Gato (160363), Alexander Myrup (161989), Pontus Neumann (185912), Linus Yu (160714)"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+\newpage
+
+## Question 1: GDP Level -- Plot and ACF
+
+```{r load-packages}
+# install.packages("AER")
+# install.packages("fpp3")
+# install.packages("MetBrewer")
+
+library(AER)
+library(fpp3)
+library(ggplot2)
+library(MetBrewer)
+```
+
+```{r load-data}
+data("USMacroG", package = "AER")
+gdp <- USMacroG[, "gdp"]
+
+# Load full Benedictus palette upfront for use throughout the assignment
+bene <- met.brewer("Benedictus")
+
+# Convert GDP to data frame for ggplot
+gdp_df <- data.frame(
+  date = as.Date(time(gdp)),
+  gdp  = as.numeric(gdp)
+)
+
+# NBER recession periods within sample (1950-2000)
+recessions <- data.frame(
+  start = as.Date(c("1953-07-01", "1957-08-01", "1960-04-01", "1969-12-01",
+                    "1973-11-01", "1980-01-01", "1981-07-01", "1990-07-01")),
+  end   = as.Date(c("1954-05-01", "1958-04-01", "1961-02-01", "1970-11-01",
+                    "1975-03-01", "1980-07-01", "1982-11-01", "1991-03-01"))
+)
+```
+
+```{r gdp-plot}
+ggplot(gdp_df, aes(x = date, y = gdp)) +
+  geom_rect(data = recessions,
+            aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf),
+            inherit.aes = FALSE,
+            fill = bene[4], alpha = 0.4) +
+  geom_line(color = bene[1], linewidth = 0.8) +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y") +
+  labs(
+    title    = "US Real GDP (1950-2000)",
+    subtitle = "Shaded areas indicate NBER recession periods",
+    x        = "Year",
+    y        = "Billion USD"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title       = element_text(color = bene[1], face = "bold"),
+    plot.subtitle    = element_text(color = bene[2]),
+    panel.grid.minor = element_blank()
+  )
+```
+
+The GDP series displays a clear upward trend throughout the entire sample period from 1950
+to 2000, indicating that the series is non-stationary in its level. There is no visible
+sign of seasonality, though brief slowdowns in growth are visible around the shaded
+recession periods, most notably in the early 1970s and early 1980s. The variance also
+appears to increase over time alongside the level of the series, which suggests that a
+log transformation may be appropriate before modelling.
+
+```{r gdp-acf}
+acf_data <- acf(as.numeric(gdp), plot = FALSE)
+acf_df <- data.frame(
+  lag = as.numeric(acf_data$lag[-1]),
+  acf = as.numeric(acf_data$acf[-1])
+)
+ci <- qnorm(0.975) / sqrt(length(gdp))
+
+ggplot(acf_df, aes(x = lag, y = acf)) +
+  geom_hline(yintercept = 0, color = "grey40") +
+  geom_hline(yintercept = c(-ci, ci), linetype = "dashed", color = bene[3]) +
+  geom_segment(aes(xend = lag, yend = 0), color = bene[1], linewidth = 0.7) +
+  geom_point(color = bene[1], size = 2) +
+  labs(
+    title = "ACF of US Real GDP",
+    x     = "Lag",
+    y     = "Autocorrelation"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title       = element_text(color = bene[1], face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+The ACF confirms the non-stationarity observed in the time series plot. Autocorrelations
+decay extremely slowly and remain highly significant across all displayed lags, which is
+a classic symptom of a unit root or a strong deterministic trend. This persistent
+autocorrelation structure further motivates transforming the data prior to any formal
+modelling, as most time series models require stationarity. A log transformation is
+warranted for two reasons: first, it stabilises the variance, which tends to grow
+proportionally with the level of GDP; second, differencing the log series yields
+approximate quarter-on-quarter percentage growth rates, which are economically
+meaningful and interpretable.
+
+\newpage
+
+## Question 2: GDP Growth Rate -- Transformation, Plot, ACF, and Ljung-Box Test
+
+```{r gdp-growth}
+gdp_growth <- diff(log(gdp)) * 100  # Quarter-on-quarter log growth rate in %
+
+gdp_growth_df <- data.frame(
+  date   = as.Date(time(gdp_growth)),
+  growth = as.numeric(gdp_growth)
+)
+```
+
+```{r growth-plot}
+ggplot(gdp_growth_df, aes(x = date, y = growth)) +
+  geom_rect(data = recessions,
+            aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf),
+            inherit.aes = FALSE,
+            fill = bene[4], alpha = 0.4) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_line(color = bene[2], linewidth = 0.7) +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y") +
+  labs(
+    title    = "US Real GDP Growth Rate (QoQ)",
+    subtitle = "Shaded areas indicate NBER recession periods",
+    x        = "Year",
+    y        = "Growth Rate (%)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title       = element_text(color = bene[1], face = "bold"),
+    plot.subtitle    = element_text(color = bene[2]),
+    panel.grid.minor = element_blank()
+  )
+```
+
+After taking the log-difference, the series no longer exhibits a trend -- it fluctuates
+around a roughly constant mean close to zero, suggesting that differencing has
+successfully removed the non-stationarity present in the level series. There is no clear
+seasonal pattern, though some cyclical variation is visible, with more volatile and
+negative growth periods coinciding with the shaded recession episodes, most notably the
+sharp contractions of the early 1970s oil shock and the double-dip recession of
+1980-1982. The variance appears broadly stable across the sample, supporting the
+appropriateness of the log transformation applied.
+
+```{r growth-acf}
+acf_growth <- acf(as.numeric(gdp_growth), plot = FALSE)
+acf_growth_df <- data.frame(
+  lag = as.numeric(acf_growth$lag[-1]),
+  acf = as.numeric(acf_growth$acf[-1])
+)
+ci_growth <- qnorm(0.975) / sqrt(length(gdp_growth))
+
+ggplot(acf_growth_df, aes(x = lag, y = acf)) +
+  geom_hline(yintercept = 0, color = "grey40") +
+  geom_hline(yintercept = c(-ci_growth, ci_growth),
+             linetype = "dashed", color = bene[3]) +
+  geom_segment(aes(xend = lag, yend = 0), color = bene[2], linewidth = 0.7) +
+  geom_point(color = bene[2], size = 2) +
+  labs(
+    title = "ACF of GDP Growth Rate",
+    x     = "Lag",
+    y     = "Autocorrelation"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title       = element_text(color = bene[1], face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+The ACF of the growth rate decays much more rapidly than that of the level series, which
+is consistent with a stationary process. A small number of lags appear statistically
+significant -- notably lag 1 and potentially lag 3 -- suggesting some remaining
+autocorrelation structure in the growth rate that may be relevant for model selection.
+The bulk of lags, however, fall within the confidence bands, indicating that the
+differenced log series behaves much closer to white noise than the original GDP series.
+
+```{r ljung-box}
+lb_test <- Box.test(gdp_growth, lag = 12, type = "Ljung-Box")
+
+lb_tbl <- data.frame(
+  Test = "Ljung-Box",
+  Lags = 12,
+  Statistic = round(unname(lb_test$statistic), 3),
+  df        = unname(lb_test$parameter),
+  p.value   = format.pval(lb_test$p.value, digits = 3, eps = 1e-3),
+  check.names = FALSE
+)
+
+knitr::kable(
+  lb_tbl,
+  col.names = c("Test", "Lags", "X-squared", "df", "p-value"),
+  caption   = "Ljung-Box test for GDP growth rate (H0: no autocorrelation up to lag 12).",
+  align     = "lcccc"
+)
+```
+
+The Ljung-Box test evaluates the null hypothesis that the first 12 autocorrelations are
+jointly equal to zero, i.e. that the series is white noise. The test statistic is
+`r round(lb_test$statistic, 3)` with a p-value of `r round(lb_test$p.value, 3)`.
+Since the p-value is below the conventional 5% significance level, we reject the null
+hypothesis and conclude that statistically significant autocorrelation is present in
+the GDP growth rate series. This finding is consistent with the ACF plot and implies
+that the growth rate is not pure white noise, which has important implications for
+forecasting -- a model that exploits this autocorrelation structure should outperform a
+naive no-change forecast.
+
+\newpage
+
+## Question 3: Olympic Running
+
+```{r olympic-data}
+data <- olympic_running
+head(data)
+```
+
+```{r olympic-plot-a}
+ggplot(data, aes(x = Year, y = Time, color = Sex)) +
+  geom_point(size = 1.8) +
+  geom_line(alpha = 0.5) +
+  facet_wrap(~ Length, scales = "free_y", ncol = 3) +
+  scale_color_manual(values = c("Men" = bene[1], "Women" = bene[5])) +
+  labs(
+    title    = "Olympic Winning Times by Event (1896-2016)",
+    subtitle = "Each panel shows a track event; points are Olympic Games",
+    x        = "Year",
+    y        = "Winning Time (seconds)",
+    color    = NULL
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title       = element_text(color = bene[1], face = "bold"),
+    plot.subtitle    = element_text(color = bene[2]),
+    panel.grid.minor = element_blank(),
+    legend.position  = "bottom",
+    strip.text       = element_text(face = "bold")
+  )
+```
+
+The plots reveal several consistent features across all events. First, there is a clear
+downward trend in winning times over the course of the twentieth century, reflecting
+improvements in athletic training, nutrition, equipment, and race strategy. Second, men
+consistently outperform women across all distances, though women's events were introduced
+later and show steeper initial declines as the sport professionalised. Third, the rate of
+improvement appears to slow in more recent decades, suggesting diminishing returns as
+athletes approach physiological limits. Some events also show notable outliers,
+potentially reflecting unusual race conditions, doping disqualifications, or wars
+causing gaps in the data (1916, 1940, 1944).
+
+```{r olympic-regression-b}
+library(dplyr)
+
+fits <- data %>%
+  group_by(Length, Sex) %>%
+  filter(!is.na(Time)) %>%
+  summarise(
+    slope = coef(lm(Time ~ Year))[2],
+    .groups = "drop"
+  )
+
+fits_tbl <- fits %>%
+  mutate(`Avg. change per year (sec)` = sprintf("%.4f", slope)) %>%
+  select(Event = Length, Sex, `Avg. change per year (sec)`)
+
+knitr::kable(
+  fits_tbl,
+  caption = "Estimated average change in winning time per year for each Olympic event.",
+  align   = "llc"
+)
+```
+
+All slopes are negative, confirming that winning times have been decreasing across every
+event and for both sexes. The magnitude of the slope is largest for longer distance
+events in absolute terms, which is expected since longer races have more total time
+available for improvement. In relative terms, however, the rate of improvement is
+broadly similar across events. Women's events generally show steeper slopes, reflecting
+the fact that women's athletics was less developed at the start of the observation
+period and has seen larger absolute gains over time.
+
+```{r olympic-residuals-c}
+data <- data %>%
+  group_by(Length, Sex) %>%
+  filter(!is.na(Time)) %>%
+  mutate(
+    fitted   = lm(Time ~ Year)$fitted.values,
+    residual = lm(Time ~ Year)$residuals
+  ) %>%
+  ungroup()
+
+ggplot(data, aes(x = Year, y = residual, color = Sex)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_point(size = 1.8) +
+  geom_line(alpha = 0.4) +
+  facet_wrap(~ Length, scales = "free_y", ncol = 3) +
+  scale_color_manual(values = c("Men" = bene[1], "Women" = bene[5])) +
+  labs(
+    title    = "Residuals from Linear Trend by Event (1896-2016)",
+    subtitle = "Residuals from OLS regression of winning time on year",
+    x        = "Year",
+    y        = "Residual (seconds)",
+    color    = NULL
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title       = element_text(color = bene[1], face = "bold"),
+    plot.subtitle    = element_text(color = bene[2]),
+    panel.grid.minor = element_blank(),
+    legend.position  = "bottom",
+    strip.text       = element_text(face = "bold")
+  )
+```
+
+The residual plots reveal systematic patterns that cast doubt on the suitability of a
+simple linear trend model. In most events, the residuals are not randomly scattered
+around zero -- instead they tend to be positive in the early years, negative in the
+middle of the sample, and positive again towards the end. This curved pattern is
+consistent with a concave improvement trajectory: winning times improved rapidly in the
+early decades and have slowed in recent years as athletes approach physiological limits.
+A linear model cannot capture this curvature, suggesting that a nonlinear trend
+(e.g. a logarithmic or quadratic specification) may provide a better fit. Additionally,
+some events show clusters of large residuals around war years, reflecting the gaps in
+the data.
+
+```{r olympic-predict-d}
+predictions <- data %>%
+  filter(!is.na(Time)) %>%
+  group_by(Length, Sex) %>%
+  group_modify(~ {
+    model <- lm(Time ~ Year, data = .x)
+    pred  <- predict(model,
+                     newdata  = data.frame(Year = 2020),
+                     interval = "prediction",
+                     level    = 0.95)
+    data.frame(
+      Predicted = round(pred[1, "fit"], 2),
+      Lower     = round(pred[1, "lwr"], 2),
+      Upper     = round(pred[1, "upr"], 2)
+    )
+  }) %>%
+  ungroup()
+
+knitr::kable(
+  predictions,
+  col.names = c("Event", "Sex", "Predicted (sec)", "Lower 95% PI", "Upper 95% PI"),
+  caption   = "Predicted winning times for the 2020 Olympics with 95% prediction intervals.",
+  align     = "llccc"
+)
+```
+
+The predictions provide point estimates and 95% prediction intervals for the winning
+time in each event at the 2020 Tokyo Olympics. These forecasts rest on several
+important assumptions. First, the linear trend is assumed to continue into the future
+at the same constant rate observed historically -- an assumption that is likely
+violated, as the residual analysis above suggests the rate of improvement has been
+slowing. This means the model will tend to produce optimistic (too fast) predictions,
+particularly for events where the curvature in residuals is most pronounced. Second,
+the model assumes that no structural breaks occur -- such as new technological
+innovations, rule changes, or doping scandals -- that would shift the trend. Third,
+the prediction intervals are derived under the assumption of normally distributed,
+homoskedastic residuals; if this does not hold, the intervals may be too narrow or
+too wide. In practice, the actual 2020 results can be compared against these
+predictions to evaluate the model's out-of-sample performance.
