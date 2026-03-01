@@ -203,7 +203,7 @@ knitr::kable(
 
 The Ljung-Box test evaluates the null hypothesis that the first 12 autocorrelations are
 jointly equal to zero, i.e. that the series is white noise. The test statistic is
-`r round(lb_test$statistic, 3)` with a p-value of `r round(lb_test$p.value, 3)`.
+`r round(lb_test$statistic, 3)` with a p-value of <0.001.
 Since the p-value is below the conventional 5% significance level, we reject the null
 hypothesis and conclude that statistically significant autocorrelation is present in
 the GDP growth rate series. This finding is consistent with the ACF plot and implies
