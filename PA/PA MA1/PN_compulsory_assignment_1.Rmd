@@ -7,12 +7,12 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
 \newpage
 
-## Question 1: GDP Level -- Plot and ACF
+## Question 1: GDP Level - Plot and ACF
 
 ```{r load-packages}
 #install.packages("AER")
@@ -103,13 +103,13 @@ ggplot(acf_df, aes(x = lag, y = acf)) +
 
 The ACF shows that GDP values are very closely related to their recent past. The bars start near 1.0 and only decrease
 gradually. Even at a lag of 20 quarters (5 years), the correlation is still well above the dashed significance lines. This
-slow, steady decline is exactly what we'd expect from a series with a strong upward trend: because GDP keeps rising, any
+slow, steady decline is what we'd expect from a series with a strong upward trend: because GDP keeps rising, any
 given quarter naturally resembles the quarters before it. This confirms that the raw GDP series is non-stationary, highly persistent and needs
 to be transformed before we can model it meaningfully.
 
 \newpage
 
-## Question 2: GDP Growth Rate -- Transformation, Plot, ACF, and Ljung-Box Test
+## Question 2: GDP Growth Rate - Transformation, Plot, ACF, and Ljung-Box Test
 
 ```{r gdp-growth}
 gdp_growth <- diff(log(gdp)) * 100  # Quarter-on-quarter log growth rate in %
@@ -143,7 +143,7 @@ ggplot(gdp_growth_df, aes(x = date, y = growth)) +
   )
 ```
 
-After taking the log-difference, the series no longer exhibits a trend -- it fluctuates
+After taking the log-difference, the series no longer exhibits a trend. It fluctuates
 around a roughly constant mean close to zero, suggesting that differencing has
 successfully removed the non-stationarity present in the level series. There is no clear
 seasonal pattern, though some cyclical variation is visible, with more volatile and
@@ -178,8 +178,10 @@ ggplot(acf_growth_df, aes(x = lag, y = acf)) +
   )
 ```
 
-The ACF of the growth rate decays much more rapidly than that of the level series, consistent with a stationary process. Lag 1 is clearly significant, lag 2 is borderline, and lag 5 is significant on the negative side. Overall, most lags fall within the confidence bands, indicating the growth rate behaves much closer to white noise than the original GDP series.
-
+The ACF of the GDP growth rate dies out much faster than the ACF of the level series, which is consistent with the growth series being much 
+closer to a stationary process. The first lag is clearly significant (and lag 2 is marginal), indicating some short-run persistence in growth. 
+Beyond the first few lags, most autocorrelations lie within the confidence bands, with only isolated spikes (e.g., around lag 5), suggesting the 
+growth rate is far less persistent than the GDP level and is closer to a weakly correlated process rather than a highly autocorrelated one.
 
 ```{r ljung-box}
 lb_test <- Box.test(gdp_growth, lag = 12, type = "Ljung-Box")
@@ -201,26 +203,19 @@ knitr::kable(
 )
 ```
 
-The Ljung-Box test evaluates the null hypothesis that the first 12 autocorrelations are
-jointly equal to zero, i.e. that the series is white noise. The test statistic is
-`r round(lb_test$statistic, 3)` with a p-value of <0.001.
-Since the p-value is below the conventional 5% significance level, we reject the null
-hypothesis and conclude that statistically significant autocorrelation is present in
-the GDP growth rate series. This finding is consistent with the ACF plot and implies
-that the growth rate is not pure white noise, which has important implications for
-forecasting -- a model that exploits this autocorrelation structure should outperform a
-naive no-change forecast.
+The Ljung–Box test evaluates the null hypothesis that autocorrelations up to lag 12 are jointly 
+zero (no serial correlation up to 12 lags). The test statistic is
+`r round(lb_test$statistic, 3)` with p-value < 0.001. We therefore reject the null and 
+conclude that the GDP growth rate exhibits statistically significant autocorrelation. 
+This is consistent with the ACF and suggests that a time-series model exploiting this 
+dependence (e.g., an AR-type model) could outperform a naive no-change forecast.
 
 \newpage
 
 ## Question 3: Olympic Running
 
-```{r olympic-data}
-data <- olympic_running
-head(data)
-```
-
 ```{r olympic-plot-a}
+data <- olympic_running
 ggplot(data, aes(x = Year, y = Time, color = Sex)) +
   geom_point(size = 1.8) +
   geom_line(alpha = 0.5) +
@@ -302,16 +297,11 @@ knitr::kable(
 )
 ```
 
-The predictions provide point estimates and 95% prediction intervals for the winning
-time in each event at the 2020 Tokyo Olympics. These forecasts rest on several
-important assumptions. First, the linear trend is assumed to continue into the future
-at the same constant rate observed historically -- an assumption that is likely
-violated, as the residual analysis above suggests the rate of improvement has been
-slowing. This means the model will tend to produce optimistic (too fast) predictions,
-particularly for events where the curvature in residuals is most pronounced. Second,
-the model assumes that no structural breaks occur -- such as new technological
-innovations, rule changes, or doping scandals -- that would shift the trend. Third,
-the prediction intervals are derived under the assumption of normally distributed,
-homoskedastic residuals; if this does not hold, the intervals may be too narrow or
-too wide. In practice, the actual 2020 results can be compared against these
-predictions to evaluate the model's out-of-sample performance.
+The predictions shown in the figure report point forecasts and 95% prediction intervals for the winning time in each event at the 2020 Tokyo 
+Olympics. These forecasts rely on several key assumptions. First, the fitted linear trend is assumed to continue beyond the sample at the same 
+constant rate observed historically. This assumption is questionable because the residual plot suggests that performance improvements have slowed 
+over time, so the model may produce forecasts that are too optimistic, especially in events where the curvature is most visible. Second, the 
+model assumes there are no structural breaks, such as major technological innovations, rule changes, or doping-related disruptions, that would 
+shift the relationship between year and winning time. Third, the prediction intervals are constructed assuming residuals are approximately normal 
+and have constant variance; if these conditions fail, the intervals could be too narrow or too wide. Comparing the realized 2020 outcomes with
+the forecast intervals in the plot provides a direct way to assess how well the model performs out of sample.
