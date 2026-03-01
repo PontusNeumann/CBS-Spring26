@@ -1,7 +1,7 @@
 ---
 title: "Compulsory Assignment 1"
 subtitle: "Predictive Analytics (KAN-CDSCO1005U)"
-author: "Alejandro Gato (160363), Alexander Myrup (161989), Pontus Neumann (185912), Linus Yu (160714)"
+author: "Alejandro Gato (161989), Alexander Myrup (160363), Pontus Neumann (185912), Linus Yu (160714)"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
@@ -15,9 +15,9 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ## Question 1: GDP Level -- Plot and ACF
 
 ```{r load-packages}
-# install.packages("AER")
-# install.packages("fpp3")
-# install.packages("MetBrewer")
+#install.packages("AER")
+#install.packages("fpp3")
+#install.packages("MetBrewer")
 
 library(AER)
 library(fpp3)
@@ -101,15 +101,11 @@ ggplot(acf_df, aes(x = lag, y = acf)) +
   )
 ```
 
-The ACF confirms the non-stationarity observed in the time series plot. Autocorrelations
-decay extremely slowly and remain highly significant across all displayed lags, which is
-a classic symptom of a unit root or a strong deterministic trend. This persistent
-autocorrelation structure further motivates transforming the data prior to any formal
-modelling, as most time series models require stationarity. A log transformation is
-warranted for two reasons: first, it stabilises the variance, which tends to grow
-proportionally with the level of GDP; second, differencing the log series yields
-approximate quarter-on-quarter percentage growth rates, which are economically
-meaningful and interpretable.
+The ACF shows that GDP values are very closely related to their recent past. The bars start near 1.0 and only decrease
+gradually. Even at a lag of 20 quarters (5 years), the correlation is still well above the dashed significance lines. This
+slow, steady decline is exactly what we'd expect from a series with a strong upward trend: because GDP keeps rising, any
+given quarter naturally resembles the quarters before it. This confirms that the raw GDP series is non-stationary, highly persistent and needs
+to be transformed before we can model it meaningfully.
 
 \newpage
 
@@ -182,12 +178,8 @@ ggplot(acf_growth_df, aes(x = lag, y = acf)) +
   )
 ```
 
-The ACF of the growth rate decays much more rapidly than that of the level series, which
-is consistent with a stationary process. A small number of lags appear statistically
-significant -- notably lag 1 and potentially lag 3 -- suggesting some remaining
-autocorrelation structure in the growth rate that may be relevant for model selection.
-The bulk of lags, however, fall within the confidence bands, indicating that the
-differenced log series behaves much closer to white noise than the original GDP series.
+The ACF of the growth rate decays much more rapidly than that of the level series, consistent with a stationary process. Lag 1 is clearly significant, lag 2 is borderline, and lag 5 is significant on the negative side. Overall, most lags fall within the confidence bands, indicating the growth rate behaves much closer to white noise than the original GDP series.
+
 
 ```{r ljung-box}
 lb_test <- Box.test(gdp_growth, lag = 12, type = "Ljung-Box")
@@ -232,7 +224,8 @@ head(data)
 ggplot(data, aes(x = Year, y = Time, color = Sex)) +
   geom_point(size = 1.8) +
   geom_line(alpha = 0.5) +
-  facet_wrap(~ Length, scales = "free_y", ncol = 3) +
+  facet_wrap(~ Length, scales = "free_y", ncol = 3,
+             labeller = labeller(Length = function(x) paste0(x, "m"))) +
   scale_color_manual(values = c("Men" = bene[1], "Women" = bene[5])) +
   labs(
     title    = "Olympic Winning Times by Event (1896-2016)",
@@ -262,34 +255,34 @@ potentially reflecting unusual race conditions, doping disqualifications, or war
 causing gaps in the data (1916, 1940, 1944).
 
 ```{r olympic-regression-b}
-library(dplyr)
+data <- as.data.frame(olympic_running)
+                                                                                                                       
+  fits <- data %>%
+    group_by(Length, Sex) %>%
+    filter(!is.na(Time)) %>%                                                                                                   
+    summarise(
+      slope = coef(lm(Time ~ Year))[2],                                                                                        
+      .groups = "drop"                                             
+    )                                    
 
-fits <- data %>%
-  group_by(Length, Sex) %>%
-  filter(!is.na(Time)) %>%
-  summarise(
-    slope = coef(lm(Time ~ Year))[2],
-    .groups = "drop"
+  fits_tbl <- fits %>%
+    mutate(`Avg. change per year (sec)` = sprintf("%.4f", slope)) %>%
+    select(Event = Length, Sex, `Avg. change per year (sec)`)
+
+  knitr::kable(
+    fits_tbl,
+    caption = "Estimated average change in winning time per year for each Olympic event.",
+    align = "llc"
   )
 
-fits_tbl <- fits %>%
-  mutate(`Avg. change per year (sec)` = sprintf("%.4f", slope)) %>%
-  select(Event = Length, Sex, `Avg. change per year (sec)`)
-
-knitr::kable(
-  fits_tbl,
-  caption = "Estimated average change in winning time per year for each Olympic event.",
-  align   = "llc"
-)
 ```
 
-All slopes are negative, confirming that winning times have been decreasing across every
-event and for both sexes. The magnitude of the slope is largest for longer distance
-events in absolute terms, which is expected since longer races have more total time
-available for improvement. In relative terms, however, the rate of improvement is
-broadly similar across events. Women's events generally show steeper slopes, reflecting
-the fact that women's athletics was less developed at the start of the observation
-period and has seen larger absolute gains over time.
+All slopes are negative except Women's 1500m, confirming that winning times have generally decreased over the period. Longer 
+events show larger absolute decreases per year (e.g. Men's 10,000m at -2.67 sec/year vs Men's 100m at -0.01 sec/year), which 
+is expected since longer races have more total time available for improvement. Women's events tend to show steeper declines 
+than men's in the same event, reflecting the later professionalisation of women's athletics and thus larger room for early 
+gains. The anomalous positive slope for Women's 1500m (+0.15 sec/year) is likely an artefact of the small sample and the     
+event's late introduction to the Olympics, making the linear fit unreliable for that group.
 
 ```{r olympic-residuals-c}
 data <- data %>%
@@ -324,16 +317,7 @@ ggplot(data, aes(x = Year, y = residual, color = Sex)) +
   )
 ```
 
-The residual plots reveal systematic patterns that cast doubt on the suitability of a
-simple linear trend model. In most events, the residuals are not randomly scattered
-around zero -- instead they tend to be positive in the early years, negative in the
-middle of the sample, and positive again towards the end. This curved pattern is
-consistent with a concave improvement trajectory: winning times improved rapidly in the
-early decades and have slowed in recent years as athletes approach physiological limits.
-A linear model cannot capture this curvature, suggesting that a nonlinear trend
-(e.g. a logarithmic or quadratic specification) may provide a better fit. Additionally,
-some events show clusters of large residuals around war years, reflecting the gaps in
-the data.
+The residual plots show a clear non-random pattern across most events. Residuals tend to be positive in the early years, negative in the middle of the sample, and positive again in recent decades. This U-shaped pattern indicates that winning times improved rapidly in the early-to-mid twentieth century and have since slowed, which a straight line cannot capture. This suggests a nonlinear trend would better describe the data. Some events also show clusters of large residuals around the World War years, reflecting gaps in the Olympic schedule. 
 
 ```{r olympic-predict-d}
 predictions <- data %>%
