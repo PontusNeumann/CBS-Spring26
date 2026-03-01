@@ -29,7 +29,7 @@ library(MetBrewer)
 data("USMacroG", package = "AER")
 gdp <- USMacroG[, "gdp"]
 
-# Load full Benedictus palette upfront for use throughout the assignment
+# Load full Benedictus palette for use throughout the assignment
 bene <- met.brewer("Benedictus")
 
 # Convert GDP to data frame for ggplot
@@ -106,8 +106,6 @@ gradually. Even at a lag of 20 quarters (5 years), the correlation is still well
 slow, steady decline is what we'd expect from a series with a strong upward trend: because GDP keeps rising, any
 given quarter naturally resembles the quarters before it. This confirms that the raw GDP series is non-stationary, highly persistent and needs
 to be transformed before we can model it meaningfully.
-
-\newpage
 
 ## Question 2: GDP Growth Rate - Transformation, Plot, ACF, and Ljung-Box Test
 
@@ -210,18 +208,20 @@ conclude that the GDP growth rate exhibits statistically significant autocorrela
 This is consistent with the ACF and suggests that a time-series model exploiting this 
 dependence (e.g., an AR-type model) could outperform a naive no-change forecast.
 
-\newpage
-
 ## Question 3: Olympic Running
 
 ```{r olympic-plot-a}
-data <- olympic_running
-ggplot(data, aes(x = Year, y = Time, color = Sex)) +
+data <- as.data.frame(olympic_running)
+
+data$Sex <- factor(data$Sex, levels = c("men", "women"), labels = c("Men", "Women"))
+
+ggplot(data, aes(x = Year, y = Time, color = Sex, group = Sex)) +
   geom_point(size = 1.8) +
   geom_line(alpha = 0.5) +
   facet_wrap(~ Length, scales = "free_y", ncol = 3,
              labeller = labeller(Length = function(x) paste0(x, "m"))) +
-  scale_color_manual(values = c("Men" = bene[1], "Women" = bene[5])) +
+  scale_color_manual(values = c("Men" = bene[12], "Women" = bene[1]), drop = FALSE) +
+  guides(color = guide_legend(override.aes = list(size = 3, alpha = 1))) +
   labs(
     title    = "Olympic Winning Times by Event (1896-2016)",
     subtitle = "Each panel shows a track event; points are Olympic Games",
@@ -239,41 +239,86 @@ ggplot(data, aes(x = Year, y = Time, color = Sex)) +
   )
 ```
 
-The residual plots show a clear non-random structure across most events: residuals are often positive in the early years, negative around the middle of the sample, and positive again in recent decades. This U-shaped pattern indicates that performance improvements were faster in the early-to-mid twentieth century and have slowed more recently, which a straight-line trend cannot capture. The pattern is visible across both men’s and women’s events, although women’s events start later and often display larger early deviations as the disciplines developed. Several events also show large residuals around the World War years, consistent with disruptions and gaps in the Olympic schedule (e.g., 1916, 1940, 1944). Overall, the residual structure suggests a nonlinear trend would better describe the data.
+All events display a clear downward trend in winning times from 1896 to 2016, indicating that athletic
+performance has improved consistently over the period. Women's events begin later in the sample, typically
+from the mid-twentieth century onwards, reflecting their later inclusion in the Olympic programme. Across
+all events, the rate of improvement appears steepest in the earlier decades and flattens in more recent
+years, suggesting that gains are becoming more marginal as athletes approach physiological limits. Longer
+distance events show a wider absolute range of winning times, while shorter sprints show comparatively
+small absolute changes. Several events also display a gap around the World War years (1916, 1940, 1944),
+where no Games were held.
 
 ```{r olympic-regression-b}
-data <- as.data.frame(olympic_running)
-                                                                                                                       
-  fits <- data %>%
-    group_by(Length, Sex) %>%
-    filter(!is.na(Time)) %>%                                                                                                   
-    summarise(
-      slope = coef(lm(Time ~ Year))[2],                                                                                        
-      .groups = "drop"                                             
-    )                                    
-
-  fits_tbl <- fits %>%
-    mutate(`Avg. change per year (sec)` = sprintf("%.4f", slope)) %>%
-    select(Event = Length, Sex, `Avg. change per year (sec)`)
-
-  knitr::kable(
-    fits_tbl,
-    caption = "Estimated average change in winning time per year for each Olympic event.",
-    align = "llc"
+fits <- data %>%
+  group_by(Length, Sex) %>%
+  filter(!is.na(Time)) %>%
+  summarise(
+    slope   = coef(lm(Time ~ Year))[2],
+    .groups = "drop"
   )
 
+fits_tbl <- fits %>%
+  mutate(`Avg. change per year (sec)` = sprintf("%.4f", slope)) %>%
+  select(Event = Length, Sex, `Avg. change per year (sec)`)
+
+knitr::kable(
+  fits_tbl,
+  caption = "Estimated average change in winning time per year for each Olympic event.",
+  align   = "llc"
+)
 ```
 
-All slopes are negative except Women's 1500m, confirming that winning times have generally decreased over the period. Longer 
-events show larger absolute decreases per year (e.g. Men's 10,000m at -2.67 sec/year vs Men's 100m at -0.01 sec/year), which 
-is expected since longer races have more total time available for improvement. Women's events tend to show steeper declines 
-than men's in the same event, reflecting the later professionalisation of women's athletics and thus larger room for early 
-gains. The anomalous positive slope for Women's 1500m (+0.15 sec/year) is likely an artefact of the small sample and the     
-event's late introduction to the Olympics, making the linear fit unreliable for that group.
+All slopes are negative except Women's 1500m, confirming that winning times have generally decreased over
+the period. Longer events show larger absolute decreases per year (e.g. Men's 10,000m at -2.67 sec/year
+vs Men's 100m at -0.01 sec/year), which is expected since longer races have more total time available for
+improvement. Women's events tend to show steeper declines than men's in the same event, reflecting the
+later professionalisation of women's athletics and thus larger room for early gains. The anomalous positive
+slope for Women's 1500m (+0.15 sec/year) is likely an artefact of the small sample and the event's late
+introduction to the Olympics, making the linear fit unreliable for that group.
+
+```{r olympic-residuals-c}
+data_res <- as.data.frame(olympic_running) %>%
+  filter(!is.na(Time)) %>%
+  mutate(Sex = factor(Sex, levels = c("men", "women"), labels = c("Men", "Women"))) %>%
+  group_by(Length, Sex) %>%
+  mutate(residual = resid(lm(Time ~ Year))) %>%
+  ungroup()
+
+ggplot(data_res, aes(x = Year, y = residual, color = Sex, group = Sex)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_point(size = 1.8) +
+  geom_line(alpha = 0.4) +
+  facet_wrap(~ Length, scales = "free_y", ncol = 3,
+             labeller = labeller(Length = function(x) paste0(x, "m"))) +
+  scale_color_manual(values = c("Men" = bene[12], "Women" = bene[1]), drop = FALSE) +
+  guides(color = guide_legend(override.aes = list(size = 3, alpha = 1))) +
+  labs(
+    title    = "Residuals from Linear Trend by Event (1896-2016)",
+    subtitle = "Residuals from OLS regression of winning time on year",
+    x        = "Year",
+    y        = "Residual (seconds)",
+    color    = NULL
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title       = element_text(color = bene[1], face = "bold"),
+    plot.subtitle    = element_text(color = bene[2]),
+    panel.grid.minor = element_blank(),
+    legend.position  = "bottom",
+    strip.text       = element_text(face = "bold")
+  )
+```
+
+The residual plots reveal a clear non-random structure across most events. Residuals tend to be positive in
+the early years, turn negative around the middle of the sample, and become positive again in recent decades.
+This U-shaped pattern indicates that winning times improved more rapidly in the early-to-mid twentieth
+century than the fitted linear trend implies, and that improvements have since slowed below the linear rate.
+A straight-line trend is therefore unable to capture this curvature, and a nonlinear specification would
+better describe the data. Several events also show clusters of large residuals around the World War years,
+reflecting the absence of Olympic Games in 1916, 1940, and 1944.
 
 ```{r olympic-predict-d}
 predictions <- data %>%
-  filter(!is.na(Time)) %>%
   group_by(Length, Sex) %>%
   group_modify(~ {
     model <- lm(Time ~ Year, data = .x)
@@ -297,11 +342,12 @@ knitr::kable(
 )
 ```
 
-The predictions shown in the figure report point forecasts and 95% prediction intervals for the winning time in each event at the 2020 Tokyo 
-Olympics. These forecasts rely on several key assumptions. First, the fitted linear trend is assumed to continue beyond the sample at the same 
-constant rate observed historically. This assumption is questionable because the residual plot suggests that performance improvements have slowed 
-over time, so the model may produce forecasts that are too optimistic, especially in events where the curvature is most visible. Second, the 
-model assumes there are no structural breaks, such as major technological innovations, rule changes, or doping-related disruptions, that would 
-shift the relationship between year and winning time. Third, the prediction intervals are constructed assuming residuals are approximately normal 
-and have constant variance; if these conditions fail, the intervals could be too narrow or too wide. Comparing the realized 2020 outcomes with
-the forecast intervals in the plot provides a direct way to assess how well the model performs out of sample.
+The table reports point forecasts and 95% prediction intervals for the winning time in each event at the
+2020 Tokyo Olympics. These forecasts rely on several key assumptions. First, the fitted linear trend is
+assumed to continue beyond the sample at the same constant rate observed historically. This assumption is
+questionable because the residual plots suggest that performance improvements have slowed over time, so the
+model may produce forecasts that are too optimistic, particularly in events where curvature is most visible.
+Second, the model assumes there are no structural breaks, such as major technological innovations, rule
+changes, or doping-related disruptions, that would shift the relationship between year and winning time.
+Third, the prediction intervals are constructed under the assumption that residuals are approximately normal
+and have constant variance; if these conditions are violated, the intervals may be too narrow or too wide.
