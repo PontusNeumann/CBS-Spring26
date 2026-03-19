@@ -1,0 +1,624 @@
+---
+title: "PS5 Predictive Analytics: Exponential smoothing methods"
+subtitle: "Based on: https://otexts.com/fpp3/"
+author: "Dimitar Yordanov (dy.eco@cbs.dk)"
+format: 
+  pdf:
+    toc: true
+editor: visual
+---
+
+\newpage
+
+# Problem 8.1: Simple exponential smoothing (SES)
+
+**Consider the the number of pigs slaughtered in Victoria, available in the `aus_livestock` dataset.**
+
+**First, clean the environment and load the fpp3 package.**
+
+```{r}
+
+# Clean the environment.
+rm(list =ls())
+
+# Run the next row if you do not have the fpp3 package installed.
+# install.packages("fpp3")
+```
+
+```{r}
+#| warning: false
+#| include: true
+# Load the package.
+library(fpp3)
+```
+
+**Second, load the data and inspect it.**
+
+```{r}
+# We need to select only pigs and only the state of Victoria.
+aus_livestock1 <- aus_livestock %>%
+  filter(Animal == "Pigs", State == "Victoria")
+
+# Explore the top of the dataset.
+head(aus_livestock1)
+
+# Some descriptive statistics.
+# In this dataset, the Month variable is a time-index class 
+# (designed for TS analysis). 
+# The summary() function does not handle these well. 
+# Instead, you can use range(), min(), max() etc.
+range(aus_livestock1$Month)
+range(aus_livestock1$Count)
+
+```
+
+**Third, plot the data.**
+
+```{r}
+
+# Plot the data.
+aus_livestock1 %>%
+  autoplot(.vars = Count) +
+  labs(title = "Number of pigs slaughtered in Victoria per month")
+```
+
+**You can also investigate the autocorrelation in the data.**
+
+```{r}
+
+# Plot the autocorrelation in Count.
+aus_livestock1 %>%
+  select(Count) %>%
+  ACF(Count) %>%
+  autoplot() + labs(title = "Autocorrelation in the Count variable")
+```
+
+**Fourth, use the `ETS()` function in R to estimate the equivalent model for simple exponential smoothing. Find the optimal values of the smoothing parameter '`alpha`' and the level '`l`'.**
+
+The `ETS()` function helps us specify the type of exponential smoothing method we would like to use. Refer to the table in section 8.4 of the textbook for the specification of the different methods.
+
+**The possibilities for each component are: `Error = {A,M}, Trend = {N,A,Ad} and Seasonal = {N,A,M}`.**
+
+```{r}
+
+# Estimate a model using simple exponential smoothing. 
+# Keep the estimation results in the object fit.
+fit <- aus_livestock1 %>%
+  model(ses = ETS(Count ~ error("A") + trend("N") + season("N")))
+
+# Print the results.
+report(fit)
+```
+
+The optimal values are: `alpha = 0.322; l = 100646`.
+
+How do you interpret the alpha parameter?
+
+\bigskip
+
+-   **Low Alpha (closer to 0):** The model is "stiff" or conservative. it ignores short-term spikes and stays very smooth.
+
+-   **High Alpha (closer to 1):** The model is "reactive" or "nervous." It changes its baseline rapidly to match every new data point.
+
+In this case, we can say that the model is **moderately conservative**. It values the long-term average more than any single month's fluctuation, but it’s still responsive enough to shift the "level" when a real change occurs.
+
+The fit statistics AIC, AICc, and BIC are not interpretable. You need to estimate another model and compare the models. The lower the value, the better.
+
+\bigskip
+
+**Fifth, generate forecasts for the next four months.**
+
+```{r}
+#| message: false
+#| warning: false
+
+# Forecast for the next four months.
+fc <- fit %>% 
+  forecast(h = "4 months")
+
+# Print the forecast.
+# You can print your forecast by simply writing: 
+# fc
+# You can also improve the results table a bit.
+fc %>%
+  hilo() %>%
+  select(.model, Month, .mean) %>%
+  knitr::kable(digits = 3, align = 'c')
+
+```
+
+**Plot the forecast alongside the time series.**
+
+```{r}
+
+# Plot the forecast. 
+fc %>%
+  autoplot(aus_livestock1)
+
+```
+
+As it is difficult to see the forecast and the prediction intervals, we can plot only part of the time series, i.e., from 2010 onwards.
+
+```{r}
+
+# Plot the forecast. 
+fc %>%
+  autoplot(filter(aus_livestock1, Month >= yearmonth("2010 Jan")))
+```
+
+\newpage
+
+# Problem 8.5: SES and Holt's methods
+
+Data set `global_economy` contains the annual Exports from many countries. **Select Argentina**.
+
+```{r}
+
+argentina <- global_economy %>%
+  filter(Country == "Argentina")
+```
+
+**Explore the data**.
+
+```{r}
+
+# Explore the top of the dataset.
+head(argentina)
+
+# Some descriptive statistics.
+summary(argentina$Year)
+summary(argentina$Exports)
+```
+
+## Problem 8.5a: Time series plot and main features
+
+**Plot the Exports series and discuss the main features of the data.**
+
+```{r}
+
+argentina %>%
+  autoplot(Exports) + 
+  labs(title = "Argentinian export as percent of GDP 1960 - 2017") +
+  theme(plot.title = element_text(hjust = 0.5)) # Center the title.
+```
+
+There is a huge jump in Exports in 2002, due to the deregulation of the Argentinian peso. Since then, Exports (as a percentage of GDP) has gradually returned to 1990 levels.
+
+## Problem 8.5b: Simple exponential smoothing
+
+**Use an ETS(A,N,N) model to forecast the series, and plot the forecasts.**
+
+```{r}
+
+# Estimate a simple exponential smoothing model.
+# Keep the results in the etsSES object (mable).
+etsSES <- argentina %>%
+  model(ses = ETS(Exports ~ error("A") + trend("N") + season("N")))
+
+# Use the estimates in etsSES and make a forecast.
+# Keep the results in the fcSES object (fable).
+fcSES <- etsSES %>%
+  forecast(h = 10) 
+
+# Plot your forecast alongside the time series.
+fcSES %>%
+  autoplot(argentina) +
+  labs(title = "Forcasting Argentinian export") +
+  theme(plot.title = element_text(hjust = 0.5)) # Center the title.
+```
+
+**You can also print your forecast.**
+
+```{r}
+#| message: false
+#| warning: false
+
+# Print the forecast.
+# You can print your forecast by simply writing: 
+# fcSES
+# You can also improve the results table a bit.
+fcSES %>%
+  hilo() %>%
+  unpack_hilo(cols = c("80%", "95%")) %>% # Breaks intervals into numeric columns
+  select(-Country, -Exports) %>% 
+  knitr::kable(digits = 2, align = 'c')
+```
+
+## Problem 8.5c: RMSE computation
+
+**Use the `accuracy()` function to compute the Root mean square error (RMSE) for the training data.**
+
+The `accuracy()` function will report a number of fit statistics. To print only the one we are interested in, we can use the `select()` function.
+
+```{r}
+
+accuracy(etsSES) %>%
+  select(RMSE)
+```
+
+RMSE tells us how close our model is to the actual data. Normally, we would like to compare several models, and see which model fits our data best. However, we need to be aware of overfitting.
+
+The most important rule for RMSE is **where** you calculate it.
+
+-   **Training RMSE**: Calculated on the data the model already saw. A low value here might just mean the model "memorized" the past (**overfitting**).
+
+-   **Test RMSE**: Calculated on "new" data the model hasn't seen yet. This proves how well your model actually forecasts the future.
+
+**RMSE = 2.77 means that the model's typical prediction error is about 2.77 units (in this case, export as percent of GDP).**
+
+\bigskip
+
+## Problem 8.5d: SES vs Holt's method
+
+**Compare the results to those from an ETS(A,A,N) model. (Remember that the trended model is using one more parameter than the simpler model.) Discuss the merits of the two forecasting methods for this data set.**
+
+We can list more than one model in the `model()` function and easily compare across models.
+
+```{r}
+
+# Estimate a SES model and a Holt's model.
+# Keep estimates in the fitSVH object. 
+fitSVH <- argentina %>%
+  model(
+    SES = ETS(Exports ~ error("A") + trend("N") + season("N")),
+    Holt = ETS(Exports ~ error("A") + trend("A") + season("N"))
+    )
+  
+# Report RMSE.
+accuracy(fitSVH) %>%
+  select(.model, RMSE) %>%
+  rename(
+    'Model' = .model
+  ) %>%
+  knitr::kable(digits = 3, align = 'c')
+```
+
+Which model performs better? Does is make sense to estimate the additional parameter coming with the Holt's method?
+
+**There is very little difference in training RMSE between these models. So the extra parameter is not doing much.**
+
+## Problem 8.5e: SES vs Holt's method forecasts
+
+**Compare the forecasts from both methods. Which do you think is better?**
+
+```{r}
+
+# Plot your forecast alongside the time series.
+fitSVH %>%
+  forecast(h = 10) %>%
+  autoplot(argentina) +
+  labs(title = "Forcasting Argentinian export SES vs Holt's") +
+  theme(plot.title = element_text(hjust = 0.5)) # Center the title.
+```
+
+**Print your forecast.**
+
+```{r}
+#| message: false
+#| warning: false
+
+# First, we need to store our forecast estimates.
+# Use the estimates in fitSVH and make a forecast.
+# Store the results in the fcSVH object (fable).
+fcSVH <- fitSVH %>%
+  forecast(h = 10) 
+
+# Second, print the forecast.
+# You can print your forecast by simply writing: 
+# fcSES
+# You can also improve the results table a bit.
+fcSVH %>%
+  hilo() %>%
+  unpack_hilo(cols = c("80%", "95%")) %>% # Breaks intervals into numeric columns
+  select(-Country, -Exports) %>% 
+  knitr::kable(digits = 2, align = 'c')
+```
+
+**Based on our RMSE, the two models are pretty similar. The forecasts are also similar. In cases where the more complex model does not outperforms the simpler model, the *simpler* model is preferred.**
+
+\newpage
+
+# Problem 8.7: Multiplicative seasonality and damped trend
+
+**Find an ETS model for the Gas data from `aus_production` and forecast the next few years. Why is multiplicative seasonality necessary here? Experiment with making the trend damped. Does it improve the forecasts?**
+
+**First, explore the data.**
+
+Note: Production of gas is measured in petajoules. 1 petajoul = to 10 to the power of 15.
+
+```{r}
+
+# Create an object (tsibble) aus_prod with the data of interest.
+aus_prod <- aus_production
+
+# Explore the top of the data set.
+head(aus_prod)
+
+# Some descriptive statistics.
+range(aus_prod$Quarter)
+range(aus_prod$Gas)
+```
+
+**Plot the data.**
+
+```{r}
+
+# Plot the time series.
+aus_prod %>%
+  autoplot(Gas) +
+  labs(
+    title = "Quarterly Gas Production in Australia",
+    y = "Gas Production (Petajoules)",
+    x = "Quarter") +
+  theme(plot.title = element_text(hjust = 0.5)) # Center the title.
+```
+
+What are the main characteristics of this time series?
+
+**The time series shows a clear trend and seasonality. In addition, there is a big increase in the variance as the series increases in level. Therefore, it is necessary to use multiplicative seasonality.**
+
+\bigskip
+
+**Second, estimate a Holt-Winters' model with and without damped trend.**
+
+```{r}
+
+# Estimate the two models.
+# Note that you only need hwM and hwdampedM.
+# I added the rest just for comparison.
+fitGas <- aus_prod %>%
+  model(
+    hwM = ETS(Gas ~ error("M") + trend("A") + season("M")),
+    hwA = ETS(Gas ~ error("A") + trend("A") + season("M")),
+    hwdampedM = ETS(Gas ~ error("M") + trend("Ad") + season("M")),
+    hwdampedA = ETS(Gas ~ error("A") + trend("Ad") + season("M")),
+    Auto = ETS(Gas),
+  )
+
+# Summary of the fit statistics.
+fitGas %>% 
+  glance() %>%
+  select(.model, AIC, AICc, BIC, MSE) %>%
+  knitr::kable(digits = 2, align = 'c')
+```
+
+**The non-damped model seems to be doing slightly better here, probably because the trend is very strong over most of the historical data.**
+
+\bigskip
+
+**Third, explore the residuals.**
+
+```{r}
+
+# Explore the residuals of the model with additive errors. 
+fitGas %>% 
+  select(hwA) %>% 
+  gg_tsresiduals()
+```
+
+```{r}
+
+# Explore the residuals of the model with multiplicative errors. 
+fitGas %>% 
+  select(hwM) %>% 
+  gg_tsresiduals()
+```
+
+**Run a Ljung-Box test to check whether the residuals behave as white noise.**
+
+```{r}
+
+# Ljung-Box test.
+fitGas %>%
+  augment() %>% # Calculate residuals.
+  filter(.model == "hwM") %>% # Select only hwM.
+  features(.innov, ljung_box, lag = 24)  %>% # 24 is the recommendation for monthly data.
+  knitr::kable(digits = 6, align = 'c')
+```
+
+**There is still some correlation in the residuals, showing the model has not fully captured the available information. There also appears to be some heteroskedasticity in the residuals with larger variance in the first half of the series.**
+
+\bigskip
+
+**Fourth, print the estimates of the models** `"hwM", "hwdampedM"`**.**
+
+```{r}
+
+# Print estimtes.
+# Note: fitGas contains many models. Therefore, we cannot use report().
+fitGas %>%
+  tidy() %>%
+  filter(.model %in% c("hwM", "hwdampedM")) %>%
+  knitr::kable(digits = 3, align = 'c')
+```
+
+**Interpretation of the smoothing parameters.**
+
+The smoothing parameters control how quickly the model reacts to new data. Values closer to 1 are "fast" (reactive); closer to 0 are "slow" (smooth).
+
+-   **`alpha` (0.653)**: Smoothing parameter for the **level**. At 0.65, your model is quite reactive to recent changes in the baseline.
+
+-   **`beta` (0.144)**: Smoothing parameter for the **trend**. This is low, meaning the model assumes the upward slope changes very slowly over time.
+
+-   **`gamma` (0.098)**: Smoothing parameter for **seasonality**. This is very low, suggesting the seasonal pattern is very stable and does not change much from year to year.
+
+**Summary**: The model sees a very stable seasonal pattern (`low gamma`) and a steady, slow-changing trend (`low beta`), but it adjusts its baseline level quite quickly (`high alpha`) whenever new data arrives.
+
+\bigskip
+
+**Fifth, forecast the next 36 months.**
+
+```{r}
+
+# Forecast and plot the next 36 months.
+fitGas %>%
+  select(hwM) %>%
+  forecast(h = 36) %>%
+  autoplot(aus_prod)
+```
+
+**While the point forecasts look okay, the intervals are excessively wide.**
+
+\newpage
+
+Note: Problem 8.11a, b, c substitutes problem 8.8, because problem 8.11 utilises splitting the data into training and test dataset.
+
+# Problem 8.11: Holt-Winters' multiplicative method
+
+**For this exercise, use the quarterly number of arrivals to Australia from New Zealand, 1981 Q1 – 2012 Q3, from data set `aus_arrivals`.**
+
+**Load and explore the data.**
+
+```{r}
+
+# Load the data and store it in nzarr (New Zealand arrivals).
+nzarr <- aus_arrivals %>%
+  filter(Origin == "NZ")
+
+# Explore the top of the dataset.
+head(nzarr)
+
+# Some descriptive statistics.
+summary(nzarr$Arrivals)
+range(nzarr$Quarter)
+
+```
+
+## Problem 8.11a: Time plot and features of the data
+
+**Make a time plot of your data and describe the main features of the series.**
+
+```{r}
+
+# 'Arrivals / le3' changes the y scale to thousands.
+nzarr %>%
+  autoplot(Arrivals / 1e3) + 
+  labs(
+    title = "Number of arrivals from New Zealand per quarter 1981 - 2012 (in thousands)",
+    y = "Thousands of people",
+    x = "Quarter"
+    ) +
+  theme(plot.title = element_text(hjust = 0.5)) # Center the title.
+```
+
+**What are the main features of the time series?**
+
+\bigskip
+
+**The data has an upward trend. The data has a seasonal pattern, which increases in size approximately proportionally to the average number of people who arrive. Therefore, the data has multiplicative seasonality.**
+
+## Problem 8.11b: Holt-Winters' multiplicative method
+
+**Create a training set that withholds the last two years of available data. Forecast the test set using an appropriate model for Holt-Winters’ multiplicative method.**
+
+```{r}
+#| warning: false
+
+# Use the slice() function to create a training set nz_training.
+# The last 2 years (8 observations) are saved for the test set.
+nz_training <- nzarr %>%
+  slice(1:(n() - 8))
+
+# To fix the y-axis scale, we need to load the scales package.
+library(scales)
+
+# Use the HW multiplicative method and forecast the last two years.
+nz_training %>%
+  model(ETS(Arrivals ~ error("M") + trend("A") + season("M"))) %>%
+  forecast(h = "2 years") %>%
+  autoplot() +
+  autolayer(nzarr, Arrivals) +
+  scale_y_continuous(labels = label_number(scale = 1/1e3)) + # Fix the y-axis.
+  labs(
+    title = "Holt - Winters' multiplicative method",
+    y = "Thousands of people",
+    x = "Quarter"
+    ) +
+  theme(plot.title = element_text(hjust = 0.5)) # Center the title.
+```
+
+To have a better look at the forecast, we can plot only part of the time series. Note that the forecast is for 3 years now, so that it is a bit easier to see the peak at the end of the second year.
+
+```{r}
+
+# Use the HW multiplicative method and forecast the last two years.
+nz_training %>%
+  model(ETS(Arrivals ~ error("M") + trend("A") + season("M"))) %>%
+  forecast(h = "3 years") %>%
+  autoplot() +
+  autolayer(filter(nzarr, Quarter >= yearquarter("2000 Q1")), Arrivals) +
+  scale_y_continuous(labels = label_number(scale = 1/1e3)) + # Fix the y-axis.
+  labs(
+    title = "Holt - Winters' multiplicative method",
+    y = "Thousands of people",
+    x = "Quarter"
+    ) +
+  theme(plot.title = element_text(hjust = 0.5)) # Center the title.
+```
+
+## Problem 8.11c: Multiplicative seasonality
+
+**Why is multiplicative seasonality necessary here?**
+
+\bigskip
+
+**The multiplicative seasonality is important in this case because the seasonal pattern increases in size proportionally to the level of the series.**
+
+## Problem 8.11addition: Cross-validation 
+
+**Instead of splitting the data into training set and test set, apply cross-validation.**
+
+\textcolor{red}{**Note: This goes beyond the scope of this course and it falls in the category nice-to-know.**}
+
+```{r}
+
+# Prepare the data for cross-validation.
+nz_cv <- nzarr %>% 
+  slice(1:(n() - 3)) %>% # This removes the last 3 observations from the data.
+  stretch_tsibble(.init = 36, .step = 3) # The first training set will have 36 obs.
+```
+
+We can now see how many training sets we have created and how may observations they are utilising.
+
+```{r}
+
+nz_cv %>%
+  count(.id)
+```
+
+Clarifications.
+
+-   We use the **`slice()`** function, because we would like to remove the last observations to ensure that the last test window of the data created still has actual observations to compare against.
+
+-   When we say **`stretch_tsibble(.init = 36, .step = 3)`**, the first training set will contain the first 36 observations, while each step every other training set will expand with 3 observations.
+
+-   The initial training set is designed to have 36 observations. This is to ensure there is **sufficient data to make reasonable forecasts**.
+
+-   A **step size of 3** is used to reduce computation time. If you choose 1 or 2 computation time will increase significantly.
+
+-   As we now have **30 training sets**, the procedure becomes computationally heavier.
+
+**An example of how the model will work. If you look at .id = 5, you will see that n = 48. This means that on the 5th iteration, the model will utilise the first 48 observations and it will predict observations 49, 50, and 51. The aim here is to have roughly the same RMSEs across different slices of data. This ensures that the model of interest is consistent across many slices of data and not only for a specific slice.**
+
+\bigskip
+
+**Now we can see how the model performs.**
+
+```{r}
+
+nz_cv %>%
+  filter(.id == max(.id)) %>% # Add this line to pick only the final slice.
+  model(hwM = ETS(Arrivals ~ error("M") + trend("A") + season("M"))) %>%
+  forecast(h = "3 years") %>%
+  autoplot() +
+  autolayer(filter(nzarr, Quarter >= yearquarter("2000 Q1")), Arrivals) +
+  scale_y_continuous(labels = label_number(scale = 1/1e3)) +
+  labs(
+    title = "Holt-Winters' Multiplicative (Final CV Window)",
+    y = "Thousands of people",
+    x = "Quarter"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5), legend.position = "none")
+```
+
+**Compare this graph with the one from problem 8.11b.**

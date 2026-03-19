@@ -1,0 +1,531 @@
+---
+title: "PS4 Predictive Analytics"
+subtitle: "Based on: https://otexts.com/fpp3/"
+author: "Dimitar Yordanov (dy.eco@cbs.dk)"
+format: 
+  pdf:
+    toc: true
+editor: visual
+---
+
+\newpage
+
+# Problem 7.1: Analysing electricity demand
+
+Half-hourly electricity demand for Victoria, Australia is contained in `vic_elec`.
+
+```{r}
+# Clean the environment.
+rm(list =ls())
+
+# Run the next row if you do not have the fpp3 package installed.
+# install.packages("fpp3")
+
+```
+
+```{r}
+#| warning: false
+#| include: true
+# Load the package.
+library(fpp3)
+```
+
+Load the data and explore it visually.
+
+```{r}
+vic_elec1 <- vic_elec
+
+# Explore the top of the data set.
+head(vic_elec1)
+
+# Some descriptive statistics.
+summary(vic_elec1)
+```
+
+Extract the January 2014 electricity demand, and aggregate this data to daily with daily total demands and maximum temperatures. Demand is given in megawatts (MW), temperature is given in degrees Celsius.
+
+```{r}
+
+jan_vic_elec <- vic_elec1 %>%
+     filter(yearmonth(Time) == yearmonth("2014 Jan")) %>%
+     index_by(Date = as_date(Time)) %>%
+     summarise(Demand = sum(Demand), Temperature = max(Temperature))
+```
+
+The code in the chuck above does the following.
+
+-   The `filter()` function extracts the January 2014 electricity demand.
+
+-   The `index_by()` function creates a daily index, while the `as_date()` function converts the timestamp to a calendar data, which removes the time of day.
+
+-   The `summarise()` function aggregates the data for each day.
+
+## Problem 7.1a: Visualisations and model fit
+
+Plot the data and find the regression model for Demand with temperature as an explanatory variable. Why is there a positive relationship?
+
+Let us see how the two variables look like separately.
+
+```{r}
+
+jan_vic_elec %>%
+  pivot_longer(2:3, names_to="key", values_to="value") %>%
+  autoplot(.vars = value) +
+  facet_grid(vars(key), scales = "free_y")
+```
+
+Create a scatter plot with demand on the y axis and temperature on the x axis.
+
+```{r}
+
+jan_vic_elec %>%
+  ggplot(aes(x = Temperature, y = Demand)) +
+  geom_point()
+
+```
+
+We can fit a linear model and show the line in the graph.
+
+```{r}
+
+jan_vic_elec %>%
+  ggplot(aes(x = Temperature, y = Demand)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+Run a regression model with **Demand** being the dependent variable and the **Temperature** being the independent variable.
+
+```{r}
+
+fit <- jan_vic_elec %>%
+  model(TSLM(Demand ~ Temperature))
+
+fit %>% 
+  report()
+```
+
+Create a summary table to report your results.
+
+```{r}
+fit %>%
+  tidy() %>%
+  select(-.model, -statistic) %>%
+  rename(
+    Variable = term,
+    Estimate = estimate,
+    'Standard errors' = std.error,
+    'p value' = p.value
+  ) %>%
+  knitr::kable(digits = 3, align = 'c')
+
+```
+
+## Problem 7.1b: Residuals
+
+Produce a residual plot. Is the model adequate? Are there any outliers or influential observations?
+
+```{r}
+
+fit |> gg_tsresiduals()
+```
+
+**Residuals over time**
+
+Looking at the top graph, consider whether residuals behave like white noise.
+
+-   Do residuals fluctuate randomly around zero? *(If they are mostly positive or negative, the model might be biased.)*
+
+-   Are residuals to a great extent clear from trends or cycles? *(If not, the model missed some structure in the data.)*
+
+-   Is the spread of residuals roughly constant over time? *(Increasing or decreasing spread indicates heteroskedasticity.)*
+
+**The autocorrelation function**
+
+Looking at the autocorrelation function, consider whether the residuals are autocorrelated.
+
+-   Are the vertical bars within the blue confidence intervals? *(If not, this is an indication for autocorrelation; if many go beyond, the model likely missed some structure in the data.)*
+
+-   Do the vertical bars follow a pattern? *(Gradual decay or repeating spikes may suggest remaining trend or seasonality.)*
+
+**Residuals distribution**
+
+Looking at the histogram, consider whether the residuals are approximately normally distributed.
+
+-   Are the residuals centered around 0?
+
+-   Is the distribution bell-shaped?
+
+-   Is the distribution symmetrical?
+
+**The residuals mostly behave like white noise, and they are roughly normally distributed. Some large variability suggests that there are some outliers in the data.**
+
+## Problem 7.1c: Forecasting
+
+Use the model to forecast the electricity demand that you would expect for the next day if the maximum temperature was 15 degrees and compare it with the forecast if the maximum temperature was 35 degrees. Do you believe these forecasts?
+
+```{r}
+
+next_day <- scenarios(
+  `Cold day` = new_data(jan_vic_elec, 1) %>% mutate(Temperature = 15),
+  `Hot day` =  new_data(jan_vic_elec, 1) %>% mutate(Temperature = 35)
+)
+
+fc <- fit %>%
+  forecast(new_data = next_day)
+
+autoplot(jan_vic_elec, Demand) +
+  autolayer(fc[1,], colour = "blue") +
+  autolayer(fc[2,], colour = "red")
+```
+
+The code in the chuck above does the following.
+
+-   The `scenarios()` function defines different future cases, with the `new_data()` function creating a future point on the structure of `jan_vic_elec`, and the `mutate()` function sets a specific value for the temperature.
+
+-   The `forecast()` function uses the fitted model in `fit` and creates an object `fc`, which contains the forecast the the two scenarios.
+
+-   The `autoplot()` function creates the visualisation.
+
+**The forecasts seem reasonable. However, we should be aware that there is not much data to support the forecasts at these temperature extremes, especially in that no daily maximum below 20 degrees is observed during January (a summer month in Victoria).**
+
+## Problem 7.1d: Prediction intervals
+
+Use the `hilo()` function and extract the prediction intervals for your forecasts.
+
+```{r}
+fc %>%
+  hilo() %>%
+  select(-.model, -Date, -Demand, -.mean, -Temperature, -Date) %>%
+  rename(
+    'Scenario' = .scenario
+  ) %>%
+  knitr::kable(digits = 1, align = 'c')
+```
+
+## Problem 7.1e: Full data visualisation
+
+Plot Demand vs Temperature for all of the available data in `vic_elec` aggregated to daily total demand and maximum temperature. What does this say about your model?
+
+```{r}
+vic_elec1 %>%
+  index_by(Date = as_date(Time)) %>%
+  summarise(Demand = sum(Demand), Temperature = max(Temperature)) %>%
+  ggplot(aes(x = Temperature, y = Demand)) +
+  geom_point() +
+  geom_smooth(method = "gam")
+  
+  
+```
+
+The “U” shaped scatterplot suggests that there is a non-linear relationship between electricity demand and daily maximum temperature. The model assumption that electricity demand is linearly predicted by
+temperature is incorrect.
+
+\newpage
+
+# Problem 7.4: Monthly sales of souvenirs
+
+The data set `souvenirs` concerns the monthly sales figures of a shop which opened in January 1987 and sells gifts, souvenirs, and novelties. The shop is situated on the wharf at a beach resort town in Queensland, Australia. The sales volume varies with the seasonal population of tourists. There is a large influx of visitors to the town at *Christmas* and for the *local surfing festival*, held every March since 1988. Over time, the shop has expanded its premises, range of products, and staff.
+
+## Problem 7.4a: Time plot
+
+Use the `autoplot()` function and produce a time plot of the data and describe the patterns in the graph. Identify any unusual or unexpected fluctuations in the time series.
+
+```{r}
+# If you want to have the data loaded in the environment.
+souvenirs1 <- souvenirs
+
+# Plot the data.
+souvenirs1 %>% autoplot(Sales)
+```
+
+Features of the data:
+
+-   Seasonal data – similar scaled pattern repeats every year.
+
+-    A spike every March (except for year 1987) is the influence of the surfing festival. The bigger spikes capture the influence of Christmas.
+
+-   The size of the pattern increases proportionally to the level of sales.
+
+## Problem 7.4b: Data transformation
+
+Explain why it is necessary to take logarithms of these data before fitting a model.
+
+**It is appropriate to take log transformation because the size of the pattern increases roportionally to the level of sales.**
+
+```{r}
+# Taking logarithms of the data.
+souvenirs1 %>% autoplot(log(Sales))
+```
+
+After taking logs, the trend looks more linear and the seasonal variation is roughly constant.
+
+## Problem 7.4c: Fitting a regression model
+
+Fit a regression model to the logarithms of these sales data with a linear trend, seasonal dummies and a “surfing festival” dummy variable.
+
+```{r}
+# Fit a model.
+fit <- souvenirs1 %>%
+  mutate(festival = month(Month) == 3 & year(Month) != 1987) %>%
+  model(reg = TSLM(log(Sales) ~ trend() + season() + festival))
+
+# Plot the original data together with the fitted values from the model.
+souvenirs1 %>%
+  autoplot(Sales, col = "gray") +
+  geom_line(data = augment(fit), aes(y = .fitted), col = "blue")
+```
+
+Some key clarifications for the code in the chuck above.
+
+-   The `mutate()` function is used to create a new variable `festival`, which takes place in March every year except Mar87.
+
+-   The `geom_line()` function is used to add the fitted values from the model and visually inspect how well the regression model explains the data.
+
+Why did we add a festival variable, but not a Christmas variable?
+
+**Christmas is already captured in the `season()` component, because it occurs every season. We needed the festival variable, because the festival did not happen every year in the same way.**
+
+## Problem 7.4d: Residuals diagnostics
+
+Plot the residuals against time and against the fitted values. Do these plots reveal any problems with the model?
+
+First, plot the residuals against time.
+
+```{r}
+
+fit %>% gg_tsresiduals()
+```
+
+**Residuals over time**
+
+Looking at the top graph, consider whether residuals behave like white noise.
+
+-   Do residuals fluctuate randomly around zero? *(If they are mostly positive or negative, the model might be biased.)*
+
+-   Are residuals to a great extent clear from trends or cycles? *(If not, the model missed some structure in the data.)*
+
+-   Is the spread of residuals roughly constant over time? *(Increasing or decreasing spread indicates heteroskedasticity.)*
+
+**The autocorrelation function**
+
+Looking at the autocorrelation function, consider whether the residuals are autocorrelated.
+
+-   Are the vertical bars within the blue confidence intervals? *(If not, this is an indication for autocorrelation; if many go beyond, the model likely missed some structure in the data.)*
+
+-   Do the vertical bars follow a pattern? *(Gradual decay or repeating spikes may suggest remaining trend or seasonality.)*
+
+**Residuals distribution**
+
+Looking at the histogram, consider whether the residuals are approximately normally distributed.
+
+-   Are the residuals centered around 0?
+
+-   Is the distribution bell-shaped?
+
+-   Is the distribution symmetrical?
+
+**The residuals seem to follow a pattern over time, which means they do not behave as white noise. This is visible from the time plot and from the autocorrelation function. This means that the model does not fully capture the time dependence in the data.**
+
+Second, plot the residuals against the fitted values.
+
+```{r}
+
+augment(fit) %>%
+  ggplot(aes(x = .fitted, y = .innov)) +
+  geom_point() +
+  scale_x_log10()
+```
+
+In the code above:
+
+-   The `augment()` function prepares a data set suitable for creating a scatter plot, which contains the original data and model output. You can see it if you create an object (for example `test  <- augment(fit)`).
+
+-   Note that we need the log of the fitted values because we took log in the model.
+
+**A plot of the residuals against the fitted values should also show no pattern. If a pattern is observed, there may be “heteroscedasticity” in the errors, which means that the variance of the residuals may not be constant.**
+
+## Problem 7.4e: Residuals diagnostics II (boxplot)
+
+Do boxplots of the residuals for each month. Does this reveal any problems with the model?
+
+```{r}
+
+augment(fit) %>%
+  mutate(month = month(Month, label = TRUE)) %>%
+  ggplot(aes(x = month, y = .innov)) +
+  geom_boxplot()
+```
+
+With the `mutate() function`, we extract the month name instead of number, which makes the plot easier to read.
+
+Looking at the boxplot, consider whether the model captures variation in the data well enough.
+
+-   Is the median near zero for every month?
+
+-   Do we have similar spread across months?
+
+-   Do we have any systematic pattern across the year?
+
+**Most of the monthly medians are close to zero. The spread differs somewhat. We can observe mild seasonal pattern with early months being slightly negative and later months being slightly positive. Overall, this is an indication for potential heteroskedasticity.**
+
+## Problem 7.4f: Estimates of the model
+
+What do the values of the coefficients tell you about each variable?
+
+```{r}
+tidy(fit) %>% 
+  mutate(pceffect = (exp(estimate) - 1) * 100) %>%
+  select(-.model, -statistic) %>%
+  rename(
+    Variable = term,
+    Estimate = estimate,
+    'Standard errors' = std.error,
+    'p value' = p.value
+  ) %>%
+  knitr::kable(digits = 2, align = 'c')
+
+```
+
+With the mutate() function, we take into account that we logged our model. Now, the interpretation of the coefficients is in percent change.
+
+-   `(Intercept)` is not interpretable.
+
+<!-- -->
+
+-   `trend` coefficient shows that with every month sales increases on average by 2.2%.
+
+<!-- -->
+
+-   `season2` coefficient shows that February sales are greater than January on average by 28.6%, after allowing for the trend.
+
+<!-- -->
+
+-   …
+
+<!-- -->
+
+-   `season12` coefficient shows that December sales are greater than January on average by 611.5%, after allowing for the trend.
+
+<!-- -->
+
+-   `festivalTRUE` coefficient shows that for months that include the surfing festival, sales increases on average by 65.1% compared to months without the festival, after allowing for the trend and seasonality.
+
+## Problem 7.4g: Ljung-Box test
+
+What does the Ljung-Box test tell you about your model?
+
+```{r}
+
+augment(fit) %>%
+  features(.innov, ljung_box, lag = 24)
+```
+
+-   The null hypothesis states that there is no autocorrelation.
+
+-   The alternative hypothesis is that there is autocorrelation.
+
+**The p values is below 5%. Therefore, we reject the null hypothesis and conclude that the autocorrlation in the residuals is significant.**
+
+## Problem 7.4h: Forecasts for 1994, 1995, and 1996
+
+Regardless of your answers to the above questions, use your regression model to predict the monthly sales for 1994, 1995, and 1996. Produce prediction intervals for each of your forecasts.
+
+```{r}
+
+# Create 36 months of future observations based on the souvenirs1 structure.
+# Account for the festival in March.
+future_souvenirs <- new_data(souvenirs1, n = 36) %>%
+  mutate(festival = month(Month) == 3)
+
+# Use the regression model saved in fit to forecast sales and plot the 
+# historical data and the forecasts.
+fit %>%
+  forecast(new_data = future_souvenirs) %>%
+  autoplot(souvenirs1)
+
+```
+
+## Problem 7.4i: Improving the forecast
+
+How could you improve these predictions by modifying the model?
+
+The model can be improved by taking into account nonlinearity of the trend.
+
+\newpage
+
+# Problem 7.6: Annual population of Afghanistan
+
+The annual population of Afghanistan is available in the `global_economy` data set.
+
+## Problem 7.6a: Time plot
+
+Plot the data and comment on its features. Can you observe the effect of the Soviet-Afghan war?
+
+```{r}
+# Have a look at the data.
+afg <- global_economy %>%
+  filter(Country == "Afghanistan")
+
+# Explore the top of the data set.
+head(afg)
+
+# Some descriptive statistics.
+summary(afg)
+
+```
+
+```{r}
+# Remember that we use the fpp3 package and the global_economy data 
+# is part of this package. Remember to load it if you start your work 
+# from here and not from the beginning of the file. 
+# library(fpp3)
+global_economy %>%
+  filter(Country == "Afghanistan") %>%
+  autoplot(Population / 1e6) +
+  labs(y = "Population (millions)") +
+  geom_ribbon(aes(xmin = 1979.98, xmax = 1989.13), fill = "pink", alpha = 0.4) +
+  annotate("text", x = 1984.5, y = 10, label = "Soviet-Afghan war", col = "red", size = 3)
+```
+
+The population increases slowly from 1960 to 1980, then decreases during the Soviet-Afghan war (24 Dec 1979 – 15 Feb 1989), and has increased relatively rapidly since then. The last 30 years has shown an almost linear increase in population.
+
+## Problem 7.6b: Fitting a regression model
+
+Fit a linear trend model and compare this to a piecewise linear trend model with knots at 1980 and 1989.
+
+```{r}
+
+fit <- global_economy %>%
+  filter(Country == "Afghanistan") %>%
+  model(
+    linear = TSLM(Population ~ trend()),
+    piecewise = TSLM(Population ~ trend(knots = c(1980, 1989)))
+  )
+
+augment(fit) %>%
+  autoplot(.fitted) +
+  geom_line(aes(y = Population), colour = "black")
+```
+
+The fitted values show that the piecewise linear model has tracked the data very closely, while the linear model is inaccurate.
+
+## Problem 7.6c: Forecast
+
+Generate forecasts from these two models for the five years after the end of the data, and comment on the results.
+
+```{r}
+
+# Make a forecast based on the model.
+fc <- fit %>% 
+  forecast(h = "5 years")
+
+# Plot the forecast alongside the original data.
+autoplot(fc) +
+  autolayer(filter(global_economy %>% 
+                     filter(Country == "Afghanistan")), Population)
+```
+
+The linear model is clearly incorrect with prediction intervals too wide, and the point forecasts too low.
+
+The piecewise linear model looks good, but the prediction intervals are probably too narrow. This model assumes that the trend since the last knot will continue unchanged, which is unrealistic.
