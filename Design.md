@@ -1,6 +1,12 @@
 # Design Context
 
-Design system for `pn_ma1.ipynb`. All figures, tables, and heatmaps follow the conventions below.
+Design system for all projects, assignments, and reports in this repository. All figures, tables, and heatmaps follow the conventions below.
+
+## Notebook Structure
+
+- All imports go in a single cell at the top of the notebook.
+- Only import libraries that are actually used in the notebook.
+- No scattered inline imports in later cells.
 
 ## Colour Palette
 
