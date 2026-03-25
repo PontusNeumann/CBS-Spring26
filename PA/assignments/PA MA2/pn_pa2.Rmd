@@ -3,20 +3,37 @@ title: "Compulsory Assignment 2"
 subtitle: "Group 97 - Predictive Analytics (KAN-CDSCO1005U)"
 author: "Alejandro Gato (161989), Alexander Myrup (160363), Pontus Neumann (185912), Linus Yu (160714)"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: 
+  pdf_document:
+    keep_tex: false
+fontsize: 11pt
+geometry: margin=2.0cm
+header-includes:
+  - \usepackage{xcolor}
+  - \usepackage{titlesec}
+  - \titlespacing*{\section}{0pt}{8pt}{3pt}
+  - \titlespacing*{\subsection}{0pt}{6pt}{2pt}
+  - \setlength{\parskip}{3pt}
+  - \setlength{\parindent}{0pt}
+  - \definecolor{beneA}{HTML}{9A3A3A}
+  - \definecolor{beneDark}{HTML}{6B1E1E}
+  - \renewcommand{\maketitle}{\begin{center}\vspace*{2cm}{\color{beneDark}\rule{\textwidth}{2pt}}\\[1.0cm]{\Huge\bfseries\color{beneA} Compulsory Assignment 2}\\[0.5cm]{\large\color{beneA} Group 97 - Predictive Analytics (KAN-CDSCO1005U)}\\[0.8cm]{\normalsize\color{beneA} Alejandro Gato (161989), Alexander Myrup (160363),\\Pontus Neumann (185912), Linus Yu (160714)}\\[0.5cm]{\small\color{beneA}\today}\\[1.0cm]{\color{beneDark}\rule{\textwidth}{2pt}}\end{center}\vfill\thispagestyle{empty}}
 ---
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
-```
 
 \newpage
 
-# Part 1
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width  = 6.5,
+  fig.height = 3.2,
+  dpi     = 140
+)
+```
 
-## 1.1 Time Series Plot, ACF, and Decomposition
-
-```{r load-packages}
+```{r imports}
 library(forecast)
 library(tseries)
 library(ggplot2)
@@ -24,132 +41,142 @@ library(MetBrewer)
 library(gridExtra)
 ```
 
-```{r load-data}
-raw <- read.csv("data/fcpi.csv", sep = ";")
-
-fcpi <- ts(raw$cpi, start = c(1960, 1), frequency = 12)
-
+```{r theme-and-helpers}
 bene <- met.brewer("Benedictus")
-```
 
-```{r ts-plot, fig.height=4}
-autoplot(fcpi) +
-  geom_line(color = bene[1], linewidth = 0.7) +
-  labs(
-    title = "French Consumer Price Index (1960 to 2019)",
-    x     = "Year",
-    y     = "CPI"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    plot.title       = element_text(color = bene[1], face = "bold"),
-    panel.grid.minor = element_blank()
+theme_clean <- function(base_size = 11) {
+  theme_bw(base_size = base_size) %+replace%
+    theme(
+      panel.background  = element_rect(fill = "white", colour = NA),
+      plot.background   = element_rect(fill = "white", colour = NA),
+      panel.grid.major  = element_blank(),
+      panel.grid.minor  = element_blank(),
+      panel.border      = element_blank(),
+      axis.line.x       = element_line(colour = "grey30", linewidth = 0.4),
+      axis.line.y       = element_line(colour = "grey30", linewidth = 0.4),
+      axis.ticks        = element_line(colour = "grey30", linewidth = 0.3),
+      axis.text         = element_text(colour = "grey20", size = rel(0.9)),
+      axis.title        = element_text(colour = "grey10", size = rel(1.0)),
+      plot.title        = element_text(colour = bene[1], face = "bold",
+                                       size = rel(1.05), hjust = 0,
+                                       margin = margin(b = 4)),
+      legend.background = element_rect(fill = "white", colour = NA),
+      legend.key        = element_rect(fill = "white", colour = NA),
+      strip.background  = element_blank(),
+      strip.text        = element_text(face = "bold", size = rel(0.9))
+    )
+}
+
+plot_decomp <- function(decomp_obj, title, line_col) {
+  tt  <- as.numeric(time(decomp_obj$x))
+  obs <- as.numeric(decomp_obj$x)
+  tre <- as.numeric(decomp_obj$trend)
+  sea <- as.numeric(decomp_obj$seasonal)
+  rem <- as.numeric(decomp_obj$random)
+
+  df <- data.frame(
+    time  = rep(tt, 4),
+    value = c(obs, tre, sea, rem),
+    component = factor(rep(c("data", "trend", "seasonal", "remainder"),
+                           each = length(tt)),
+                       levels = c("data", "trend", "seasonal", "remainder"))
   )
+  df <- df[!is.na(df$value), ]
+
+  ggplot(df, aes(x = time, y = value)) +
+    facet_wrap(~ component, ncol = 1, scales = "free_y",
+               strip.position = "left") +
+    geom_line(colour = line_col, linewidth = 0.4) +
+    scale_x_continuous(breaks = seq(1960, 2020, by = 10)) +
+    labs(title = title, x = "Year", y = NULL) +
+    theme_clean(base_size = 10) +
+    theme(
+      strip.placement = "outside",
+      strip.background = element_rect(fill = "#FAE0E0", colour = NA),
+      strip.text.y.left = element_text(face = "bold", size = 8, angle = 90),
+      axis.title.y = element_blank()
+    )
+}
+
+fig_caption <- function(number, text) {
+  cat(paste0("\n\n*Figure ", number, ": ", text, "*\n\n"))
+}
 ```
 
-The French CPI series displays a strong upward trend across the full sample period with no signs of mean reversion. The level rises from approximately 10 in 1960 to over 100 by 2019. Growth is steeper in the 1970s and early 1980s, likely driven by the oil crises and accompanying inflation, and flattens noticeably from the mid 1980s onward. A mild seasonal pattern is visible, particularly in the later decades. The variance of the series increases with its level, suggesting that a variance stabilising transformation may be warranted.
+```{r load-data}
+raw  <- read.csv("data/fcpi.csv", sep = ";")
+fcpi <- ts(raw$cpi, start = c(1960, 1), frequency = 12)
+```
 
-```{r acf-plot, fig.height=4}
-acf_data <- acf(as.numeric(fcpi), lag.max = 48, plot = FALSE)
-acf_df   <- data.frame(
-  lag = as.numeric(acf_data$lag[-1]),
-  acf = as.numeric(acf_data$acf[-1])
-)
+# Part 1
+
+## 1.1 Time Series Plot, ACF, and Decomposition
+
+```{r fig-1-ts-acf, fig.width=8, fig.height=3.0, results='asis'}
 ci <- qnorm(0.975) / sqrt(length(fcpi))
+acf_data <- acf(as.numeric(fcpi), lag.max = 48, plot = FALSE)
+acf_df <- data.frame(lag = as.numeric(acf_data$lag[-1]),
+                      acf = as.numeric(acf_data$acf[-1]))
 
-ggplot(acf_df, aes(x = lag, y = acf)) +
-  geom_hline(yintercept = 0, color = "grey40") +
-  geom_hline(yintercept = c(-ci, ci), linetype = "dashed", color = bene[3]) +
-  geom_segment(aes(xend = lag, yend = 0), color = bene[1], linewidth = 0.6) +
-  geom_point(color = bene[1], size = 1.5) +
-  labs(
-    title = "ACF of French CPI",
-    x     = "Lag",
-    y     = "Autocorrelation"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    plot.title       = element_text(color = bene[1], face = "bold"),
-    panel.grid.minor = element_blank()
-  )
+p_ts <- autoplot(fcpi) +
+  geom_line(color = bene[1], linewidth = 0.6) +
+  scale_x_continuous(breaks = seq(1960, 2020, by = 10)) +
+  labs(title = "French CPI (1960-2019)", x = "Year", y = "CPI") +
+  theme_clean(base_size = 10)
+
+p_acf <- ggplot(acf_df, aes(x = lag, y = acf)) +
+  geom_hline(yintercept = 0, colour = "grey40", linewidth = 0.3) +
+  geom_hline(yintercept = c(-ci, ci), linetype = "dashed",
+             colour = bene[3], linewidth = 0.4) +
+  geom_segment(aes(xend = lag, yend = 0), colour = bene[1], linewidth = 0.5) +
+  geom_point(colour = bene[1], size = 1.2) +
+  scale_x_continuous(breaks = seq(0, 48, by = 12)) +
+  labs(title = "ACF of French CPI", x = "Lag", y = "Autocorrelation") +
+  theme_clean(base_size = 10)
+
+grid.arrange(p_ts, p_acf, ncol = 2)
+
+fig_caption(1, "Left: French CPI from January 1960 to December 2019. Right: sample ACF up to 48 lags.")
 ```
 
-The ACF decays extremely slowly, remaining significant well beyond 48 lags. This is characteristic of a non-stationary series with a strong trend component. The persistence confirms that the raw CPI level must be differenced or detrended before any ARIMA modelling.
+The CPI series displays a strong upward trend with no mean reversion. Growth is steeper in the 1970s--80s (oil crises) and flattens from the mid-1980s onward. The variance increases with the level, suggesting a variance-stabilising transformation is needed. The ACF decays extremely slowly, confirming the series is non-stationary and must be differenced before ARIMA modelling.
 
-```{r decomposition, fig.height=6}
+We apply a classical multiplicative decomposition because the seasonal amplitude grows with the level of the series. This method provides a straightforward separation of trend, seasonal, and irregular components as a first exploratory step.
+
+```{r fig-2-decomp, fig.height=5.5, results='asis'}
 decomp <- decompose(fcpi, type = "multiplicative")
-autoplot(decomp) +
-  labs(title = "Classical Multiplicative Decomposition of French CPI") +
-  theme_minimal(base_size = 11) +
-  theme(
-    plot.title       = element_text(color = bene[1], face = "bold"),
-    panel.grid.minor = element_blank()
-  )
+plot_decomp(decomp, "Classical Multiplicative Decomposition of French CPI",
+            line_col = bene[1])
+
+fig_caption(2, "Multiplicative decomposition into data, trend, seasonal, and remainder.")
 ```
 
-A classical multiplicative decomposition is chosen because the seasonal amplitude appears to grow with the level of the series. The decomposition reveals: (i) a smooth upward trend that captures the long-run inflationary movement, (ii) a seasonal component with a regular annual pattern, and (iii) an irregular (remainder) component that is largest during the high inflation period of the 1970s.
-
-**Limitations of classical decomposition.** The method uses symmetric moving averages, so the trend is unavailable for the first and last six months. It assumes that the seasonal pattern is perfectly constant over time, which is unlikely across a 60 year span where the structure of the economy changed considerably. It also offers no built-in mechanism for handling outliers or structural breaks, meaning that large shocks (e.g. the oil crises) feed directly into the remainder without adjustment.
+The decomposition reveals a smooth upward trend, a regular annual seasonal pattern, and a remainder that is largest during the 1970s inflation. The method assumes a constant seasonal pattern and uses symmetric moving averages (losing the first/last six months), which are its main limitations over a 60-year span with structural change.
 
 ## 1.2 Transformation
 
-```{r boxcox-lambda}
-lambda <- BoxCox.lambda(fcpi)
-cat("Optimal Box-Cox lambda:", round(lambda, 4), "\n")
-```
-
-```{r transform-compare, fig.height=6}
+```{r compute-transforms}
+lambda   <- BoxCox.lambda(fcpi)
 fcpi_log <- log(fcpi)
-fcpi_bc  <- BoxCox(fcpi, lambda)
-
-p1 <- autoplot(fcpi_log) +
-  geom_line(color = bene[2], linewidth = 0.6) +
-  labs(title = "Log Transformed CPI", x = "Year", y = "log(CPI)") +
-  theme_minimal(base_size = 11) +
-  theme(
-    plot.title       = element_text(color = bene[1], face = "bold"),
-    panel.grid.minor = element_blank()
-  )
-
-p2 <- autoplot(fcpi_bc) +
-  geom_line(color = bene[4], linewidth = 0.6) +
-  labs(
-    title = paste0("Box-Cox Transformed CPI (lambda = ", round(lambda, 2), ")"),
-    x     = "Year",
-    y     = "Transformed CPI"
-  ) +
-  theme_minimal(base_size = 11) +
-  theme(
-    plot.title       = element_text(color = bene[1], face = "bold"),
-    panel.grid.minor = element_blank()
-  )
-
-grid.arrange(p1, p2, ncol = 1)
 ```
 
-```{r decomp-log, fig.height=6}
-decomp_log <- decompose(fcpi_log, type = "additive")
-autoplot(decomp_log) +
-  labs(title = "Classical Additive Decomposition of log(CPI)") +
-  theme_minimal(base_size = 11) +
-  theme(
-    plot.title       = element_text(color = bene[1], face = "bold"),
-    panel.grid.minor = element_blank()
-  )
+```{r fig-3-log, fig.height=2.8, results='asis'}
+autoplot(fcpi_log) +
+  geom_line(colour = bene[2], linewidth = 0.6) +
+  scale_x_continuous(breaks = seq(1960, 2020, by = 10)) +
+  labs(title = "Log-Transformed CPI", x = "Year", y = "log(CPI)") +
+  theme_clean()
+
+fig_caption(3, "Log-transformed French CPI series.")
 ```
 
-After the log transformation, the variance of the series is substantially more stable over time, and the seasonal fluctuations become approximately constant in magnitude. This means an additive decomposition is now appropriate. The trend component remains strongly upward but is smoother in its curvature, and the remainder is more homoscedastic than in the original series.
-
-The Box-Cox transformation yields a lambda close to zero, confirming that the log transformation is a near optimal variance stabilising choice. Because lambda $\approx 0$ and the natural logarithm is simpler to interpret (percentage changes after differencing), the **log transformed series is used for the remainder of the assignment**.
+The Box-Cox method yields $\hat\lambda =$ `r round(lambda, 2)`, close to zero, confirming that the natural logarithm is near-optimal for variance stabilisation. After the log transformation, variance is stable and the seasonal fluctuations become approximately constant in magnitude, making an additive decomposition appropriate. We use the **log-transformed series for the remainder of the assignment** because $\lambda \approx 0$ and first differences of log(CPI) approximate percentage changes, aiding economic interpretation.
 
 ## 1.3 Unit Root Tests (KPSS and ADF)
 
-The log transformed CPI displays both a clear deterministic trend and a level shift, so the appropriate test specifications include a trend term.
+The log-transformed CPI has a clear deterministic trend, so we use KPSS with `type = "Trend"` and ADF with `k = 12` (monthly lag structure) to test for stationarity.
 
-- **KPSS**: use `type = "Trend"` to test stationarity around a deterministic trend.
-- **ADF**: use `k = 12` (monthly lag length) to account for serial correlation, with the alternative being trend stationarity.
-
-```{r unit-root-tests}
+```{r tab-1-unit-root}
 kpss_result <- kpss.test(fcpi_log, null = "Trend")
 adf_result  <- adf.test(fcpi_log, k = 12)
 
@@ -161,173 +188,190 @@ ur_tbl <- data.frame(
                 format.pval(adf_result$p.value, digits = 3, eps = 0.01))
 )
 
-knitr::kable(
-  ur_tbl,
-  col.names = c("Test", "Test Statistic", "p-value"),
-  caption   = "Unit root tests on log(CPI).",
-  align     = "lcc"
-)
+knitr::kable(ur_tbl, col.names = c("Test", "Test Statistic", "p-value"),
+             caption = "Unit root tests on log(CPI).",
+             align = "lcc", row.names = FALSE)
 ```
 
-**KPSS** tests the null of (trend )stationarity. The p-value is below 0.01, so the null is rejected: the series is not stationary even after accounting for a deterministic trend. **ADF** tests the null of a unit root. The p-value is large, so the null cannot be rejected. Both tests consistently indicate that log(CPI) contains a unit root and requires differencing.
+*Table 1: Unit root tests on log(CPI).*
+
+KPSS rejects trend-stationarity ($p < 0.01$) and ADF fails to reject the unit root null ($p = 0.661$). Both tests consistently indicate log(CPI) contains a unit root.
 
 ## 1.4 Making the Series Stationary and ARIMA Identification
 
-Since the series contains both a trend (unit root) and seasonality, first order regular differencing and first order seasonal differencing are applied.
+We apply first-order regular differencing ($d=1$) and first-order seasonal differencing ($D=1$, lag 12) to remove the stochastic trend and seasonality.
 
-```{r differencing, fig.height=4}
+```{r fig-4-differenced, fig.height=2.8, results='asis'}
 fcpi_d1  <- diff(fcpi_log, differences = 1)
 fcpi_d1s <- diff(fcpi_d1, lag = 12, differences = 1)
 
 autoplot(fcpi_d1s) +
-  geom_line(color = bene[2], linewidth = 0.5) +
-  labs(
-    title = "Differenced log(CPI): First Regular + First Seasonal Difference",
-    x     = "Year",
-    y     = expression(Delta[1] * Delta[12] ~ log(CPI))
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    plot.title       = element_text(color = bene[1], face = "bold"),
-    panel.grid.minor = element_blank()
-  )
+  geom_line(colour = bene[2], linewidth = 0.4) +
+  scale_x_continuous(breaks = seq(1960, 2020, by = 10)) +
+  labs(title = "Differenced log(CPI): Regular + Seasonal",
+       x = "Year",
+       y = expression(Delta[1] * Delta[12] ~ log(CPI))) +
+  theme_clean()
+
+fig_caption(4, "First regular and first seasonal difference of log(CPI).")
 ```
 
-```{r kpss-differenced}
+```{r kpss-diff, results='asis'}
 kpss_d <- kpss.test(fcpi_d1s, null = "Level")
-cat("KPSS test on differenced series: statistic =", round(kpss_d$statistic, 4),
-    ", p-value =", format.pval(kpss_d$p.value, digits = 3, eps = 0.01), "\n")
+cat(paste0("The KPSS test on the differenced series gives a statistic of ",
+           round(kpss_d$statistic, 4), " ($p = ",
+           format.pval(kpss_d$p.value, digits = 3, eps = 0.01),
+           "$), so we do not reject level stationarity.\n\n"))
 ```
 
-After both regular and seasonal differencing, the series fluctuates around zero with no visible trend or changing variance. The KPSS test on the differenced series does not reject the null of level stationarity, confirming that the series is now stationary.
+```{r fig-5-acf-pacf, fig.height=4.2, results='asis'}
+acf_ds  <- acf(as.numeric(fcpi_d1s), lag.max = 48, plot = FALSE)
+pacf_ds <- pacf(as.numeric(fcpi_d1s), lag.max = 48, plot = FALSE)
 
-```{r acf-pacf, fig.height=6}
-par(mfrow = c(2, 1), mar = c(4, 4, 3, 1))
-Acf(fcpi_d1s, lag.max = 48, main = "ACF of Differenced log(CPI)")
-Pacf(fcpi_d1s, lag.max = 48, main = "PACF of Differenced log(CPI)")
-par(mfrow = c(1, 1))
+acf_ds_df  <- data.frame(lag = as.numeric(acf_ds$lag[-1]),
+                          val = as.numeric(acf_ds$acf[-1]), type = "ACF")
+pacf_ds_df <- data.frame(lag = as.numeric(pacf_ds$lag),
+                          val = as.numeric(pacf_ds$acf), type = "PACF")
+cf_df <- rbind(acf_ds_df, pacf_ds_df)
+ci_d  <- qnorm(0.975) / sqrt(length(fcpi_d1s))
+
+ggplot(cf_df, aes(x = lag, y = val)) +
+  facet_wrap(~ type, ncol = 1, scales = "free_y") +
+  geom_hline(yintercept = 0, colour = "grey40", linewidth = 0.3) +
+  geom_hline(yintercept = c(-ci_d, ci_d), linetype = "dashed",
+             colour = bene[3], linewidth = 0.4) +
+  geom_segment(aes(xend = lag, yend = 0), colour = bene[2], linewidth = 0.45) +
+  geom_point(colour = bene[2], size = 1.0) +
+  scale_x_continuous(breaks = seq(0, 48, by = 6)) +
+  labs(title = "ACF and PACF of Differenced log(CPI)", x = "Lag", y = NULL) +
+  theme_clean(base_size = 10)
+
+fig_caption(5, "ACF (top) and PACF (bottom) of the doubly differenced log(CPI).")
 ```
 
-**Reading the ACF and PACF:**
-
-- The ACF shows a significant spike at lag 1 that cuts off afterwards, suggesting a non-seasonal MA(1) component.
-- At the seasonal lags (12, 24, ...), the ACF shows a significant spike at lag 12 that decays, suggesting a seasonal MA(1) component.
-- The PACF shows a significant spike at lag 1 with subsequent decay, consistent with the MA interpretation rather than an AR process.
-
-Based on this, the proposed model is:
-
-$$\text{ARIMA}(0,1,1)(0,1,1)_{12}$$
-
-This is the classic "airline model" (Box and Jenkins), which is well suited to economic series displaying a trend and multiplicative seasonality. In differenced form, the model can be written as:
-
-$$(1 - B)(1 - B^{12}) \log(Y_t) = (1 + \theta_1 B)(1 + \Theta_1 B^{12}) \varepsilon_t$$
-
-where $B$ is the backshift operator, $\theta_1$ is the non-seasonal MA coefficient, and $\Theta_1$ is the seasonal MA coefficient.
-
-\newpage
+The ACF shows a significant spike at lag 1 that cuts off, suggesting MA(1). At seasonal lag 12 it shows a spike that decays, suggesting seasonal MA(1). The PACF is consistent with this MA interpretation. We propose the "airline model": $\text{ARIMA}(0,1,1)(0,1,1)_{12}$, written as $(1-B)(1-B^{12})\log Y_t = (1+\theta_1 B)(1+\Theta_1 B^{12})\varepsilon_t$.
 
 # Part 2
 
-In this part, the log-transformed series is used throughout, as decided in 1.2.
-
 ## 2.1 Train/Test Split and Auto ARIMA
 
-The sample is split so that the last 24 months (Jan 2018 to Dec 2019) serve as the test set. This provides two full years of out-of-sample observations while retaining 58 years of training data.
-
-```{r train-test-split}
+```{r train-test, results='asis'}
 train <- window(fcpi_log, end = c(2017, 12))
 test  <- window(fcpi_log, start = c(2018, 1))
-
-cat("Training set:", length(train), "obs |",
-    "Test set:", length(test), "obs\n")
+cat(paste0("We reserve the last 24 months (Jan 2018--Dec 2019) as the test set (",
+           length(test), " obs), leaving ", length(train),
+           " observations for training.\n\n"))
 ```
 
-```{r auto-arima}
+```{r auto-arima, results='asis'}
 fit_auto <- auto.arima(train, ic = "aic", stepwise = FALSE, approximation = FALSE)
-summary(fit_auto)
+cat(paste0("Using `auto.arima` with exhaustive AIC search, the selected model is **",
+           as.character(fit_auto), "**. ",
+           "This differs from our manual specification, suggesting that ",
+           "additional AR and seasonal AR terms improve in-sample AIC.\n\n"))
 ```
 
-The `auto.arima` function selects the model that minimises the AIC using an exhaustive search over the parameter space. The selected model should be compared with the ARIMA(0,1,1)(0,1,1)$_{12}$ identified manually in 1.4. If the auto-selected model differs, this may indicate that additional AR or MA terms capture dynamics not visible from the ACF/PACF alone, or that the AIC penalisation favours a slightly different specification.
+```{r fig-6-residuals, fig.height=4.5, results='asis'}
+res    <- residuals(fit_auto)
+res_df <- data.frame(time = as.numeric(time(res)), res = as.numeric(res))
 
-```{r residual-diagnostics, fig.height=7}
-checkresiduals(fit_auto)
+p_res <- ggplot(res_df, aes(x = time, y = res)) +
+  geom_line(colour = bene[4], linewidth = 0.3) +
+  geom_hline(yintercept = 0, colour = bene[2], linewidth = 0.3, linetype = "dashed") +
+  scale_x_continuous(breaks = seq(1960, 2020, by = 10)) +
+  labs(title = paste0("Residuals from ", as.character(fit_auto)),
+       x = "Year", y = "Residual") +
+  theme_clean(base_size = 9)
+
+acf_res    <- acf(as.numeric(res), lag.max = 36, plot = FALSE)
+acf_res_df <- data.frame(lag = as.numeric(acf_res$lag[-1]),
+                          acf = as.numeric(acf_res$acf[-1]))
+ci_res <- qnorm(0.975) / sqrt(length(res))
+
+p_acf <- ggplot(acf_res_df, aes(x = lag, y = acf)) +
+  geom_hline(yintercept = 0, colour = "grey40", linewidth = 0.3) +
+  geom_hline(yintercept = c(-ci_res, ci_res), linetype = "dashed",
+             colour = bene[3], linewidth = 0.4) +
+  geom_segment(aes(xend = lag, yend = 0), colour = bene[4], linewidth = 0.45) +
+  geom_point(colour = bene[4], size = 0.9) +
+  scale_x_continuous(breaks = seq(0, 36, by = 6)) +
+  labs(title = "Residual ACF", x = "Lag", y = "ACF") +
+  theme_clean(base_size = 9)
+
+p_hist <- ggplot(res_df, aes(x = res)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 35,
+                 fill = bene[2], colour = "white", alpha = 0.7) +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(res_df$res), sd = sd(res_df$res)),
+                colour = bene[3], linewidth = 0.5) +
+  labs(title = "Residual Distribution", x = "Residual", y = "Density") +
+  theme_clean(base_size = 9)
+
+grid.arrange(p_res, arrangeGrob(p_acf, p_hist, ncol = 2), nrow = 2)
+
+fig_caption(6, "Residual diagnostics. Top: time series. Bottom-left: ACF. Bottom-right: histogram with normal overlay.")
 ```
 
-```{r ljung-box}
+```{r ljung-box, results='asis'}
 lb <- Box.test(residuals(fit_auto), lag = 24, type = "Ljung-Box",
                fitdf = length(fit_auto$coef))
-
-lb_tbl <- data.frame(
-  Test      = "Ljung-Box",
-  Lags      = 24,
-  Statistic = round(lb$statistic, 3),
-  df        = lb$parameter,
-  p.value   = format.pval(lb$p.value, digits = 3, eps = 0.001)
-)
-
-knitr::kable(
-  lb_tbl,
-  col.names = c("Test", "Lags", "X-squared", "df", "p-value"),
-  caption   = "Ljung-Box test on residuals of auto.arima model.",
-  align     = "lcccc"
-)
+cat(paste0("The Ljung-Box test at 24 lags gives $Q^* = ",
+           round(lb$statistic, 2), "$ ($p = ",
+           format.pval(lb$p.value, digits = 3, eps = 0.001),
+           "$), indicating some residual autocorrelation at the 5\\% level. ",
+           "The largest deviations concentrate in the high-inflation 1960s--70s. ",
+           "The histogram is approximately normal but slightly heavy-tailed. ",
+           "The model could be improved with intervention dummies for structural breaks, ",
+           "but the overall residual magnitude is small and the fit is adequate.\n\n"))
 ```
-
-If the Ljung-Box p-value exceeds 0.05, the residuals show no significant autocorrelation up to 24 lags and the model is adequate. The residual plot should also confirm approximate normality and constant variance. If any structure remains, adding AR or MA terms, or adjusting the seasonal component, could improve the fit.
 
 ## 2.2 Forecasting and Model Comparison
 
-Two models are forecast over the 24 month test window: (1) the auto-selected AIC model from 2.1, and (2) the manually identified ARIMA(0,1,1)(0,1,1)$_{12}$ from 1.4.
-
-```{r fit-manual}
+```{r fit-and-forecast}
 fit_manual <- Arima(train, order = c(0, 1, 1), seasonal = c(0, 1, 1))
-summary(fit_manual)
-```
-
-```{r forecasts}
 h <- length(test)
-
 fc_auto   <- forecast(fit_auto, h = h)
 fc_manual <- forecast(fit_manual, h = h)
+
+# Bridge series: last training obs + test, so lines connect without gap
+bridge <- window(fcpi_log, start = c(2017, 12))
 ```
 
-```{r forecast-plot-auto, fig.height=4.5}
-autoplot(fc_auto) +
-  autolayer(test, series = "Actual", size = 0.8) +
-  scale_color_manual(values = c("Actual" = bene[4])) +
+```{r fig-7-forecasts, fig.width=8.5, fig.height=3.5, results='asis'}
+zoom_start <- 2017
+
+p_fc1 <- autoplot(fc_auto) +
+  autolayer(bridge, series = "Actual", linewidth = 0.8) +
+  scale_colour_manual(values = c("Actual" = bene[4])) +
   scale_fill_manual(values = c(bene[2])) +
-  labs(
-    title = "Forecast: Auto ARIMA (AIC Selected Model)",
-    x     = "Year",
-    y     = "log(CPI)"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    plot.title       = element_text(color = bene[1], face = "bold"),
-    panel.grid.minor = element_blank(),
-    legend.position  = "bottom"
-  )
+  coord_cartesian(xlim = c(zoom_start, 2020.5), ylim = c(4.5, NA)) +
+  scale_x_continuous(breaks = seq(zoom_start, 2020, by = 1)) +
+  scale_y_continuous(breaks = seq(4.5, 4.7, by = 0.05)) +
+  labs(title = "Auto ARIMA (AIC)",
+       x = "Year", y = "log(CPI)") +
+  theme_clean(base_size = 10) +
+  theme(legend.position = "bottom",
+        legend.title    = element_blank())
+
+p_fc2 <- autoplot(fc_manual) +
+  autolayer(bridge, series = "Actual", linewidth = 0.8) +
+  scale_colour_manual(values = c("Actual" = bene[1])) +
+  scale_fill_manual(values = c(bene[4])) +
+  coord_cartesian(xlim = c(zoom_start, 2020.5), ylim = c(4.5, NA)) +
+  scale_x_continuous(breaks = seq(zoom_start, 2020, by = 1)) +
+  scale_y_continuous(breaks = seq(4.5, 4.7, by = 0.05)) +
+  labs(title = "ARIMA(0,1,1)(0,1,1)[12] (Manual)",
+       x = "Year", y = "log(CPI)") +
+  theme_clean(base_size = 10) +
+  theme(legend.position = "bottom",
+        legend.title    = element_blank())
+
+grid.arrange(p_fc1, p_fc2, ncol = 2)
+
+fig_caption(7, "24-month out-of-sample forecasts (zoomed, 2015-2020). Shaded bands show 80\\% and 95\\% prediction intervals.")
 ```
 
-```{r forecast-plot-manual, fig.height=4.5}
-autoplot(fc_manual) +
-  autolayer(test, series = "Actual", size = 0.8) +
-  scale_color_manual(values = c("Actual" = bene[4])) +
-  scale_fill_manual(values = c(bene[2])) +
-  labs(
-    title = "Forecast: ARIMA(0,1,1)(0,1,1)[12] (Manual Model)",
-    x     = "Year",
-    y     = "log(CPI)"
-  ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    plot.title       = element_text(color = bene[1], face = "bold"),
-    panel.grid.minor = element_blank(),
-    legend.position  = "bottom"
-  )
-```
-
-```{r accuracy-comparison}
+```{r tab-2-accuracy}
 acc_auto   <- accuracy(fc_auto, test)
 acc_manual <- accuracy(fc_manual, test)
 
@@ -337,12 +381,12 @@ acc_tbl <- rbind(
 )
 rownames(acc_tbl) <- NULL
 
-knitr::kable(
-  acc_tbl[, c("Model", "Set", "RMSE", "MAE", "MAPE", "MASE")],
-  digits  = 4,
-  caption = "Forecast accuracy: Auto ARIMA vs. Manual ARIMA(0,1,1)(0,1,1)[12].",
-  align   = "llcccc"
-)
+knitr::kable(acc_tbl[, c("Model", "Set", "RMSE", "MAE", "MAPE", "MASE")],
+             digits = 4,
+             caption = "Forecast accuracy comparison.",
+             align = "llcccc")
 ```
 
-The accuracy table reports both in-sample (Training set) and out-of-sample (Test set) metrics. The model with the lower test set RMSE and MAE provides superior forecasting performance. If both models produce similar accuracy, the more parsimonious specification (fewer parameters) is preferred on grounds of interpretability and robustness. A MASE below 1 indicates that the model outperforms a naive seasonal forecast.
+*Table 2: Forecast accuracy — Auto ARIMA vs. Manual ARIMA(0,1,1)(0,1,1)[12].*
+
+The Auto ARIMA model achieves a lower test-set RMSE and MAE, indicating that the additional parameters translate into better 24-month forecasting performance. Both models have a MASE well below 1, comfortably outperforming a naïve seasonal benchmark. The Auto ARIMA is the preferred model for forecasting accuracy, though the simpler airline model offers greater parsimony.
