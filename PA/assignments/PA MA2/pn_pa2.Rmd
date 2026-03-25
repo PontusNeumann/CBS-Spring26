@@ -29,7 +29,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   fig.width  = 6.5,
   fig.height = 3.2,
-  dpi     = 140
+  dpi     = 150
 )
 ```
 
@@ -139,11 +139,9 @@ grid.arrange(p_ts, p_acf, ncol = 2)
 fig_caption(1, "Left: French CPI from January 1960 to December 2019. Right: sample ACF up to 48 lags.")
 ```
 
-The CPI series displays a strong upward trend with no mean reversion. Growth is steeper in the 1970s--80s (oil crises) and flattens from the mid-1980s onward. The variance increases with the level, suggesting a variance-stabilising transformation is needed. The ACF decays extremely slowly, confirming the series is non-stationary and must be differenced before ARIMA modelling.
+The CPI series displays a strong upward trend with no mean reversion. Growth is steeper in the 1970s--80s (oil crises) and flattens from the mid-1980s onward. The variance increases with the level, suggesting a variance-stabilising transformation is needed. The ACF decays extremely slowly, confirming the series is non-stationary and must be differenced before ARIMA modelling. We apply a classical multiplicative decomposition because the seasonal amplitude grows with the level of the series. This method provides a straightforward separation of trend, seasonal, and irregular components as a first exploratory step.
 
-We apply a classical multiplicative decomposition because the seasonal amplitude grows with the level of the series. This method provides a straightforward separation of trend, seasonal, and irregular components as a first exploratory step.
-
-```{r fig-2-decomp, fig.height=5.5, results='asis'}
+```{r fig-2-decomp, fig.height=4.2, results='asis'}
 decomp <- decompose(fcpi, type = "multiplicative")
 plot_decomp(decomp, "Classical Multiplicative Decomposition of French CPI",
             line_col = bene[1])
@@ -160,7 +158,7 @@ lambda   <- BoxCox.lambda(fcpi)
 fcpi_log <- log(fcpi)
 ```
 
-```{r fig-3-log, fig.height=2.8, results='asis'}
+```{r fig-3-log, fig.height=2.4, results='asis'}
 autoplot(fcpi_log) +
   geom_line(colour = bene[2], linewidth = 0.6) +
   scale_x_continuous(breaks = seq(1960, 2020, by = 10)) +
@@ -170,7 +168,7 @@ autoplot(fcpi_log) +
 fig_caption(3, "Log-transformed French CPI series.")
 ```
 
-The Box-Cox method yields $\hat\lambda =$ `r round(lambda, 2)`, close to zero, confirming that the natural logarithm is near-optimal for variance stabilisation. After the log transformation, variance is stable and the seasonal fluctuations become approximately constant in magnitude, making an additive decomposition appropriate. We use the **log-transformed series for the remainder of the assignment** because $\lambda \approx 0$ and first differences of log(CPI) approximate percentage changes, aiding economic interpretation.
+The Box-Cox method yields $\hat\lambda =$ `r round(lambda, 2)`, suggesting a power transformation close to the identity ($\lambda = 1$). However, the raw series exhibits clear variance that grows with the level, and the log transformation produces stable variance with approximately constant seasonal amplitude, making an additive decomposition appropriate. The log-transformed series is used for the remainder of the assignment because first differences of log(CPI) approximate percentage changes, aiding economic interpretation.
 
 ## 1.3 Unit Root Tests (KPSS and ADF)
 
@@ -193,15 +191,13 @@ knitr::kable(ur_tbl, col.names = c("Test", "Test Statistic", "p-value"),
              align = "lcc", row.names = FALSE)
 ```
 
-*Table 1: Unit root tests on log(CPI).*
-
 KPSS rejects trend-stationarity ($p < 0.01$) and ADF fails to reject the unit root null ($p = 0.661$). Both tests consistently indicate log(CPI) contains a unit root.
 
 ## 1.4 Making the Series Stationary and ARIMA Identification
 
 We apply first-order regular differencing ($d=1$) and first-order seasonal differencing ($D=1$, lag 12) to remove the stochastic trend and seasonality.
 
-```{r fig-4-differenced, fig.height=2.8, results='asis'}
+```{r fig-4-differenced, fig.height=2.4, results='asis'}
 fcpi_d1  <- diff(fcpi_log, differences = 1)
 fcpi_d1s <- diff(fcpi_d1, lag = 12, differences = 1)
 
@@ -216,15 +212,13 @@ autoplot(fcpi_d1s) +
 fig_caption(4, "First regular and first seasonal difference of log(CPI).")
 ```
 
-```{r kpss-diff, results='asis'}
+```{r kpss-diff}
 kpss_d <- kpss.test(fcpi_d1s, null = "Level")
-cat(paste0("The KPSS test on the differenced series gives a statistic of ",
-           round(kpss_d$statistic, 4), " ($p = ",
-           format.pval(kpss_d$p.value, digits = 3, eps = 0.01),
-           "$), so we do not reject level stationarity.\n\n"))
 ```
 
-```{r fig-5-acf-pacf, fig.height=4.2, results='asis'}
+The KPSS test on the differenced series gives a statistic of `r round(kpss_d$statistic, 4)` ($p = `r format.pval(kpss_d$p.value, digits = 3, eps = 0.01)`$), so level stationarity is not rejected.
+
+```{r fig-5-acf-pacf, fig.height=3.4, results='asis'}
 acf_ds  <- acf(as.numeric(fcpi_d1s), lag.max = 48, plot = FALSE)
 pacf_ds <- pacf(as.numeric(fcpi_d1s), lag.max = 48, plot = FALSE)
 
@@ -249,29 +243,28 @@ ggplot(cf_df, aes(x = lag, y = val)) +
 fig_caption(5, "ACF (top) and PACF (bottom) of the doubly differenced log(CPI).")
 ```
 
-The ACF shows a significant spike at lag 1 that cuts off, suggesting MA(1). At seasonal lag 12 it shows a spike that decays, suggesting seasonal MA(1). The PACF is consistent with this MA interpretation. We propose the "airline model": $\text{ARIMA}(0,1,1)(0,1,1)_{12}$, written as $(1-B)(1-B^{12})\log Y_t = (1+\theta_1 B)(1+\Theta_1 B^{12})\varepsilon_t$.
+The ACF shows a significant negative spike at lag 1 that cuts off, suggesting a non-seasonal MA(1) component. At seasonal lag 12, a significant negative spike appears, suggesting a seasonal MA(1) component. The PACF tails off at both regular and seasonal lags, consistent with this MA interpretation. Following the identification rules (ACF cuts off at lag $q$ for MA processes, PACF tails off), the proposed model is the "airline model": $\text{ARIMA}(0,1,1)(0,1,1)_{12}$, written as $(1-B)(1-B^{12})\log Y_t = (1+\theta_1 B)(1+\Theta_1 B^{12})\varepsilon_t$.
 
 # Part 2
 
 ## 2.1 Train/Test Split and Auto ARIMA
 
-```{r train-test, results='asis'}
+```{r train-test}
 train <- window(fcpi_log, end = c(2017, 12))
 test  <- window(fcpi_log, start = c(2018, 1))
-cat(paste0("We reserve the last 24 months (Jan 2018--Dec 2019) as the test set (",
-           length(test), " obs), leaving ", length(train),
-           " observations for training.\n\n"))
 ```
 
-```{r auto-arima, results='asis'}
-fit_auto <- auto.arima(train, ic = "aic", stepwise = FALSE, approximation = FALSE)
-cat(paste0("Using `auto.arima` with exhaustive AIC search, the selected model is **",
-           as.character(fit_auto), "**. ",
-           "This differs from our manual specification, suggesting that ",
-           "additional AR and seasonal AR terms improve in-sample AIC.\n\n"))
+The last 24 months (Jan 2018--Dec 2019) are reserved as the test set (`r length(test)` obs), leaving `r length(train)` observations for training.
+
+```{r auto-arima}
+fit_auto <- auto.arima(train, ic = "aic",
+                       stepwise = FALSE,
+                       approximation = FALSE)
 ```
 
-```{r fig-6-residuals, fig.height=4.5, results='asis'}
+Using `auto.arima` with exhaustive AIC search, the selected model is `r as.character(fit_auto)`. This differs from the manual specification, suggesting that additional AR and seasonal AR terms improve in-sample AIC.
+
+```{r fig-6-residuals, fig.height=3.6, results='asis'}
 res    <- residuals(fit_auto)
 res_df <- data.frame(time = as.numeric(time(res)), res = as.numeric(res))
 
@@ -312,18 +305,13 @@ grid.arrange(p_res, arrangeGrob(p_acf, p_hist, ncol = 2), nrow = 2)
 fig_caption(6, "Residual diagnostics. Top: time series. Bottom-left: ACF. Bottom-right: histogram with normal overlay.")
 ```
 
-```{r ljung-box, results='asis'}
-lb <- Box.test(residuals(fit_auto), lag = 24, type = "Ljung-Box",
+```{r ljung-box}
+lb <- Box.test(residuals(fit_auto), lag = 24,
+               type = "Ljung-Box",
                fitdf = length(fit_auto$coef))
-cat(paste0("The Ljung-Box test at 24 lags gives $Q^* = ",
-           round(lb$statistic, 2), "$ ($p = ",
-           format.pval(lb$p.value, digits = 3, eps = 0.001),
-           "$), indicating some residual autocorrelation at the 5\\% level. ",
-           "The largest deviations concentrate in the high-inflation 1960s--70s. ",
-           "The histogram is approximately normal but slightly heavy-tailed. ",
-           "The model could be improved with intervention dummies for structural breaks, ",
-           "but the overall residual magnitude is small and the fit is adequate.\n\n"))
 ```
+
+The Ljung-Box test at 24 lags gives $Q^* = `r round(lb$statistic, 2)`$ ($p = `r format.pval(lb$p.value, digits = 3, eps = 0.001)`$), indicating some residual autocorrelation at the 5% level. The largest deviations concentrate in the high-inflation 1960s--70s. The histogram is approximately normal but slightly heavy-tailed. The model could be improved with intervention dummies for structural breaks, but the overall residual magnitude is small and the fit is adequate.
 
 ## 2.2 Forecasting and Model Comparison
 
@@ -337,7 +325,7 @@ fc_manual <- forecast(fit_manual, h = h)
 bridge <- window(fcpi_log, start = c(2017, 12))
 ```
 
-```{r fig-7-forecasts, fig.width=8.5, fig.height=3.5, results='asis'}
+```{r fig-7-forecasts, fig.width=8.5, fig.height=3.0, results='asis'}
 zoom_start <- 2017
 
 p_fc1 <- autoplot(fc_auto) +
@@ -371,6 +359,8 @@ grid.arrange(p_fc1, p_fc2, ncol = 2)
 fig_caption(7, "24-month out-of-sample forecasts (zoomed, 2015-2020). Shaded bands show 80\\% and 95\\% prediction intervals.")
 ```
 
+\newpage
+
 ```{r tab-2-accuracy}
 acc_auto   <- accuracy(fc_auto, test)
 acc_manual <- accuracy(fc_manual, test)
@@ -387,6 +377,4 @@ knitr::kable(acc_tbl[, c("Model", "Set", "RMSE", "MAE", "MAPE", "MASE")],
              align = "llcccc")
 ```
 
-*Table 2: Forecast accuracy — Auto ARIMA vs. Manual ARIMA(0,1,1)(0,1,1)[12].*
-
-The Auto ARIMA model achieves a lower test-set RMSE and MAE, indicating that the additional parameters translate into better 24-month forecasting performance. Both models have a MASE well below 1, comfortably outperforming a naïve seasonal benchmark. The Auto ARIMA is the preferred model for forecasting accuracy, though the simpler airline model offers greater parsimony.
+The Auto ARIMA model achieves a test-set RMSE of 0.0056 versus 0.0101 for the airline model, roughly half the forecast error over the 24-month horizon. Both models have a MASE well below 1, outperforming a seasonal naive benchmark. The Auto ARIMA is preferred for forecasting accuracy, though the simpler airline model offers greater parsimony with fewer estimated parameters.
