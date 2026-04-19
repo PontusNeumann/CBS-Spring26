@@ -7,8 +7,15 @@ Pulls three layers of data from Polymarket's public APIs:
 
 Outputs CSV files into ./data/ next to this script.
 
-Targets: events 114242 and 236884 (Iran geopolitical markets).
+Targets: events 114242, 236884, 355299, 357625 (Iran strikes, Iran-Israel/US
+conflict end, Trump ceasefire announcement, ceasefire extensions).
 Run:     python fetch_polymarket.py
+
+Known limitation: the Data API caps pagination offset at ~3000. Side-split
+fallback lifts the ceiling to ~7000 trades per market. Markets with more
+trades lose their earliest activity (recency bias). Breaking this cap would
+require moving to the Polygon on-chain subgraph or Polygonscan, neither done
+here.
 """
 
 from __future__ import annotations
@@ -26,7 +33,7 @@ GAMMA = "https://gamma-api.polymarket.com"
 CLOB = "https://clob.polymarket.com"
 DATA = "https://data-api.polymarket.com"
 
-TARGET_EVENT_IDS = ["114242", "236884"]
+TARGET_EVENT_IDS = ["114242", "236884", "355299", "357625"]
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUT_DIR = SCRIPT_DIR / "data"
@@ -172,22 +179,143 @@ def fetch_trades(condition_id: str, page_size: int = 500) -> pd.DataFrame:
     return df
 
 
+LOCK_THRESHOLD = 0.995
+LOCK_UNLOCK_FLOOR = 0.9
+
+
+def _first_lock_timestamp(
+    series: pd.DataFrame, price_col: str, ts_col: str
+) -> pd.Timestamp | None:
+    """First timestamp at which `price_col` >= LOCK_THRESHOLD and does not fall
+    back below LOCK_UNLOCK_FLOOR for the remainder of the series. Returns
+    None if no such lock exists.
+    """
+    if series.empty:
+        return None
+    s = series.sort_values(ts_col)
+    locked = s[s[price_col] >= LOCK_THRESHOLD]
+    if locked.empty:
+        return None
+    first_ts = locked.iloc[0][ts_col]
+    after = s[s[ts_col] >= first_ts]
+    if (after[price_col] < LOCK_UNLOCK_FLOOR).any():
+        return None
+    return first_ts
+
+
+def derive_resolution_timestamps(
+    prices: pd.DataFrame, markets: pd.DataFrame, trades: pd.DataFrame | None = None
+) -> dict[str, pd.Timestamp]:
+    """Earliest timestamp at which the winning token's price first locks to
+    LOCK_THRESHOLD and stays above LOCK_UNLOCK_FLOOR thereafter.
+
+    Primary source is the CLOB mid-price history. When CLOB history is absent
+    for a market (common once a market has been resolved for a while), falls
+    back to the trade-execution price series on the winning token.
+
+    Replaces the Gamma `endDate`, which is a scheduled end, not the actual
+    resolution moment.
+    """
+    p_all = pd.DataFrame(columns=["timestamp", "price", "token_id"])
+    if not prices.empty:
+        p_all = prices[["timestamp", "price", "token_id"]].copy()
+        p_all["token_id"] = p_all["token_id"].astype(str)
+        p_all["price"] = pd.to_numeric(p_all["price"], errors="coerce")
+        p_all["timestamp"] = pd.to_datetime(p_all["timestamp"], utc=True)
+
+    t_all = pd.DataFrame(columns=["timestamp", "price", "asset"])
+    if trades is not None and not trades.empty and {"asset", "price", "timestamp"}.issubset(trades.columns):
+        t_all = trades[["timestamp", "price", "asset"]].copy()
+        t_all["asset"] = t_all["asset"].astype(str)
+        t_all["price"] = pd.to_numeric(t_all["price"], errors="coerce")
+        t_all["timestamp"] = pd.to_datetime(t_all["timestamp"], utc=True)
+
+    out: dict[str, pd.Timestamp] = {}
+    for _, m in markets.iterrows():
+        if not bool(m.get("resolved")):
+            continue
+        win_idx = m.get("winning_outcome_index")
+        if win_idx is None or pd.isna(win_idx):
+            continue
+        tokens = str(m.get("token_ids") or "").split(";")
+        try:
+            win_token = tokens[int(win_idx)]
+        except (IndexError, ValueError):
+            continue
+
+        clob_slice = p_all[p_all["token_id"] == win_token]
+        ts = _first_lock_timestamp(clob_slice, "price", "timestamp")
+        if ts is None:
+            trade_slice = t_all[t_all["asset"] == win_token]
+            ts = _first_lock_timestamp(trade_slice, "price", "timestamp")
+        if ts is not None:
+            out[str(m["condition_id"])] = ts
+    return out
+
+
+def _add_running_market_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Per-market cumulative and rolling features, strictly prior to each trade."""
+    df = df.sort_values(["condition_id", "timestamp"], kind="mergesort").reset_index(drop=True)
+    g = df.groupby("condition_id", sort=False)
+    df["market_trade_count_so_far"] = g.cumcount()
+    tv = pd.to_numeric(df["trade_value_usd"], errors="coerce").fillna(0.0)
+    df["market_volume_so_far_usd"] = tv.groupby(df["condition_id"]).cumsum() - tv
+
+    mp = pd.to_numeric(df["market_implied_prob"], errors="coerce")
+    vol = pd.Series(float("nan"), index=df.index, dtype="float64")
+    for _, gdf in df.groupby("condition_id", sort=False):
+        order = gdf["timestamp"].argsort(kind="mergesort")
+        idx_sorted = gdf.index.to_numpy()[order.to_numpy()]
+        ts_sorted = gdf["timestamp"].to_numpy()[order.to_numpy()]
+        s = pd.Series(mp.loc[idx_sorted].to_numpy(), index=pd.DatetimeIndex(ts_sorted))
+        rolled = s.rolling("1h", closed="left").std()
+        vol.loc[idx_sorted] = rolled.to_numpy()
+    df["market_price_vol_last_1h"] = vol
+    return df
+
+
+def _add_running_wallet_features(df: pd.DataFrame, wallet_col: str) -> pd.DataFrame:
+    """Per-wallet cumulative stats, strictly prior to each trade."""
+    df = df.sort_values([wallet_col, "timestamp"], kind="mergesort").reset_index(drop=True)
+    gw = df.groupby(wallet_col, sort=False)
+    df["wallet_prior_trades"] = gw.cumcount()
+    tv = pd.to_numeric(df["trade_value_usd"], errors="coerce").fillna(0.0)
+    df["wallet_prior_volume_usd"] = tv.groupby(df[wallet_col]).cumsum() - tv
+
+    bc = pd.to_numeric(df["bet_correct"], errors="coerce")
+    bc_filled = bc.fillna(0.0)
+    prior_wins = bc_filled.groupby(df[wallet_col]).cumsum() - bc_filled
+    labeled = bc.notna().astype("int64")
+    prior_labeled = labeled.groupby(df[wallet_col]).cumsum() - labeled
+    df["wallet_prior_win_rate"] = prior_wins / prior_labeled.where(prior_labeled > 0)
+    return df
+
+
 def enrich_trades(
     trades: pd.DataFrame,
     markets: pd.DataFrame,
     prices: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Merge trades with market metadata and prices, then add derived features:
-    settlement_minus_trade_sec, wallet_first_minus_trade_sec, trade_value_usd,
-    market_implied_prob (no-lookahead), and bet_correct (target).
+    """Merge trades with market metadata and prices, then add derived features.
+
+    Adds: settlement_minus_trade_sec (using true CLOB resolution timestamp where
+    available, Gamma endDate as fallback), wallet_first_minus_trade_sec,
+    trade_value_usd, market_implied_prob (no-lookahead), bet_correct (target),
+    running market features (volume / trade count / 1h price volatility so far),
+    and running wallet features (prior trades / volume / win rate).
     """
+    res_ts = derive_resolution_timestamps(prices, markets, trades)
+
     meta = markets[
         ["condition_id", "slug", "question", "end_date", "winning_outcome_index", "resolved"]
     ].copy()
     meta["end_date"] = pd.to_datetime(meta["end_date"], utc=True, errors="coerce")
+    meta["resolution_ts"] = meta["condition_id"].astype(str).map(res_ts)
+    meta["resolution_ts"] = pd.to_datetime(meta["resolution_ts"], utc=True, errors="coerce")
     df = trades.merge(meta, on="condition_id", how="left")
 
-    df["settlement_minus_trade_sec"] = (df["end_date"] - df["timestamp"]).dt.total_seconds()
+    eff_end = df["resolution_ts"].fillna(df["end_date"])
+    df["settlement_minus_trade_sec"] = (eff_end - df["timestamp"]).dt.total_seconds()
 
     wallet_col = next((c for c in ("proxyWallet", "user", "maker", "taker") if c in df.columns), None)
     if wallet_col is not None:
@@ -233,6 +361,10 @@ def enrich_trades(
 
     trade_price = pd.to_numeric(df.get("price"), errors="coerce") if "price" in df.columns else pd.Series(pd.NA, index=df.index)
     df["market_implied_prob"] = pd.to_numeric(df["market_implied_prob"], errors="coerce").fillna(trade_price)
+
+    df = _add_running_market_features(df)
+    if wallet_col is not None:
+        df = _add_running_wallet_features(df, wallet_col)
 
     return df
 

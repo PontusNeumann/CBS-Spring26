@@ -2,14 +2,16 @@
 
 **Course:** Machine Learning and Deep Learning, CBS, Spring 2026
 **Group:** Alejandro Laurlund Gato (161989), Alexander Myrup (160363), Pontus Neumann (185912), Linus Stamov Yu (160714)
-**Working title:** *Mispricing on Polymarket: A Machine Learning Trading Signal from Probability Asymmetries in Settled Iran Geopolitical Markets*
+**Title:** *Mispricing on Polymarkets*
+**Subtitle:** *Detecting Probability Asymmetries in Iran Geopolitical Markets with Machine Learning*
+**Possible working title:** *: *
 **Document purpose:** Finalise the research question, approach, and method, and map each methodological choice to the course syllabus. Supersedes earlier options discussed in the handover and in chat.
 
 ---
 
 ## 1. Summary
 
-The project studies asymmetries between market-implied probabilities and model-predicted probabilities in resolved Iran geopolitical Polymarket events. The hypothesis is that a machine learning model, trained on behavioural and market-state features available at trade time, can generate a probability estimate that systematically diverges from the contemporaneous market-implied probability, and that this gap constitutes a tradable signal in settled markets. The primary output is a trading algorithm that enters positions whenever the predicted probability and the market-implied probability differ beyond a threshold, evaluated by out-of-sample economic performance on temporally held-out markets.
+The project studies asymmetries between market-implied probabilities and model-predicted probabilities in resolved Iran geopolitical Polymarket events. The hypothesis is that a machine learning model, trained on behavioural and market-state features available at trade time, can generate a probability estimate that systematically diverges from the contemporaneous market-implied probability, and that this gap constitutes a tradable signal in settled markets. The primary output is a trading algorithm that enters positions whenever the predicted probability and the market-implied probability differ beyond a threshold, evaluated by out-of-sample economic performance on temporally held-out markets. The pulled dataset covers all 74 resolved sub-markets across four Iran-related events (114242, 236884, 355299, 357625), comprising 346,898 trades across 73,839 wallets between 2025-12-22 and 2026-04-19.
 
 A secondary, out-of-scope observation is noted for the Discussion. If feature-importance analysis reveals that the signal concentrates on features resembling those associated with informed trading in the literature (abnormal bet size, pre-event timing, wallet newness, directional concentration), the report will reflect on this theoretical parallel. This does not enter the research question, scope, or evaluation. It is flagged as an avenue for future work.
 
@@ -17,7 +19,7 @@ A secondary, out-of-scope observation is noted for the Discussion. If feature-im
 
 ### Scope and purpose
 
-This project studies the gap between Polymarket's contemporaneous market-implied probabilities and the probabilities predicted by a machine learning model on resolved Iran geopolitical markets. The scope is confined to six to eight settled sub-markets under Polymarket events 114242 and 236884, with trade correctness derived from official resolution. The purpose is to test whether systematic asymmetries between the two probability series exist in settled markets and whether a simple trading rule built on the gap produces positive risk-adjusted returns relative to naive baselines on temporally held-out data.
+This project studies the gap between Polymarket's contemporaneous market-implied probabilities and the probabilities predicted by a machine learning model on resolved Iran geopolitical markets. The scope covers all 74 resolved sub-markets under Polymarket events 114242, 236884, 355299, and 357625 (strikes, conflict-end, ceasefire announcement, ceasefire extensions), with trade correctness derived from official resolution. The purpose is to test whether systematic asymmetries between the two probability series exist in settled markets and whether a simple trading rule built on the gap produces positive risk-adjusted returns relative to naive baselines on temporally held-out data.
 
 ### Short form
 
@@ -30,7 +32,7 @@ A single research question, decomposed into a predictive sub-question and an eco
 **RQ1a — Probability gap.**
 Does a multilayer perceptron trained on pre-execution features (market state, recent market activity, wallet history, on-chain wallet identity, news proximity) produce a probability estimate `p_hat` whose residual against the contemporaneous market-implied probability `market_implied_prob` predicts trade correctness on a temporally held-out test set?
 
-*Scope:* six to eight resolved Iran sub-markets under Polymarket events 114242 and 236884; feature set as listed in Section 4; temporal split by market settlement date; no random split within a market.
+*Scope:* all 74 resolved Iran sub-markets under Polymarket events 114242, 236884, 355299, and 357625; feature set as listed in Section 4; temporal split by market settlement date; no random split within a market.
 *Success criterion:* ROC-AUC of `p_hat` residualised against `market_implied_prob` is strictly above 0.5 on the test set, with Brier-score improvement over the market-implied null and an improved calibration curve.
 
 **RQ1b — Trading rule.**
@@ -59,13 +61,16 @@ The efficient-market null for Polymarket is that the market-implied price alread
 
 | Item | Detail |
 |---|---|
-| Markets | Resolved sub-markets under Polymarket events 114242 ("US strikes Iran by ...") and 236884 ("Iran x Israel/US conflict ends by ..."). Target: 6 to 8 markets covering both YES and NO outcomes. |
-| Unit of analysis | One resolved trade. Expected dataset size: ~30k to 60k trades once Polygonscan extraction completes (handover blocker). |
+| Markets | All resolved sub-markets under Polymarket events 114242 ("US strikes Iran by ..."), 236884 ("Iran x Israel/US conflict ends by ..."), 355299 ("Trump announces US x Iran ceasefire end by ...") and 357625 ("US x Iran ceasefire extended by ..."). 74 resolved markets covering both YES and NO outcomes. |
+| Unit of analysis | One resolved trade. Realised dataset: 346,898 trades, 73,839 unique wallets, spanning 2025-12-22 to 2026-04-19. |
+| Data sources | Polymarket Gamma API (event and market metadata), CLOB API (token-level mid-price history, with trade-execution price as fallback once CLOB history is purged after resolution), Data API (paginated trade history with side-split fallback at the offset cap). No Polygonscan or external enrichment used in this iteration. |
 | Target | `bet_correct` in {0, 1} from market resolution and the side of the trade. |
-| Benchmark at trade time | `market_implied_prob` at execution, taken from the CLOB mid-price or the price field of the trade itself. |
-| Features | Behavioural and market-state, no-lookahead, grouped as: market-state-so-far, recent market activity, wallet history, wallet on-chain identity, news proximity. See handover section 6 for the full list. |
+| Benchmark at trade time | `market_implied_prob` at execution, taken from the CLOB mid-price where available, otherwise the price field of the trade itself. |
+| Features | Behavioural and market-state, strictly no-lookahead, grouped as: market-state-so-far (`market_trade_count_so_far`, `market_volume_so_far_usd`, `market_price_vol_last_1h`), wallet history (`wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_prior_win_rate`, `wallet_first_minus_trade_sec`), and trade-level market state (`trade_value_usd`, `settlement_minus_trade_sec`). Wallet on-chain identity (Polygonscan) and news proximity (GDELT) are deferred to future work. |
+| Pre-modelling filter | Drop post-resolution close-out trades (`settlement_minus_trade_sec <= 0`, ~16.5% of rows), which execute at the locked winning-token price and carry no predictive signal. |
 | Split | Temporal by settlement date. Earliest settled markets form the training set, later markets validation, latest markets test. Within a single market, no random split, to eliminate cross-trade leakage. |
-| Class balance | Depends on the outcome balance of selected markets. Where imbalance is moderate or worse, apply class weighting first, then SMOTE as a secondary option (Lecture 7). |
+| Class balance | Current `bet_correct` rate is 0.518, inside the 35 to 65 percent band, so no resampling is required up front. If imbalance develops after filtering or per split fold, apply `class_weight="balanced"` first, then SMOTE on the training fold only as a secondary option (Lecture 7). |
+| Known limitation | Polymarket Data API caps pagination offset at ~3000; side-split lifts this to ~7000 trades per market. 21 of 74 markets are truncated at this ceiling, creating a recency bias on long-lived markets. Documented as a scope limitation in the report. |
 
 ## 5. Method, Mapped to Course Lectures
 
@@ -135,11 +140,11 @@ The ethical consideration section will cover: (i) privacy of pseudonymous on-cha
 The following observation is explicitly *outside* the research question and the evaluation. It is reserved for the Discussion and theory sections of the report and may be extended in future work.
 
 - **Feature-importance parallel to informed-trading traits.** If the features driving the `p_hat − market_implied_prob` gap resemble those documented in the informed-trading literature (within-trader bet size, cross-sectional bet size, pre-event timing, directional concentration, wallet newness; see Mitts and Ofir 2026), the Discussion will flag the parallel and note that the signal may be partially picking up informed flow. No labelling, evaluation, or success criterion in the main study depends on this interpretation.
-- **Documented-case validation** (Magamyman, Burdensome-Mix, Iran ceasefire cluster) is similarly deferred to Discussion as illustrative anecdotes, not as evaluation targets.
+- **Documented-case validation** (Magamyman, Burdensome-Mix) is similarly deferred to Discussion as illustrative anecdotes, not as evaluation targets. The Iran ceasefire cluster, by contrast, is now part of the main evaluation scope via events 355299 and 357625.
 
 ## 9. Report Outline Alignment
 
-The docx at `ML/report/ML_final_exam_185912.docx` follows the new extended guidelines. Three subsection headings inside *Methodology → Data Analytics: Modelling, Methods and Tools* should be updated to reflect this plan when the next round of edits is made:
+The docx at `ML/report/ML_final_exam_paper.docx` follows the new extended guidelines and has been synced with this plan (cover, motivation, dataset, data extraction, features, and limitations updated 19 April). Subsection headings inside *Methodology → Data Analytics: Modelling, Methods and Tools*:
 
 - H3: *Primary model — MLP for probability estimation*
 - H3: *Trading rule on the probability gap*
@@ -150,23 +155,29 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 
 ## 10. Deliverables and Next Steps
 
-| # | Task | Owner | Depends on |
+| # | Task | Status | Depends on |
 |---|---|---|---|
-| 1 | Polygonscan API key and extraction script | open | — |
-| 2 | Full trade extraction for 6 to 8 target markets | open | 1 |
-| 3 | Wallet enrichment (Data API + Polygonscan) | open | 2 |
-| 4 | GDELT news-timing enrichment | open | 2 |
-| 5 | Feature engineering pipeline | open | 3, 4 |
-| 6 | EDA notebook following repository Design.md conventions | open | 5 |
-| 7 | MLP training and baselines | open | 5 |
-| 8 | Trading-rule tuning on validation markets | open | 7 |
-| 9 | Out-of-sample trading-rule evaluation on test markets | open | 8 |
-| 10 | Autoencoder arm and overlap check | open | 5 |
-| 11 | Feature-importance analysis for Discussion | open | 7 |
-| 12 | Report drafting in the CBS docx template | all | 6 to 11 |
+| 1 | Polymarket Gamma + CLOB + Data API fetcher with side-split and trade-price fallback | done (19 Apr) | — |
+| 2 | Full trade extraction across four target events | done (19 Apr) | 1 |
+| 3 | True resolution-timestamp derivation (`resolution_ts`) and `settlement_minus_trade_sec` | done (19 Apr) | 2 |
+| 4 | Running market and wallet features in `trades_enriched.csv` | done (19 Apr) | 2 |
+| 5 | Polygonscan on-chain wallet enrichment | deferred (no API key, free-data-only scope) | 2 |
+| 6 | GDELT news-timing enrichment | deferred (free API, awaits feature-definition design) | 2 |
+| 7 | Offset-cap workaround via Polymarket Goldsky subgraph | deferred (documented as limitation) | — |
+| 8 | Post-resolution filter applied (`settlement_minus_trade_sec > 0`) | open | 3 |
+| 9 | Temporal train / validation / test split by settlement date | open | 8 |
+| 10 | EDA notebook following repository Design.md conventions | open | 8 |
+| 11 | MLP training and baselines (logistic regression, random forest, naive market) | open | 9 |
+| 12 | Trading-rule tuning on validation markets | open | 11 |
+| 13 | Out-of-sample trading-rule evaluation on test markets | open | 12 |
+| 14 | Autoencoder arm and overlap check | open | 9 |
+| 15 | Feature-importance analysis for Discussion | open | 11 |
+| 16 | Report drafting in the CBS docx template | all | 10 to 15 |
 
 ## 11. Open Decisions
 
 - Choice of gap threshold `tau` and position-sizing rule (flat vs Kelly-scaled) on the validation markets.
 - Whether to include a time-to-event holding-period variant as a robustness check or as the main specification.
 - Whether to model trade value in USD as a feature or as a sample weight.
+- Exact settlement-date boundaries for the temporal train / validation / test split across the four event clusters.
+- Treatment of `wallet_prior_win_rate` NaN on first-trade rows (~21%): impute to global mean, use the raw NaN with `wallet_prior_trades == 0` as a categorical indicator, or exclude first-trade rows.

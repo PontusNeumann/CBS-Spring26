@@ -55,16 +55,51 @@ The Gamma `endDate` field is a scheduled end, not the actual resolution moment. 
 ### 5.3 Wallet age is dataset-local
 `wallet_first_minus_trade_sec` only captures wallet age within the pulled dataset. True on-chain wallet age requires Polygonscan and is still open per the project plan (Deliverable 3).
 
-## 6. Next steps
+## 6. Update — 19 April 2026 evening session
 
-| # | Task | Status |
+### 6.1 Scope widened
+`TARGET_EVENT_IDS` in `fetch_polymarket.py` now also includes **355299** ("Trump announces US x Iran ceasefire end by...?") and **357625** ("US x Iran ceasefire extended by...?"). Full refetch produced:
+
+| Metric | Value |
+|---|---|
+| Rows | 346,898 |
+| Markets (resolved) | 74 |
+| Unique wallets | 73,839 |
+| Date range | 2025-12-22 to 2026-04-19 |
+| `bet_correct` rate | 0.518 |
+| Markets capped near ~7k | 21 |
+
+### 6.2 Offset cap accepted as limitation
+Polymarket's Data API `/trades` has no time-filter parameter and hard-errors at `offset>=5000`. Side-splitting (already in place) lifts the per-market ceiling to ~7,000. Breaking this further would require Polygonscan (needs API key, ruled out) or rewriting to the Goldsky subgraph (a separate project). Twenty-one markets are truncated at the ceiling; earliest trades on those markets are missing. Document this as a recency-bias limitation in the report.
+
+### 6.3 True resolution timestamp implemented
+New `derive_resolution_timestamps()` in `fetch_polymarket.py`. Strategy: find the earliest timestamp at which the winning-outcome token's price first locks to ≥0.995 and never falls back below 0.9. CLOB history is the primary source; trade-execution prices are the fallback. Fallback matters — CLOB `/prices-history` returns empty for 66 of 67 already-resolved markets (the service drops history after resolution). Derived for 98.0% of rows. Used in `settlement_minus_trade_sec` with `end_date` as final fallback. Note: 16.5% of trades now show negative values (post-resolution close-outs). Filter `settlement_minus_trade_sec > 0` before predictive modelling.
+
+### 6.4 Running features added to `trades_enriched.csv`
+Market-level (per `condition_id`, strictly prior to each trade):
+- `market_trade_count_so_far`
+- `market_volume_so_far_usd`
+- `market_price_vol_last_1h` (rolling 1-hour std of `market_implied_prob`, excludes current row)
+
+Wallet-level (per `proxyWallet`, strictly prior):
+- `wallet_prior_trades`
+- `wallet_prior_volume_usd`
+- `wallet_prior_win_rate` (mean of `bet_correct` over prior trades; NaN on first trade)
+
+### 6.5 Skipped this session — still open
+| # | Task | Why deferred |
 |---|---|---|
-| 1 | Time-windowed pagination for capped markets | open |
-| 2 | Replace `end_date` with true resolution timestamp | open |
-| 3 | Polygonscan enrichment for true wallet age and on-chain identity | open |
-| 4 | GDELT news-timing enrichment (project plan Deliverable 4) | open |
-| 5 | Behavioural running features (volume-so-far, trade-count-so-far, recent volatility) | open |
-| 6 | Wallet running features (prior trades, prior volume, prior win rate) | open |
-| 7 | Temporal train/val/test split by `end_date` quantiles | open |
-| 8 | EDA notebook | open |
-| 9 | MLP training and baselines | open |
+| A | Polygonscan enrichment (true wallet age, USDC inflow) | Needs API key signup; user chose free-data-only |
+| B | GDELT news-timing enrichment | Free API but needs design conversation on features (count, tone, window) |
+| C | Trade-offset-cap resolution via subgraph | Full rewrite, separate project |
+| D | Temporal train/val/test split | Needs decision on split boundaries |
+| E | EDA notebook | Pending |
+| F | MLP training and baselines | Pending |
+
+## 7. Pre-modelling filtering reminder
+1. Drop post-resolution trades: `settlement_minus_trade_sec > 0`.
+2. Optional: drop markets with more than ~6,500 trades if the recency-bias risk is unacceptable for the modelled subset.
+3. For `wallet_prior_win_rate`, decide whether to impute first-trade NaN (e.g., global mean of 0.518) or use `wallet_prior_trades == 0` as a categorical signal.
+
+## 8. Backup
+Previous `data/*.csv` snapshot saved to `data/_backup_20260419/` before the refetch.
