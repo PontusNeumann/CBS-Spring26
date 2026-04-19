@@ -32,7 +32,7 @@ A single research question, decomposed into a predictive sub-question and an eco
 **RQ1a — Probability gap.**
 Does a multilayer perceptron trained on pre-execution features (market state, recent market activity, wallet history, on-chain wallet identity, news proximity) produce a probability estimate `p_hat` whose residual against the contemporaneous market-implied probability `market_implied_prob` predicts trade correctness on a temporally held-out test set?
 
-*Scope:* all 74 resolved Iran sub-markets under Polymarket events 114242, 236884, 355299, and 357625; feature set as listed in Section 4; temporal split by market settlement date; no random split within a market.
+*Scope:* all 74 resolved Iran sub-markets under Polymarket events 114242, 236884, 355299, and 357625; feature set as listed in Section 4; trade-timestamp temporal split (see Section 4); no random split within a market.
 *Success criterion:* ROC-AUC of `p_hat` residualised against `market_implied_prob` is strictly above 0.5 on the test set, with Brier-score improvement over the market-implied null and an improved calibration curve.
 
 **RQ1b — Trading rule.**
@@ -63,14 +63,14 @@ The efficient-market null for Polymarket is that the market-implied price alread
 |---|---|
 | Markets | All resolved sub-markets under Polymarket events 114242 ("US strikes Iran by ..."), 236884 ("Iran x Israel/US conflict ends by ..."), 355299 ("Trump announces US x Iran ceasefire end by ...") and 357625 ("US x Iran ceasefire extended by ..."). 74 resolved markets covering both YES and NO outcomes. |
 | Unit of analysis | One resolved trade. Realised dataset: 346,898 trades, 73,839 unique wallets, spanning 2025-12-22 to 2026-04-19. |
-| Data sources | Polymarket Gamma API (event and market metadata), CLOB API (token-level mid-price history, with trade-execution price as fallback once CLOB history is purged after resolution), Data API (paginated trade history with side-split fallback at the offset cap). No Polygonscan or external enrichment used in this iteration. |
+| Data sources | **Hybrid pipeline** combining HuggingFace and Polymarket APIs. (a) Event and market metadata from Polymarket Gamma API (authoritative source of resolution status). (b) Trade history for 67 of 74 resolved markets (events 114242 and 236884) from the HuggingFace mirror `SII-WANGZJ/Polymarket_data` (on-chain CTF Exchange events, MIT licensed, ~38.7 GB), streamed over HTTPS via duckdb's httpfs and filtered server-side to the target condition_ids; full trade history preserved, no offset cap. (c) Trade history for the 7 ceasefire markets under events 355299 and 357625 (created after the HF snapshot cutoff of 2026-03-31, absent from HF) from the Polymarket Data API with side-split pagination. All 7 ceasefire markets have under 5k trades each and fit comfortably under the API's ~7k ceiling, so no data loss. (d) CLOB mid-price history for ceasefire markets only, with trade-execution price as fallback. No Polygonscan or external enrichment used. |
 | Target | `bet_correct` in {0, 1} from market resolution and the side of the trade. |
 | Benchmark at trade time | `market_implied_prob` at execution, taken from the CLOB mid-price where available, otherwise the price field of the trade itself. |
-| Features | Behavioural and market-state, strictly no-lookahead, grouped as: market-state-so-far (`market_trade_count_so_far`, `market_volume_so_far_usd`, `market_price_vol_last_1h`), wallet history (`wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_prior_win_rate`, `wallet_first_minus_trade_sec`), and trade-level market state (`trade_value_usd`, `settlement_minus_trade_sec`). Wallet on-chain identity (Polygonscan) and news proximity (GDELT) are deferred to future work. |
+| Features | Six layers, all strictly no-lookahead (every row's feature at time `t` uses only rows with `timestamp < t`, enforced via `groupby().cumsum().shift(1)` and `rolling(window, on='timestamp', closed='left')`): (1) **trade-local** — `log_size`, `side`, `outcomeIndex`; (2) **market context** — `market_trade_count_so_far`, `market_volume_so_far_usd`, `market_price_vol_last_1h`; (3) **time** — `time_to_settlement_s`, its log variant, `pct_time_elapsed`; (4) **wallet global** — `wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_prior_win_rate`, `wallet_first_minus_trade_sec`; (4b) **wallet-in-market** in three clusters: bet-slicing (`wallet_trades_in_market_last_1min/10min/60min`, `wallet_is_burst`), directional purity (`wallet_directional_purity_in_market`, `wallet_has_both_sides_in_market`), position-aware (`wallet_position_size_before_trade`, `trade_size_vs_position_pct`, `is_position_exit`, `is_position_flip`, `wallet_is_whale_in_market`); (5) **interactions** — `size_vs_wallet_avg`, `size_x_time_to_settlement`. **The market-implied probability (`price` / `market_implied_prob`) is deliberately excluded from the feature set** so `p_hat` is independent of the market's own belief and the gap `p_hat - market_implied_prob` is a clean signal. `market_implied_prob` is retained in the dataset only as the trading-rule benchmark. Wallet on-chain identity (Polygonscan) and news proximity (GDELT) are deferred to future work. |
 | Pre-modelling filter | Drop post-resolution close-out trades (`settlement_minus_trade_sec <= 0`, ~16.5% of rows), which execute at the locked winning-token price and carry no predictive signal. |
-| Split | Temporal by settlement date. Earliest settled markets form the training set, later markets validation, latest markets test. Within a single market, no random split, to eliminate cross-trade leakage. |
+| Split | **Trade-timestamp temporal.** Each trade is assigned to train / validation / test based on its own `timestamp`, not its market's settlement date. Rationale: events 114242 and 355299 cluster their NO and YES resolutions on different calendar dates; a settlement-date split would put the all-NO early markets in training and the YES markets in test, leaving the model with no in-sample YES outcomes and no chance to generalise to the test set. A trade-timestamp split delivers outcome-mixed rows because pre-deadline trades on eventually-YES markets existed well before those markets settled. Implementation: quantiles over the full trade timestamp range (`<q_train=0.7 → train`, `<q_val=0.85 → validation`, rest test). Each trade keeps its own market's outcome as its label — no mixing. For within-training cross-validation, `GroupKFold` on `proxyWallet` (alternative: `TimeSeriesSplit` on `timestamp`). |
 | Class balance | Current `bet_correct` rate is 0.518, inside the 35 to 65 percent band, so no resampling is required up front. If imbalance develops after filtering or per split fold, apply `class_weight="balanced"` first, then SMOTE on the training fold only as a secondary option (Lecture 7). |
-| Known limitation | Polymarket Data API caps pagination offset at ~3000; side-split lifts this to ~7000 trades per market. 21 of 74 markets are truncated at this ceiling, creating a recency bias on long-lived markets. Documented as a scope limitation in the report. |
+| Known limitation | Previously: Polymarket Data API caps pagination offset at ~7000 trades per market (after side-split), truncating 21 of 74 markets. **Mitigated** by routing events 114242 and 236884 through the HuggingFace mirror, which carries the complete on-chain trade history for those 67 markets. Residual limitation: the HF snapshot cutoff of 2026-03-31; any market still trading or created after that date must use the API path (which applies only to the 7 ceasefire markets, each well under the ~7k ceiling). |
 
 ## 5. Method, Mapped to Course Lectures
 
@@ -82,12 +82,22 @@ The efficient-market null for Polymarket is that the market-implied price alread
 - Input: standardised behavioural and market-state features. `market_implied_prob` is withheld from the feature set so that `p_hat` is an independent probability estimate, directly comparable to the market.
 - Output: predicted probability of settlement in favour of the trade, `p_hat`. The gap `p_hat − market_implied_prob` is the trading signal.
 
-### 5.2 Trading rule
+### 5.2 Trading rule — two strategies evaluated side by side
 
-- Entry: take the side of the trade whenever `|p_hat − market_implied_prob|` exceeds a threshold `tau`, tuned on the validation markets.
-- Sizing: flat stake initially; a Kelly-scaled variant as a robustness check.
-- Holding period: hold to settlement. An early-exit variant at a fixed time-to-event is a robustness check.
-- Frozen for test: `tau`, sizing rule, and holding period are frozen after validation tuning and not retouched on the test markets.
+For a candidate trade at market price `P_market`, the per-token edge is `edge = P_model - P_market` (with sign flipped for SELL-side trades).
+
+| Strategy | Gate | Sizing | Primary metric |
+|---|---|---|---|
+| **General +EV** | `edge > 0.02` | flat $100 per trigger | total PnL, Sharpe |
+| **Home-run** (primary for geopolitical markets) | `edge > 0.20` AND `time_to_settlement < 6h` AND `price < 0.30` | larger per trigger | precision@k, PnL concentration |
+
+The two-strategy design reflects the shape of the underlying phenomenon. The Columbia paper (Mitts and Ofir 2026) documents that informed flow in Iran markets is **bursty and late-concentrated**, not diffuse. A general +EV rule catches the long tail; a home-run rule concentrates capital on the pattern the documented cases fit (short time-to-deadline, low implied probability, large edge). The home-run rule is the primary trading evaluation; the general rule is the robustness check.
+
+**Cutoff-date sweep.** Run the streaming backtest with `N in {14, 7, 3, 1}` days before each deadline and plot PnL vs N. Expected shape: the home-run curve rises sharply as N shrinks, confirming that informed flow concentrates near the deadline.
+
+**Calibration.** After training, isotonic regression on the held-out calibration slice. Report Brier score and ECE. Calibration matters because the edge math only works if `P_model = 0.8` actually means right 80 percent of the time.
+
+**Frozen for test.** Gate thresholds, sizing, and any calibrator parameters are tuned on the validation slice and frozen before touching the test slice.
 
 ### 5.3 Unsupervised arm: autoencoder anomaly detection (Lecture 11)
 
@@ -110,10 +120,11 @@ The efficient-market null for Polymarket is that the market-implied price alread
 
 ### 5.6 Validation strategy
 
-Two layers, both on held-out markets:
+Three layers, all on held-out data:
 
-1. **Statistical.** ROC-AUC and calibration of `p_hat` and of the residualised gap against `bet_correct` on validation and test markets. Brier-score improvement over the market-implied null.
-2. **Economic.** Cumulative PnL, Sharpe ratio, hit rate, and maximum drawdown of the trading rule, on the test markets only, against the three baselines.
+1. **Statistical.** ROC-AUC and calibration of `p_hat` and of the residualised gap against `bet_correct` on the validation and test slices. Brier-score improvement over the market-implied null.
+2. **Economic.** Cumulative PnL, Sharpe ratio, hit rate, maximum drawdown, and precision@k of each trading rule on the test slice only, against the baselines in Section 5.4. Streaming event-replay protocol — at each event, the decision uses only state strictly before the event timestamp.
+3. **Named-case sanity check.** Magamyman (the Columbia paper's primary documented Iran-strike insider, ~$553K entering at 17 percent implied probability 71 minutes before news) serves as a named validation anchor. Pull the wallet address from the paper appendix or the `pselamy/polymarket-insider-tracker` GitHub repo and check: does the MLP assign high `p_hat` to his documented trades, do the home-run triggers fire on them, and which feature values does the model find most salient? This is an illustrative anecdote in the Discussion, not a Results target — labelling off a single wallet would introduce selection bias if used for model selection.
 
 ## 6. Evaluation Metrics
 
@@ -133,14 +144,26 @@ Lecture 14 treats XAI at a conceptual level rather than as specific techniques. 
 - Partial-dependence plots for the top three features driving the gap.
 - A brief XAI framing paragraph using the traceability, accuracy, and understanding pillars from Lecture 14.
 
-The ethical consideration section will cover: (i) privacy of pseudonymous on-chain wallets, (ii) the potential for a published trading signal to be arbitraged away or reverse-engineered, (iii) regulatory externalities of prediction-market mispricing, and (iv) dataset bias toward high-volume English-language geopolitical markets.
+The ethical consideration section is anchored on a concrete policy tension documented in early 2026. In November 2025, Polymarket CEO Shayne Coplan described insider edge on *60 Minutes* as "a good thing" and "an inevitability." Four months later, on 23 March 2026, Polymarket announced explicit rules prohibiting (1) trading on stolen confidential information, (2) trading on illegal tips, and (3) trading by anyone in a position of authority over the event outcome. That pivot frames the section.
+
+Concretely, the section will cover:
+- **Privacy.** Pseudonymous on-chain wallets are persistent; pattern-linking is de-anonymising. Features are aggregated and no individual wallet list is published. The Magamyman case in the Discussion uses information already public in the Columbia paper.
+- **Dual use.** A trained model could help regulators detect manipulation or help platforms surveil users. The Coplan quote versus the March-2026 rule change is the real policy tension.
+- **Label validity.** "Informed trading" versus "skill" versus "luck" is genuinely ambiguous. `bet_correct` is a probabilistic signal, not a legal determination.
+- **Enforcement gap.** Despite public documentation of Magamyman, Burdensome-Mix, and the Biden-pardons wallets, no publicly disclosed wallet has been banned and no profits clawed back as of the cut-off date. Detection without consequence is the current equilibrium; the work's policy relevance depends on whether that equilibrium shifts.
+- **Dataset bias.** Selected markets are high-volume English-language geopolitical contracts on a specific event cluster; findings do not necessarily generalise.
+- **Platform surveillance context.** Polymarket's own ML detection stack ("Vergence", Palantir + TWG AI) launched 10 March 2026 but is scoped to sports markets. Geopolitical markets — the domain of this project — have no publicly disclosed ML surveillance, which is one reason the work is worth doing.
+- **LLM usage disclosure.** Required by the exam brief. The Contribution and LLM Usage Disclosure section of the report documents which parts of the pipeline were co-authored with Claude.
 
 ## 8. Out of Scope — Reserved for Discussion and Future Work
 
 The following observation is explicitly *outside* the research question and the evaluation. It is reserved for the Discussion and theory sections of the report and may be extended in future work.
 
-- **Feature-importance parallel to informed-trading traits.** If the features driving the `p_hat − market_implied_prob` gap resemble those documented in the informed-trading literature (within-trader bet size, cross-sectional bet size, pre-event timing, directional concentration, wallet newness; see Mitts and Ofir 2026), the Discussion will flag the parallel and note that the signal may be partially picking up informed flow. No labelling, evaluation, or success criterion in the main study depends on this interpretation.
-- **Documented-case validation** (Magamyman, Burdensome-Mix) is similarly deferred to Discussion as illustrative anecdotes, not as evaluation targets. The Iran ceasefire cluster, by contrast, is now part of the main evaluation scope via events 355299 and 357625.
+- **Feature-importance parallel to informed-trading traits.** If the features driving the `p_hat − market_implied_prob` gap resemble those documented in the informed-trading literature (within-trader bet size, cross-sectional bet size, pre-event timing, directional concentration, wallet newness; see Mitts and Ofir 2026), the Discussion will flag the parallel and note that the signal may be partially picking up informed flow. The Magamyman sanity check in Section 5.6 feeds this discussion.
+- **Documented-case anecdotes** (Burdensome-Mix on Maduro, Biden-pardons wallets) are illustrative rather than evaluation targets. The Iran ceasefire cluster, by contrast, is part of the main evaluation scope via events 355299 and 357625.
+- **Cross-market sibling-price injection.** A second-order arbitrage feature layer using prices of related sub-markets (e.g. "by Feb 14" price as a feature for the "by Feb 28" market) is deferred.
+- **Cross-event-family pooling** with non-Iran clusters (Maduro, Biden pardons, Taylor Swift) is deferred.
+- **Orderfilled event-level analysis.** The HF mirror also exposes `orderfilled_part1-4.parquet` (raw on-chain OrderFilled logs, ~125 GB combined). Not used here — the derived `trades.parquet` carries the aggregated per-trade records we need. Reserved for future work that needs maker/taker attribution at order level.
 
 ## 9. Report Outline Alignment
 
@@ -158,26 +181,32 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 | # | Task | Status | Depends on |
 |---|---|---|---|
 | 1 | Polymarket Gamma + CLOB + Data API fetcher with side-split and trade-price fallback | done (19 Apr) | — |
-| 2 | Full trade extraction across four target events | done (19 Apr) | 1 |
+| 2 | Full trade extraction across four target events (API-only, v1) | done (19 Apr) | 1 |
 | 3 | True resolution-timestamp derivation (`resolution_ts`) and `settlement_minus_trade_sec` | done (19 Apr) | 2 |
-| 4 | Running market and wallet features in `trades_enriched.csv` | done (19 Apr) | 2 |
-| 5 | Polygonscan on-chain wallet enrichment | deferred (no API key, free-data-only scope) | 2 |
-| 6 | GDELT news-timing enrichment | deferred (free API, awaits feature-definition design) | 2 |
-| 7 | Offset-cap workaround via Polymarket Goldsky subgraph | deferred (documented as limitation) | — |
-| 8 | Post-resolution filter applied (`settlement_minus_trade_sec > 0`) | open | 3 |
-| 9 | Temporal train / validation / test split by settlement date | open | 8 |
-| 10 | EDA notebook following repository Design.md conventions | open | 8 |
-| 11 | MLP training and baselines (logistic regression, random forest, naive market) | open | 9 |
-| 12 | Trading-rule tuning on validation markets | open | 11 |
-| 13 | Out-of-sample trading-rule evaluation on test markets | open | 12 |
-| 14 | Autoencoder arm and overlap check | open | 9 |
-| 15 | Feature-importance analysis for Discussion | open | 11 |
-| 16 | Report drafting in the CBS docx template | all | 10 to 15 |
+| 4 | Running market and wallet features (market-state, wallet-global) | done (19 Apr) | 2 |
+| 5 | Expanded six-layer feature set — time, log_size, wallet-in-market bursting, directional purity, position-aware, interactions | done (19 Apr, Alex-adoption pass) | 2 |
+| 6 | Trade-timestamp temporal split column in `trades_enriched.csv` | done (19 Apr, Alex-adoption pass) | 5 |
+| 7 | Hybrid HF + API build script (`scripts/build_iran_dataset.py`) using duckdb httpfs for remote-stream-filter of the HF trades parquet | done (19 Apr, code) | 5 |
+| 8 | Run the hybrid build to lift the ~7k cap on 21 markets | **pending user run** | 7 |
+| 9 | Post-resolution filter applied (`settlement_minus_trade_sec > 0`) in modelling | open | 3 |
+| 10 | Polygonscan on-chain wallet enrichment | deferred (no API key, free-data-only scope) | 2 |
+| 11 | GDELT news-timing enrichment | deferred (free API, awaits feature-definition design) | 2 |
+| 12 | EDA notebook following repository Design.md conventions | open | 9 |
+| 13 | MLP training and baselines (logistic regression, random forest, isolation forest, naive market, autoencoder) | open | 6 |
+| 14 | Isotonic calibration on validation slice | open | 13 |
+| 15 | Streaming event-replay backtest — general +EV and home-run, cutoff-date sweep | open | 14 |
+| 16 | Out-of-sample trading-rule evaluation on the test slice | open | 15 |
+| 17 | Feature-importance and permutation importance for Discussion | open | 13 |
+| 18 | Magamyman sanity check | open | 13 |
+| 19 | Report drafting in the CBS docx template | all | 12 to 18 |
 
 ## 11. Open Decisions
 
-- Choice of gap threshold `tau` and position-sizing rule (flat vs Kelly-scaled) on the validation markets.
-- Whether to include a time-to-event holding-period variant as a robustness check or as the main specification.
-- Whether to model trade value in USD as a feature or as a sample weight.
-- Exact settlement-date boundaries for the temporal train / validation / test split across the four event clusters.
+- Exact edge thresholds for the general +EV rule (currently 0.02) and the home-run rule (currently 0.20) — may shift after validation tuning.
+- Position-sizing rule for the home-run strategy: flat larger stake versus Kelly-scaled.
+- Whether to model trade value in USD as a feature (already included via `trade_value_usd` and `log_size`) or additionally as a sample weight during training.
+- Exact quantile boundaries for the trade-timestamp train / validation / test split (default 0.70 / 0.85 / 1.00).
 - Treatment of `wallet_prior_win_rate` NaN on first-trade rows (~21%): impute to global mean, use the raw NaN with `wallet_prior_trades == 0` as a categorical indicator, or exclude first-trade rows.
+- Whether to migrate to the HuggingFace full-history data source (Section 8 deferred item).
+- Burst-detection thresholds: number of trades `K` in a rolling window `N` minutes that triggers `wallet_is_burst`. Default `K=3, N=10min`.
+- Whale threshold for `wallet_is_whale_in_market`: default 95th percentile of per-market cumulative wallet volume.

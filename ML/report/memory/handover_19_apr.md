@@ -69,8 +69,12 @@ The Gamma `endDate` field is a scheduled end, not the actual resolution moment. 
 | `bet_correct` rate | 0.518 |
 | Markets capped near ~7k | 21 |
 
-### 6.2 Offset cap accepted as limitation
-Polymarket's Data API `/trades` has no time-filter parameter and hard-errors at `offset>=5000`. Side-splitting (already in place) lifts the per-market ceiling to ~7,000. Breaking this further would require Polygonscan (needs API key, ruled out) or rewriting to the Goldsky subgraph (a separate project). Twenty-one markets are truncated at the ceiling; earliest trades on those markets are missing. Document this as a recency-bias limitation in the report.
+### 6.2 Offset cap — initially accepted, now being lifted via HuggingFace
+Polymarket's Data API `/trades` has no time-filter parameter and hard-errors at `offset>=5000`. Side-splitting lifts the per-market ceiling to ~7,000. Twenty-one markets of the 74 resolved are truncated at this ceiling.
+
+**Resolution (19 April, later in the evening):** the `SII-WANGZJ/Polymarket_data` HuggingFace mirror carries the complete on-chain trade history for 67 of the 74 resolved markets (events 114242 and 236884). A new script `scripts/build_iran_dataset.py` streams that mirror's `trades.parquet` (38.7 GB) over HTTPS via duckdb's httpfs extension, filters server-side to the target condition_ids, and writes only the matching rows to `data/trades_iran_subset.parquet` (~hundreds of MB). The disk-limited design matters: the full parquet does not fit on a laptop with 23 GB free. The remaining 7 ceasefire markets (events 355299, 357625) are post-HF-cutoff and fetched via the Polymarket Data API; they are all under 5k trades so the ~7k ceiling is not reached.
+
+Once the hybrid build runs, the 21-capped-markets limitation is mitigated. The only residual constraint is the HF snapshot cutoff (2026-03-31) which applies to the 7 API-fetched ceasefire markets — unaffected because those markets fit under the API cap.
 
 ### 6.3 True resolution timestamp implemented
 New `derive_resolution_timestamps()` in `fetch_polymarket.py`. Strategy: find the earliest timestamp at which the winning-outcome token's price first locks to ≥0.995 and never falls back below 0.9. CLOB history is the primary source; trade-execution prices are the fallback. Fallback matters — CLOB `/prices-history` returns empty for 66 of 67 already-resolved markets (the service drops history after resolution). Derived for 98.0% of rows. Used in `settlement_minus_trade_sec` with `end_date` as final fallback. Note: 16.5% of trades now show negative values (post-resolution close-outs). Filter `settlement_minus_trade_sec > 0` before predictive modelling.
@@ -100,6 +104,33 @@ Wallet-level (per `proxyWallet`, strictly prior):
 1. Drop post-resolution trades: `settlement_minus_trade_sec > 0`.
 2. Optional: drop markets with more than ~6,500 trades if the recency-bias risk is unacceptable for the modelled subset.
 3. For `wallet_prior_win_rate`, decide whether to impute first-trade NaN (e.g., global mean of 0.518) or use `wallet_prior_trades == 0` as a categorical signal.
+
+## 7b. Alex-adoption pass (19 April evening, second update)
+
+Adopted the substantive improvements from `ML/report/mldp-project-overview.md` without narrowing scope:
+
+- **Trade-timestamp temporal split.** `split` column added to `trades_enriched.csv` with train/val/test at quantiles 0.70/0.85 of the trade timestamp distribution. Current counts: 242,828 train / 52,035 val / 52,035 test. Replaces the settlement-date split.
+- **Price deliberately excluded from feature set.** `market_implied_prob` stays in the CSV only as the trading-rule benchmark; it should not be fed to the MLP.
+- **Expanded six-layer feature taxonomy.** 19 new columns added via `expand_features()` in `fetch_polymarket.py`:
+  - Trade-local: `log_size`
+  - Time: `time_to_settlement_s`, `log_time_to_settlement`, `pct_time_elapsed`
+  - Wallet-in-market bursting: `wallet_trades_in_market_last_1min/10min/60min`, `wallet_is_burst`
+  - Wallet-in-market directional: `wallet_directional_purity_in_market`, `wallet_has_both_sides_in_market`, `wallet_spread_ratio`
+  - Wallet-in-market position-aware: `wallet_position_size_before_trade`, `trade_size_vs_position_pct`, `is_position_exit`, `is_position_flip`, `wallet_is_whale_in_market`
+  - Interactions: `size_vs_wallet_avg`, `size_x_time_to_settlement`
+- **Two-strategy trading rule.** Plan and docx updated: general +EV (edge > 0.02, flat $100) and home-run (edge > 0.20, time_to_settlement < 6h, price < 0.30, larger stake). Cutoff-date sweep over N in {14, 7, 3, 1} days.
+- **Magamyman sanity check** added as an illustrative Discussion anchor (not a Results acceptance target).
+- **Ethics rewritten** around the Coplan November 2025 quote versus the 23 March 2026 rule change, the documented cases, and the enforcement gap.
+
+Deliberately not adopted from Alex:
+- Narrowing scope to 7 sub-markets of event 114242 only. Kept our 74 markets across 4 events so the ceasefire events stay in.
+- Polygonscan on-chain enrichment. Free-data-only scope still holds.
+- HuggingFace data source migration. Flagged as a pending decision in Section 8 of the plan; would eliminate the ~7k cap but costs a 28 GB download and a fetcher rewrite.
+
+Expected null rates on the new features (all explainable):
+- `wallet_directional_purity_in_market`, `wallet_spread_ratio`: ~48% NaN on first trade per (wallet, market) — by definition.
+- `size_vs_wallet_avg`: ~21% NaN on first trade per wallet — by definition.
+- `pct_time_elapsed`: ~2% NaN on markets with missing life_total (no resolution_ts nor end_date). Impute with 1.0 or drop as modelling chooses.
 
 ## 8. Backup
 Previous `data/*.csv` snapshot saved to `data/_backup_20260419/` before the refetch.
