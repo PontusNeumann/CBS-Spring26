@@ -1,6 +1,12 @@
-"""Build the labelled feature matrix for the 7-market Iran-strike dataset.
+"""[LEGACY] Build labelled feature matrix for Alex's 7-market Iran-strike scope.
 
-Input:
+SUPERSEDED by `scripts/build_iran_dataset.py`, which covers all 74 markets
+across the four target events using the hybrid HF + API pipeline. Kept for
+historical reference and for the design-decisions log; not part of the v1
+run-book. Input paths below expect the old pipeline's intermediate parquets,
+which the new pipeline does not produce.
+
+Input (legacy):
   data/iran_strike_trades.parquet  (451k raw trades)
   data/iran_strike_markets.parquet (7 market rows with winner_token, settlement_ts)
   data/hf_raw/trades.parquet       (full 418M-row file, joined for wallet_polymarket features)

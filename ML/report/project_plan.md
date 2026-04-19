@@ -7,6 +7,11 @@
 **Possible working title:** *: *
 **Document purpose:** Finalise the research question, approach, and method, and map each methodological choice to the course syllabus. Supersedes earlier options discussed in the handover and in chat.
 
+**Companion documents (read-only supporting material):**
+- `docs/design-decisions.md` — running rationale log. Every non-trivial decision, the alternatives considered, and the justification. The plan summarises; the log carries the reasoning.
+- `handovers/handover_<date>.md` — per-session handover covering only the most recent work done. Anything that matters long-term is folded back into this plan.
+- `docs/archive/mldp-project-overview.md` — Alex's narrower 7-sub-market proposal. Superseded by this plan; kept for history only.
+
 ---
 
 ## 1. Summary
@@ -206,7 +211,57 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 - Position-sizing rule for the home-run strategy: flat larger stake versus Kelly-scaled.
 - Whether to model trade value in USD as a feature (already included via `trade_value_usd` and `log_size`) or additionally as a sample weight during training.
 - Exact quantile boundaries for the trade-timestamp train / validation / test split (default 0.70 / 0.85 / 1.00).
-- Treatment of `wallet_prior_win_rate` NaN on first-trade rows (~21%): impute to global mean, use the raw NaN with `wallet_prior_trades == 0` as a categorical indicator, or exclude first-trade rows.
-- Whether to migrate to the HuggingFace full-history data source (Section 8 deferred item).
+- Treatment of `wallet_prior_win_rate` NaN on first-trade rows (~21%): impute to global mean (0.518), use the raw NaN with `wallet_prior_trades == 0` as a categorical indicator, or exclude first-trade rows.
+- Treatment of NaN on the expanded wallet-in-market features. Expected null rates on first occurrence per (wallet, market): `wallet_directional_purity_in_market` and `wallet_spread_ratio` around 48 percent; `size_vs_wallet_avg` around 21 percent; `pct_time_elapsed` around 2 percent (markets missing both `resolution_ts` and `end_date`).
 - Burst-detection thresholds: number of trades `K` in a rolling window `N` minutes that triggers `wallet_is_burst`. Default `K=3, N=10min`.
 - Whale threshold for `wallet_is_whale_in_market`: default 95th percentile of per-market cumulative wallet volume.
+
+## 12. Repository Layout
+
+Everything lives under `ML/report/`. The folder layout after the 19 April restructure:
+
+```
+report/
+├── ML_final_exam_paper.docx          # The paper itself — updated with text and results as the project progresses
+├── project_plan.md                   # This file. The source of truth. Read first.
+│
+├── docs/                             # Supporting design documents
+│   ├── design-decisions.md           # Running rationale log with alternatives considered
+│   └── archive/                      # Superseded material kept for history
+│       └── mldp-project-overview.md  # Alex's narrower 7-sub-market proposal (superseded)
+│
+├── handovers/                        # Per-session handovers; latest only at top level
+│   ├── handover_<latest>.md          # Most recent session, covers what was done since previous handover
+│   ├── ML_final_exam_paper_backup.docx
+│   └── archive/
+│       └── handover_<older>.md
+│
+├── scripts/                          # Data-pipeline and modelling code
+│   ├── build_iran_dataset.py         # Primary entry point. Hybrid HF + API builder.
+│   ├── fetch_polymarket.py           # Gamma / CLOB / Data API client; feature enrichment.
+│   ├── build_dataset.py              # Legacy API-only builder. Superseded by build_iran_dataset.py but kept for reference.
+│   ├── enrich_onchain.py             # Polygonscan / Etherscan batch enrichment. Deferred — not wired in for v1.
+│   ├── eda.py                        # EDA plots and summary tables; reads trades_enriched.csv, writes to outputs/eda/.
+│   └── render_dashboard.py           # Live HTML dashboard for long-running enrichment runs.
+│
+├── data/                             # Local data outputs; .gitignored except for snapshots
+│   ├── markets.parquet               # HF markets metadata cache (116 MB)
+│   ├── trades.csv / prices.csv / trades_enriched.csv   # Produced by build_iran_dataset.py
+│   └── _backup_<date>/               # Pre-refetch snapshots of the CSVs
+│
+├── outputs/                          # Generated artefacts from scripts
+│   └── eda/                          # Figures, skewness table, HTML report, summary.txt
+│
+├── assets/                           # Static image assets used in the docx cover and figures
+│
+└── guidelines/                       # CBS course materials and reference exemplars
+    ├── Project_guidelines.pdf
+    ├── Project_guidelines_new_extended_instructions.pdf
+    ├── Face_Mask_Detection_sample_report.pdf
+    └── Guidelines-for-the-use-of-Generative-Artificial-Intelligence-GenAI-in-exams-at-CBS.pdf
+```
+
+**Reproduction workflow.** From `report/`:
+1. `python scripts/build_iran_dataset.py` — streams the HF subset, pulls the ceasefire markets via the API, writes `data/trades_enriched.csv` with train/val/test labels.
+2. `python scripts/eda.py` — writes plots and `report.html` into `outputs/eda/`.
+3. Modelling code — to be added under `scripts/` (MLP, baselines, calibration, backtest). Each script reads from `data/`, writes to `outputs/<stage>/`.

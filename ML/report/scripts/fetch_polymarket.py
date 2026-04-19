@@ -5,17 +5,19 @@ Pulls three layers of data from Polymarket's public APIs:
     2. Intraday price history per outcome   (CLOB API)
     3. Trade-level history per market       (Data API)
 
-Outputs CSV files into ./data/ next to this script.
+Outputs CSV files into ../data/ (i.e. report/data/, one level above scripts/).
+Primarily used as a library by scripts/build_iran_dataset.py; the
+standalone `main()` is retained for ad-hoc API-only pulls.
 
 Targets: events 114242, 236884, 355299, 357625 (Iran strikes, Iran-Israel/US
 conflict end, Trump ceasefire announcement, ceasefire extensions).
-Run:     python fetch_polymarket.py
+Run:     python scripts/fetch_polymarket.py
 
-Known limitation: the Data API caps pagination offset at ~3000. Side-split
-fallback lifts the ceiling to ~7000 trades per market. Markets with more
-trades lose their earliest activity (recency bias). Breaking this cap would
-require moving to the Polygon on-chain subgraph or Polygonscan, neither done
-here.
+Known limitation of the standalone path: the Data API caps pagination offset
+at ~3000. Side-split fallback lifts the ceiling to ~7000 trades per market.
+For the 67 markets under events 114242 and 236884 this cap is bypassed by
+build_iran_dataset.py, which streams the HuggingFace `SII-WANGZJ/Polymarket_data`
+mirror instead.
 """
 
 from __future__ import annotations
@@ -37,7 +39,7 @@ DATA = "https://data-api.polymarket.com"
 TARGET_EVENT_IDS = ["114242", "236884", "355299", "357625"]
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-OUT_DIR = SCRIPT_DIR / "data"
+OUT_DIR = SCRIPT_DIR.parent / "data"
 
 SLEEP_SEC = 0.25
 TIMEOUT = 30

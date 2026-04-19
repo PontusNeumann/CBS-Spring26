@@ -1,8 +1,9 @@
-"""Comprehensive EDA script for the Iran-strike labeled dataset.
+"""Comprehensive EDA script for the Iran-markets enriched dataset.
 
-Run this on `data/iran_strike_labeled.parquet` to produce all the plots and
-diagnostics the team needs to decide on final modelling choices. Saves
-figures to `data/eda_outputs/` and prints numeric summaries to stdout.
+Reads the enriched per-trade table produced by `build_iran_dataset.py` and
+writes figures plus a numeric summary to `outputs/eda/`. The loader accepts
+either `data/trades_enriched.parquet` or `data/trades_enriched.csv`; extension
+is auto-detected.
 
 Covers every item in the EDA test plan from PR #1:
   1. Shape + null check
@@ -17,11 +18,10 @@ Covers every item in the EDA test plan from PR #1:
 
 Usage:
   python scripts/eda.py
-    [--labeled data/iran_strike_labeled.parquet]
-    [--out data/eda_outputs/]
+    [--labeled data/trades_enriched.csv]
+    [--out outputs/eda/]
 
-Outputs:
-  data/eda_outputs/
+Outputs (under `outputs/eda/`):
     01_class_balance.png
     02_feature_distributions.png
     03_skewness_table.csv
@@ -31,6 +31,7 @@ Outputs:
     07_feb28_final_days_volume.png
     08_wallet_type_distributions.png
     summary.txt
+    report.html
 """
 
 from __future__ import annotations
@@ -431,26 +432,30 @@ def plot_wallet_types(df: pd.DataFrame, out_path: Path) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument(
-        "--labeled", default=str(ROOT / "data" / "iran_strike_labeled.parquet")
+        "--labeled", default=str(ROOT / "data" / "trades_enriched.csv")
     )
-    ap.add_argument("--out", default=str(ROOT / "data" / "eda_outputs"))
+    ap.add_argument("--out", default=str(ROOT / "outputs" / "eda"))
     args = ap.parse_args()
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"loading {args.labeled}...")
-    df = pd.read_parquet(args.labeled)
+    labeled_path = Path(args.labeled)
+    if labeled_path.suffix == ".parquet":
+        df = pd.read_parquet(labeled_path)
+    else:
+        df = pd.read_csv(labeled_path)
     print(f"loaded {len(df):,} rows, {len(df.columns)} columns")
 
-    # Attach question text from markets.parquet if missing
+    # Attach question text from markets.csv if missing
     if "question" not in df.columns:
-        mkts = pd.read_parquet(
-            ROOT / "data" / "iran_strike_markets.parquet",
-            columns=["condition_id", "question"],
+        mkts = pd.read_csv(
+            ROOT / "data" / "markets.csv",
+            usecols=["condition_id", "question"],
         )
         df = df.merge(mkts, on="condition_id", how="left")
-        print(f"joined question text from markets.parquet")
+        print("joined question text from markets.csv")
 
     basic_diagnostics(df, out_dir / "summary.txt")
     plot_class_balance(df, out_dir / "01_class_balance.png")
