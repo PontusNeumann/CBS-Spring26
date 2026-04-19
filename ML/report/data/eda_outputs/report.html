@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EDA Report — Iran-strike ML Dataset</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #fafaf7;
+    color: #1a1a1a;
+    font: 400 15px/1.65 "Charter", "Georgia", "Iowan Old Style", serif;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 64px 40px;
+  }
+  header { margin-bottom: 56px; }
+  h1 {
+    font-size: 32px;
+    letter-spacing: -0.01em;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  h1 span { color: #888; font-weight: 400; }
+  .meta {
+    color: #666;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  h2 {
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    margin: 56px 0 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e4e4e0;
+    font-weight: 600;
+  }
+  h3 {
+    font-size: 16px;
+    margin: 24px 0 10px;
+    font-weight: 600;
+    color: #444;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  p { margin-bottom: 14px; }
+  figure {
+    margin: 32px 0;
+    background: white;
+    border: 1px solid #e4e4e0;
+    border-radius: 6px;
+    padding: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  figure img { width: 100%; height: auto; display: block; border-radius: 4px; }
+  figcaption {
+    font-size: 13px;
+    color: #666;
+    margin-top: 10px;
+    font-style: italic;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  .tldr {
+    background: #f4f1e8;
+    border-left: 4px solid #a8743f;
+    padding: 18px 22px;
+    margin: 24px 0 40px;
+    border-radius: 4px;
+  }
+  .tldr h2 {
+    margin-top: 0;
+    border: none;
+    font-size: 18px;
+    padding: 0;
+  }
+  .tldr ul { margin: 10px 0 0 20px; }
+  .tldr li { margin-bottom: 6px; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    font-size: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  th, td { padding: 8px 12px; border-bottom: 1px solid #e4e4e0; text-align: left; }
+  th { font-weight: 600; background: #f4f1e8; color: #444; }
+  tr:last-child td { border-bottom: none; }
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    background: #efece5;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 10px;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    letter-spacing: 0.02em;
+  }
+  .pill-good { background: #dcefd5; color: #275d1e; }
+  .pill-bad { background: #f8dcdc; color: #9b2222; }
+  .pill-neutral { background: #e8e8e4; color: #444; }
+  strong { font-weight: 600; }
+  .takeaway {
+    background: #eef4f9;
+    border-left: 3px solid #4C72B0;
+    padding: 10px 16px;
+    margin: 12px 0;
+    font-size: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  .takeaway strong { color: #2c4e7a; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>EDA Report <span>— Iran-strike ML dataset</span></h1>
+  <div class="meta">451,933 trades × 63 features · 7 resolved markets · 55,329 unique takers · Generated 2026-04-19</div>
+</header>
+
+<div class="tldr">
+  <h2>TL;DR — 7 things to know before modelling</h2>
+  <ul>
+    <li><strong>Data is clean.</strong> Zero nulls, natural ~50/50 class balance in every bucket, causal guarantees held.</li>
+    <li><strong>The simple hypothesis died.</strong> "Pure + bursty = informed" wallets don't have above-average correctness at the aggregate level (0.476 — below baseline). The signal either lives in rarer subpopulations or in non-linear interactions.</li>
+    <li><strong>Three feature pairs are ≥0.80 correlated</strong> — clear prune candidates: `market_cumvol` vs `market_vol_24h`, `market_vol_1h_log` vs `market_vol_24h_log`, `wallet_prior_trades` vs `wallet_prior_trades_in_market`.</li>
+    <li><strong>Heavy-tailed features need more clipping.</strong> `size_vs_market_cumvol_pct` has skew 559 despite `log1p` elsewhere — clip to 99th percentile or drop.</li>
+    <li><strong>Feb 28 market confirms its "surprise" status</strong> — avg price hovered 0.4–0.6 through Feb 27, then diverged wildly on Feb 28 with the biggest hourly volumes of any market.</li>
+    <li><strong>Outcome distribution per market matches Columbia paper</strong> — strike happened between Feb 20 (NO) and Feb 28 (YES). Mar 31 and Jun 30 auto-resolved YES.</li>
+    <li><strong>The ~11% "new to Polymarket" wallets are the next-feature-importance target</strong> — once Layer 6 enrichment lands we'll see whether CEX-funded + new + single-purpose is where the signal lives.</li>
+  </ul>
+</div>
+
+<h2>1. Dataset sanity</h2>
+
+<p>Full shape <code>(451933, 64)</code>, zero nulls, 7 markets, 55,329 unique takers. Class balance is near-perfect:</p>
+
+<table>
+  <tr><th>Bucket</th><th>Rows</th><th>Correct rate</th><th>Notes</th></tr>
+  <tr><td>train</td><td>213,474</td><td>0.495</td><td>Trades before Feb 1 UTC across all 7 markets</td></tr>
+  <tr><td>validation</td><td>146,889</td><td>0.493</td><td>Feb 1–21</td></tr>
+  <tr><td>test</td><td>91,570</td><td>0.532</td><td>Feb 21–28 — the insider-pressure window</td></tr>
+</table>
+
+<p>The 53.2% test correctness vs 49.5% train is a real finding: late-Feb trades skew toward winners because the market's Feb 28 close at $0.45 underpriced the actual YES outcome. Model needs to capture this mispricing.</p>
+
+<h2>2. Class balance — per market and per bucket</h2>
+
+<figure>
+  <img src="01_class_balance.png" alt="Class balance per bucket and per market"/>
+  <figcaption>Figure 1. Left: `bet_correct` rate per split bucket (near 50/50 in train and val, slightly above in test). Right: per-market mean correctness, sorted. All 7 markets cluster between 0.47 and 0.55 — no market has catastrophically imbalanced labels.</figcaption>
+</figure>
+
+<div class="takeaway"><strong>Takeaway:</strong> no rebalancing needed. <code>class_weight='balanced'</code> stays in as a cheap safety net but will have near-zero effect. PR-AUC remains the primary metric out of convention; ROC-AUC is equally valid given the true 50/50 balance.</div>
+
+<h2>3. Feature distributions — what log1p did and didn't fix</h2>
+
+<figure>
+  <img src="02_feature_distributions.png" alt="Feature distributions split by bet_correct"/>
+  <figcaption>Figure 2. 12 key features, distribution of each split by correct (green) vs incorrect (red). Visible separation between classes = signal; overlap = noise. Distributions are clipped at 1st/99th percentile for readability.</figcaption>
+</figure>
+
+<p>Where we see <strong>visible class separation</strong>: <code>pct_time_elapsed</code> and <code>log_time_to_settlement</code> — correct bets cluster later in market life, consistent with the informed-trading-concentrates-near-deadline hypothesis.</p>
+
+<p>Where we see <strong>near-zero separation</strong>: <code>wallet_spread_ratio</code>, <code>wallet_trades_in_market_last_10min</code>, <code>trade_size_vs_position_pct</code>. These features, taken in isolation, don't separate the classes — the MLP will need to learn interactions.</p>
+
+<h3>Skewness — the tail problem</h3>
+
+<table>
+  <tr><th>Feature</th><th>Skewness</th><th>Action</th></tr>
+  <tr><td><code>size_vs_market_cumvol_pct</code></td><td>559.65</td><td><span class="pill pill-bad">Clip to 99th pct or drop</span></td></tr>
+  <tr><td><code>usd_amount</code></td><td>83.75</td><td><span class="pill pill-good">Already log1p'd as log_size — raw unused</span></td></tr>
+  <tr><td><code>token_amount</code></td><td>41.78</td><td><span class="pill pill-good">Already log_token_amount</span></td></tr>
+  <tr><td><code>wallet_t1_position_before</code></td><td>-37.86</td><td><span class="pill pill-bad">Signed, two-tailed — needs signed-log</span></td></tr>
+  <tr><td><code>wallet_cumvol_same_side_last_10min</code></td><td>26.88</td><td><span class="pill pill-neutral">log1p</span></td></tr>
+  <tr><td><code>wallet_t1_cumvol_in_market</code></td><td>13.47</td><td><span class="pill pill-neutral">log1p</span></td></tr>
+</table>
+
+<div class="takeaway"><strong>Takeaway:</strong> Before training, add a preprocessing step that (a) clips <code>size_vs_market_cumvol_pct</code> at 99th percentile, (b) applies <code>log1p</code> systematically to the remaining heavy-tailed count/USD features, (c) converts signed positions to <code>sign(x) * log1p(|x|)</code>.</div>
+
+<h2>4. Feature correlation — which features are redundant?</h2>
+
+<figure>
+  <img src="04_correlation_heatmap.png" alt="Correlation heatmap"/>
+  <figcaption>Figure 3. Pearson correlation matrix across all numeric features (50k-row sample). Red = positive, blue = negative, white = uncorrelated. Block-diagonal structure indicates feature families (market-volume, wallet-activity, time) are internally correlated, which is expected.</figcaption>
+</figure>
+
+<h3>Top correlated pairs (|r| ≥ 0.75)</h3>
+
+<table>
+  <tr><th>Pair</th><th>|r|</th><th>Action</th></tr>
+  <tr><td><code>market_cumvol</code> ↔ <code>market_vol_24h</code></td><td>0.841</td><td><span class="pill pill-neutral">Keep the log variants, drop raws</span></td></tr>
+  <tr><td><code>market_vol_1h_log</code> ↔ <code>market_vol_24h_log</code></td><td>0.837</td><td><span class="pill pill-neutral">Drop 24h — 1h rolls are more discriminative</span></td></tr>
+  <tr><td><code>market_vol_24h</code> ↔ <code>market_trades_1h</code></td><td>0.823</td><td><span class="pill pill-neutral">Keep both, different semantics</span></td></tr>
+  <tr><td><code>market_cumvol_log</code> ↔ <code>market_vol_24h_log</code></td><td>0.820</td><td><span class="pill pill-neutral">Redundant — drop one</span></td></tr>
+  <tr><td><code>wallet_prior_trades</code> ↔ <code>wallet_prior_trades_in_market</code></td><td>0.809</td><td><span class="pill pill-neutral">Keep in-market, drop global — more specific</span></td></tr>
+</table>
+
+<div class="takeaway"><strong>Takeaway:</strong> after L1/Lasso feature selection (baseline step), we'll drop ~5 redundant features. MLP will be fine either way (L2 + dropout handle correlated inputs), but a cleaner feature list makes feature-importance interpretation sharper.</div>
+
+<h2>5. Wallet-level PCA — the behavioural taxonomy test</h2>
+
+<figure>
+  <img src="05_pca_wallets.png" alt="Wallet-level PCA colored by correctness rate"/>
+  <figcaption>Figure 4. Each dot is one wallet (n≈30k after min-5-trade filter) in PC1–PC2 space over 6 behavioural features (log bet size, Polymarket age, directional purity, burst rate, spread ratio, n markets traded). Colour = wallet's mean correctness (red = 0, green = 1).</figcaption>
+</figure>
+
+<p><strong>What we hoped to see:</strong> clear cluster of high-correctness green points in the "informed quadrant" (top-left, top-right — wherever purity × burst maxes).</p>
+
+<p><strong>What we actually see:</strong> correctness is <em>mixed across the PCA space</em>. No visible clustering. Wallets of all behavioural archetypes have correctness rates scattered near 0.5.</p>
+
+<h3>Quadrant correctness means — the surprising result</h3>
+
+<table>
+  <tr><th>Quadrant</th><th>Mean bet_correct</th><th>vs 0.5 baseline</th></tr>
+  <tr><td>pure + bursty ("informed"?)</td><td>0.476</td><td><span class="pill pill-bad">below</span></td></tr>
+  <tr><td>not pure, bursty (MM / vol trader)</td><td>0.517</td><td><span class="pill pill-good">above</span></td></tr>
+  <tr><td>not pure, not bursty (rebalancer)</td><td>0.493</td><td><span class="pill pill-neutral">~</span></td></tr>
+  <tr><td>pure, not bursty (retail)</td><td>0.493</td><td><span class="pill pill-neutral">~</span></td></tr>
+</table>
+
+<div class="takeaway"><strong>Takeaway:</strong> The simple "bursty + pure = informed" heuristic <em>does not work at the aggregate level</em>. In fact, wallets with that pattern bet slightly worse than baseline. Two plausible explanations: (1) the informed signal lives in a rare subpopulation (e.g. CEX-funded + brand-new + single-purpose — which our Layer 6 enrichment will surface), or (2) the signal is in non-linear interactions the MLP needs to learn. <br><br>This is actually good news for the project narrative: a neat hand-labelled quadrant would have been a weaker Results section than a model that discovers a non-obvious signal.</div>
+
+<h2>6. Per-market price trajectories — the Magamyman context</h2>
+
+<figure>
+  <img src="06_price_trajectories.png" alt="Per-market price trajectories"/>
+  <figcaption>Figure 5. Price of token1 (YES token) over time, one line per market. Colour by settlement order (dark early, bright late). The "by Feb 28" market (mid-palette) is the flagship — its price hovers around 0.5 for weeks before diverging wildly on Feb 27–28.</figcaption>
+</figure>
+
+<p>Visible patterns:</p>
+<ul>
+  <li>Jan 11 / Jan 14 markets resolve NO cleanly — prices collapse toward 0 as deadline nears</li>
+  <li>Jan 31 and Feb 20 markets similar — late-stage price collapse to 0</li>
+  <li><strong>Feb 28 market is the outlier</strong> — stays around 0.5 for most of its life (genuine uncertainty), then a huge late-stage swing on Feb 27–28 that the market's own pricing only partially caught</li>
+  <li>Mar 31 and Jun 30 markets (dark right-edge lines) terminate abruptly at Feb 28 09:35 UTC — auto-resolved YES by implication</li>
+</ul>
+
+<h2>7. Feb 28 final days — volume and correctness spike</h2>
+
+<figure>
+  <img src="07_feb28_final_days_volume.png" alt="Feb 28 hourly volume and correctness"/>
+  <figcaption>Figure 6. Feb 28 market — hourly USD volume (purple, left axis) and hourly mean correctness (blue, right axis). The dramatic volume explosion on Feb 28 (final day) corresponds to the documented insider-cluster window.</figcaption>
+</figure>
+
+<p>Key observations:</p>
+<ul>
+  <li>Daily volume around $200k–$500k for most of the market's life</li>
+  <li><strong>Feb 27</strong>: volume jumps to ~$4.4M (8x normal)</li>
+  <li><strong>Feb 28</strong>: volume explodes to ~$13.7M (30x normal)</li>
+  <li>Correctness rate shifts with the market mispricing — rises above 0.5 on Feb 28 as the YES-winners dominate the final trades</li>
+</ul>
+
+<div class="takeaway"><strong>Takeaway:</strong> this is where Magamyman and the documented insider cluster operated. The 5–10 hours before resolution hold the densest concentration of informed flow. Our home-run strategy (edge > 0.20, time_to_settlement < 6h, price < 0.30) is specifically designed to fire in this window.</div>
+
+<h2>8. Wallet-type distributions</h2>
+
+<figure>
+  <img src="08_wallet_type_distributions.png" alt="Wallet-type distributions"/>
+  <figcaption>Figure 7. Four distributions at wallet level. Top-left: directional purity — most wallets are heavily one-sided (mode near 1.0 = pure directional). Top-right: burst rate — most wallets rarely trade in bursts (heavy mode near 0). Bottom-left: log-transformed trade count — classic Pareto tail with most wallets small and a long tail of power users. Bottom-right: quadrant correctness (same data as §5 in bar form).</figcaption>
+</figure>
+
+<h2>What this means for the MLP</h2>
+
+<ol>
+  <li><strong>Feature pruning before training</strong> — drop ~5 redundant pairs (see §4), apply signed-log to positions (see §3), clip <code>size_vs_market_cumvol_pct</code> at 99th pct. Net feature count ~50.</li>
+  <li><strong>Don't expect large gains from handcrafted interactions.</strong> Univariate and quadrant-level signals are weak. This is a task where the MLP's non-linear capacity is <em>needed</em> — if logreg beats MLP, something's wrong.</li>
+  <li><strong>The trading-signal evaluation is the primary result</strong>, not classification accuracy. A model with PR-AUC of 0.58 that still generates positive PnL on the streaming backtest is a meaningful finding; a model with PR-AUC of 0.65 that loses money on slippage isn't.</li>
+  <li><strong>Layer 6 enrichment is likely where the sharpest signal enters.</strong> New wallets (~11% of sample) + CEX funding + single-purpose pattern is the Biden-pardons-case footprint. We expect this feature cluster to dominate the final feature importance ranking.</li>
+</ol>
+
+<h2>Next steps</h2>
+
+<ol>
+  <li>Baselines — logreg + L1/Lasso (gets us a sparse feature ranking, confirms redundancy fix), Random Forest (non-linear baseline, feature importance), Isolation Forest (unsupervised anomaly baseline + comparison for Layer 11 autoencoder arm)</li>
+  <li>MLP v1 on current 63 features (minus redundant) — trained per the design spec (SELU + Glorot + batch norm + dropout, class-balanced)</li>
+  <li>Wait for Layer 6 enrichment → retrain with the full feature set</li>
+  <li>Streaming backtest with both general +EV and home-run strategies, cutoff-date sweep</li>
+  <li>Magamyman-wallet lookup and Discussion anecdote</li>
+</ol>
+
+<footer style="margin-top:56px; padding-top:24px; border-top:1px solid #e4e4e0; color:#888; font-size:12px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">
+  Generated by <code>scripts/eda.py</code> · Plots in <code>data/eda_outputs/</code> · Open-source: <a href="https://github.com/PontusNeumann/CBS-Spring26" style="color:#4C72B0;">github.com/PontusNeumann/CBS-Spring26</a>
+</footer>
+
+</body>
+</html>

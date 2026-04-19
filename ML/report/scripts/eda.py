@@ -222,7 +222,7 @@ def plot_correlation_heatmap(df: pd.DataFrame, out_path: Path) -> None:
 
     # Report highly-correlated feature pairs
     corr_abs = corr.abs()
-    np.fill_diagonal(corr_abs.values, 0)
+    # Mask the diagonal and lower triangle (avoid duplicates)
     upper = corr_abs.where(np.triu(np.ones_like(corr_abs, dtype=bool), k=1))
     pairs = upper.stack().sort_values(ascending=False).head(20).round(3)
     print("\ntop 20 feature-pair correlations (|r| desc):")
@@ -323,7 +323,7 @@ def plot_price_trajectories(df: pd.DataFrame, out_path: Path) -> None:
 # -----------------------------------------------------------------------------
 def plot_feb28_spike(df: pd.DataFrame, out_path: Path) -> None:
     feb28 = df[df["question"] == "US strikes Iran by February 28, 2026?"].copy()
-    feb28["hour"] = pd.to_datetime(feb28["timestamp"], unit="s", utc=True).dt.floor("H")
+    feb28["hour"] = pd.to_datetime(feb28["timestamp"], unit="s", utc=True).dt.floor("h")
     hourly = feb28.groupby("hour").agg(
         trades=("usd_amount", "size"),
         volume=("usd_amount", "sum"),
@@ -442,6 +442,15 @@ def main() -> None:
     print(f"loading {args.labeled}...")
     df = pd.read_parquet(args.labeled)
     print(f"loaded {len(df):,} rows, {len(df.columns)} columns")
+
+    # Attach question text from markets.parquet if missing
+    if "question" not in df.columns:
+        mkts = pd.read_parquet(
+            ROOT / "data" / "iran_strike_markets.parquet",
+            columns=["condition_id", "question"],
+        )
+        df = df.merge(mkts, on="condition_id", how="left")
+        print(f"joined question text from markets.parquet")
 
     basic_diagnostics(df, out_dir / "summary.txt")
     plot_class_balance(df, out_dir / "01_class_balance.png")
