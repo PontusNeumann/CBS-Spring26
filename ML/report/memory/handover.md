@@ -1,8 +1,8 @@
 # ML&DL Exam Project: Insider Trading Detection on Polymarket
 
 ## Handover Document
-**Date:** 2026-04-18
-**Status:** Research & data exploration complete. Data extraction pipeline partially built. Blocked on full trade data extraction.
+**Date:** 2026-04-19 (reframe and docx update; see section 11)
+**Status:** Research & data exploration complete. Data extraction pipeline partially built. Project reframed around a probability-gap trading signal; see section 11.
 
 ---
 
@@ -279,3 +279,43 @@ ml-exam-project/
 - Sample strong report: Face Mask Detection (22 pages, 4 models, Grad-CAM interpretability). Notes in course knowledge base
 - Full exam details: `~/.claude/memories/uni/machine-learning-and-deep-learning/exam.md`
 - Course knowledge base (all 16 lectures mapped): `~/.claude/memories/uni/machine-learning-and-deep-learning/`
+
+---
+
+## 11. Update -- 2026-04-19
+
+### Framing pivot
+
+Project scope reoriented from direct wallet-level insider detection to a trading-signal framing. Primary hypothesis: asymmetries exist between Polymarket's contemporaneous market-implied probabilities and the probabilities predicted by a machine learning model on settled Iran markets. A threshold-based trading rule built on the gap between the two probabilities should generate positive risk-adjusted returns out of sample.
+
+Updated research questions:
+- **RQ1a.** Does an MLP trained on pre-execution market-state and behavioural features produce a probability estimate `p_hat` whose residual against the contemporaneous market-implied probability predicts trade correctness on a temporally held-out test set?
+- **RQ1b.** Does a threshold-based trading rule on the gap between `p_hat` and the market-implied probability generate positive cumulative PnL and Sharpe ratio out of sample, relative to a naive market-implied baseline, a momentum rule, and random entry?
+
+Wallet-level insider labelling is no longer part of the main scope or evaluation. If feature-importance analysis reveals that the signal concentrates on features resembling documented informed-trading traits (abnormal bet size, pre-event timing, wallet newness, directional concentration), this is reserved for the Discussion and future work.
+
+### Report updates
+
+`ML/report/ML_final_exam_185912.docx` updated to match the new framing:
+- Keywords rewritten around probability mispricing, trading signal, MLP, and autoencoder.
+- Research Questions section replaced with RQ1a and RQ1b.
+- Key Concepts updated.
+- Methodology section 5.5 (Data Analytics: Modelling, Methods and Tools) restructured into four H3 subsections:
+    1. Primary model -- MLP for probability estimation
+    2. Trading rule on the probability gap
+    3. Unsupervised arm -- autoencoder and Isolation Forest
+    4. Baselines and the market-implied benchmark
+- Evaluation Metrics rewritten around probability quality (ROC-AUC, PR-AUC, Brier, calibration), gap quality (ROC-AUC of the residual), trading-rule metrics (cumulative PnL, Sharpe, hit rate, maximum drawdown, turnover, trade count), and unsupervised-arm top-decile overlap vs random-overlap null.
+- Table of contents entries rewritten. The TOC field still needs to be refreshed in Word to propagate page numbers.
+
+### Repository cleanup
+
+- `ML/report/data/trades.csv` (~202 MB) and `ML/report/data/trades_enriched.csv` (~253 MB) untracked from git and added to `.gitignore`. GitHub rejected an earlier push because both files exceeded the 100 MB per-file limit. The files remain on disk for local analysis.
+- `.DS_Store` added to `.gitignore`. Pre-existing tracked `.DS_Store` files elsewhere in the repo remain and are deferred for later cleanup.
+- `handover.md` moved from `ML/report/` to `ML/report/memory/`.
+- `ML_final_exam_185912_backup.docx` moved from `ML/report/` to `ML/report/memory/`.
+- `project_plan.md` removed from the repo after the content had been merged into the docx.
+
+### What this does not change
+
+The extraction, enrichment, feature engineering, modelling, and validation steps in section 9 remain the outstanding work. The MLP, baselines, autoencoder arm, trading-rule tuning on validation markets, and out-of-sample evaluation on the test markets are still to be built.
