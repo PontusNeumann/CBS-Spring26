@@ -58,7 +58,9 @@ def _get(url: str, params: dict | None = None) -> dict | list:
 
 
 def fetch_event(event_id: str) -> dict:
-    return _get(f"{GAMMA}/events/{event_id}")
+    result = _get(f"{GAMMA}/events/{event_id}")
+    assert isinstance(result, dict)
+    return result
 
 
 def _parse_resolution(outcome_prices_raw: str | None) -> tuple[bool, int | None]:
@@ -194,18 +196,19 @@ def enrich_trades(
     else:
         df["wallet_first_minus_trade_sec"] = pd.NA
 
-    size_num = pd.to_numeric(df.get("size"), errors="coerce")
-    price_num = pd.to_numeric(df.get("price"), errors="coerce")
-    df["trade_value_usd"] = size_num * price_num
+    if "size" in df.columns and "price" in df.columns:
+        size_num = pd.to_numeric(df["size"], errors="coerce")
+        price_num = pd.to_numeric(df["price"], errors="coerce")
+        df["trade_value_usd"] = size_num * price_num
+    else:
+        df["trade_value_usd"] = pd.NA
 
     if {"outcomeIndex", "side"}.issubset(df.columns):
         idx = pd.to_numeric(df["outcomeIndex"], errors="coerce")
         win = pd.to_numeric(df["winning_outcome_index"], errors="coerce")
         side_buy = df["side"].astype(str).str.upper() == "BUY"
         outcome_won = idx == win
-        bet_correct = (outcome_won == side_buy).astype("Int64")
-        bet_correct[win.isna()] = pd.NA
-        df["bet_correct"] = bet_correct
+        df["bet_correct"] = (outcome_won == side_buy).astype("Int64").mask(win.isna())
     else:
         df["bet_correct"] = pd.NA
 
@@ -213,6 +216,8 @@ def enrich_trades(
         pm = prices[["timestamp", "price", "token_id"]].rename(
             columns={"price": "market_implied_prob", "token_id": "asset"}
         )
+        df["asset"] = df["asset"].astype(str)
+        pm["asset"] = pm["asset"].astype(str)
         df = df.sort_values("timestamp").reset_index(drop=True)
         pm = pm.sort_values("timestamp").reset_index(drop=True)
         df = pd.merge_asof(
@@ -223,6 +228,11 @@ def enrich_trades(
             direction="backward",
             allow_exact_matches=False,
         )
+    else:
+        df["market_implied_prob"] = pd.NA
+
+    trade_price = pd.to_numeric(df.get("price"), errors="coerce") if "price" in df.columns else pd.Series(pd.NA, index=df.index)
+    df["market_implied_prob"] = pd.to_numeric(df["market_implied_prob"], errors="coerce").fillna(trade_price)
 
     return df
 

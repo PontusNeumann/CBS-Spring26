@@ -1,1 +1,8 @@
 ML/assignments/ML MA3/data/
+
+# macOS
+.DS_Store
+
+# Large Polymarket data exports (kept locally, not in git)
+ML/report/data/trades.csv
+ML/report/data/trades_enriched.csv
