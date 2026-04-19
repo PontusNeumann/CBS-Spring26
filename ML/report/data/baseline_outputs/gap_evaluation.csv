@@ -1,0 +1,7 @@
+model,bucket,mean_gap,mean_abs_gap,gap_auc
+logreg_l2,val,0.0072,0.2267,0.5034
+logreg_l2,test,-0.0191,0.2671,0.5691
+logreg_l1,val,0.008,0.2267,0.5034
+logreg_l1,test,-0.0176,0.2671,0.5692
+random_forest,val,-0.0007,0.1016,0.5752
+random_forest,test,-0.0171,0.1182,0.2151

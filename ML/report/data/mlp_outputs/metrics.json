@@ -1,0 +1,54 @@
+{
+  "eval": [
+    {
+      "split": "val",
+      "roc_auc": 0.5809,
+      "pr_auc": 0.5771,
+      "brier": 0.3629,
+      "log_loss": 1.4197,
+      "accuracy": 0.5863,
+      "stage": "raw"
+    },
+    {
+      "split": "test",
+      "roc_auc": 0.1911,
+      "pr_auc": 0.3683,
+      "brier": 0.6115,
+      "log_loss": 2.59,
+      "accuracy": 0.2935,
+      "stage": "raw"
+    },
+    {
+      "split": "val",
+      "roc_auc": 0.6223,
+      "pr_auc": 0.5826,
+      "brier": 0.2311,
+      "log_loss": 0.6477,
+      "accuracy": 0.5864,
+      "stage": "calibrated"
+    },
+    {
+      "split": "test",
+      "roc_auc": 0.2299,
+      "pr_auc": 0.4359,
+      "brier": 0.3154,
+      "log_loss": 0.8866,
+      "accuracy": 0.2935,
+      "stage": "calibrated"
+    }
+  ],
+  "gap": [
+    {
+      "split": "val",
+      "mean_gap": -0.0008,
+      "mean_abs_gap": 0.1769,
+      "gap_roc_auc": 0.5789
+    },
+    {
+      "split": "test",
+      "mean_gap": 0.0021,
+      "mean_abs_gap": 0.2366,
+      "gap_roc_auc": 0.4646
+    }
+  ]
+}
