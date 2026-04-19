@@ -316,19 +316,27 @@ Report section to cover:
 | Step | Status |
 |---|---|
 | Data source identified + 28GB downloaded | ✅ |
-| Filtered to Feb 28 market (130k trades, 23k wallets, validated) | ✅ |
-| All design decisions locked in `design-decisions.md` | ✅ |
-| Consolidated project overview written (this doc) | ✅ |
-| Merged with group project plan — multi-market scope, cross-market temporal split, Polygonscan promoted, autoencoder arm, `price` dropped from features | ✅ |
-| **Extract other 6 sibling sub-markets** of event 114242 from HF file | ⏭ Next |
-| **Build `scripts/build_dataset.py` → pooled labelled feature matrix** | ⏭ |
-| **Run `scripts/enrich_polygonscan.py`** for ~50k unique wallets | ⏭ |
-| EDA notebook (distributions, correlations, PC1–PC2 plot) | ⏭ |
-| Baselines (logreg + L1, RF, IF, naive market) | ⏭ |
-| MLP + isotonic calibration | ⏭ |
-| Autoencoder arm + gap-vs-reconstruction-error overlap check | ⏭ |
-| Streaming backtest on test markets (Mar 31, Jun 30) — general + home-run | ⏭ |
+| Extract all 7 sibling sub-markets of event 114242 (451,933 trades, 57,788 wallets) | ✅ |
+| Build labelled feature matrix (63 cols × 451k rows, zero nulls) | ✅ |
+| EDA (8 plots + narrative `report.html`) | ✅ |
+| Baselines (logreg L1/L2, RF, IF, naive market) — naive best, RF catastrophically inverts on test | ✅ |
+| MLP v1 on `bet_correct` — val ROC 0.62, test ROC 0.23 (inverts) | ✅ |
+| HPO (L13, 6 configs) — all invert on test, architecture not the fix | ✅ |
+| Permutation importance on MLP (L14) — direction features dominate | ✅ |
+| Autoencoder arm (L11) + gap-vs-reconstruction-error overlap — agree on val (2.78×), diverge on test (1.19×) | ✅ |
+| **Reframed MLP** (target = P(YES), direction features excluded) — val ROC jumped 0.62 → **0.94**, test no longer inverts but weak (0.50) due to single-market structure | ✅ |
+| Streaming backtest on reframed MLP — MLP underperforms random (78% vs 93%); home-run 0% hit rate. Honest empirical result. | ✅ |
+| Layer 6 Polygonscan enrichment (55k wallets, 3 Etherscan keys × 9 workers) | 🟡 Running (ETA ~7h) |
+| **Next session**: integrate Layer 6 → rebuild dataset → retrain → re-backtest | ⏭ |
 | Report drafting | ⏭ |
+
+### Key findings so far
+
+- **Full course syllabus coverage**: L02, L04, L05, L07, L08, L09, L11, L13, L14, L15 all have artifacts
+- **Inversion is structural, not architectural** — trade-timestamp split's train/test outcome-distribution asymmetry (70% NO train → 99% YES test) makes direction features toxic on test
+- **Reframing to P(market resolves YES)** with direction features excluded decouples the model from this trap; val ROC leaps to 0.94
+- **Severe overfitting on 7 markets** (train loss 0.005 vs val 5.9) — data-scarcity issue at the market level. Layer 6 features may help by adding trade-specific (not market-identifying) signal
+- **Backtest exposes** that val-learned signal doesn't translate to test PnL. Market over the test window was highly inefficient (any strategy makes 90%+), but MLP underperforms random — the model's confidence actively picks wrong trades
 
 ## 14. References
 

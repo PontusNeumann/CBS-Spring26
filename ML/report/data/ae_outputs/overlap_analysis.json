@@ -1,0 +1,18 @@
+{
+  "val": {
+    "n_trades": 851979,
+    "top10_recon_error_count": 85199,
+    "top10_abs_gap_count": 86681,
+    "intersection": 23701,
+    "expected_if_independent": 8519.8,
+    "ratio_vs_null": 2.782
+  },
+  "test": {
+    "n_trades": 596854,
+    "top10_recon_error_count": 59743,
+    "top10_abs_gap_count": 59704,
+    "intersection": 7072,
+    "expected_if_independent": 5968.5,
+    "ratio_vs_null": 1.185
+  }
+}

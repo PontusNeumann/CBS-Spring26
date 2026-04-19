@@ -1,0 +1,5 @@
+N_days,strategy,n_triggers,total_pnl,avg_pnl_per_trigger,hit_rate,sharpe,max_drawdown,capital_at_risk,return_pct
+14,homerun_N=14d,14761,3440076.85,233.05,0.5103,79.779,704900.0,1476100.0,233.05
+7,homerun_N=7d,13650,2966677.94,217.34,0.4705,69.699,704900.0,1365000.0,217.34
+3,homerun_N=3d,8314,258614.6,31.11,0.1306,8.31,704900.0,831400.0,31.11
+1,homerun_N=1d,7228,-722800.0,-100.0,0.0,,722700.0,722800.0,-100.0

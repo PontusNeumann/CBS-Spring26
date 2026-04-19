@@ -1,0 +1,38 @@
+{
+  "target_yes": [
+    {
+      "split": "val_p_yes_calibrated",
+      "roc_auc": 0.9144,
+      "pr_auc": 0.9617,
+      "brier": 0.0991,
+      "log_loss": 0.2932,
+      "accuracy": 0.8508
+    },
+    {
+      "split": "test_p_yes_calibrated",
+      "roc_auc": 0.5524,
+      "pr_auc": 0.993,
+      "brier": 0.513,
+      "log_loss": 2.6199,
+      "accuracy": 0.4532
+    }
+  ],
+  "derived_bet_correct": [
+    {
+      "split": "val_p_correct",
+      "roc_auc": 0.9395,
+      "pr_auc": 0.935,
+      "brier": 0.0991,
+      "log_loss": 0.2932,
+      "accuracy": 0.8508
+    },
+    {
+      "split": "test_p_correct",
+      "roc_auc": 0.4954,
+      "pr_auc": 0.6536,
+      "brier": 0.513,
+      "log_loss": 2.6199,
+      "accuracy": 0.4532
+    }
+  ]
+}

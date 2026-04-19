@@ -1,0 +1,11 @@
+model,pr_auc,roc_auc,brier,log_loss,accuracy
+naive_market @ val,0.6007,0.5223,0.3092,0.8148,0.4288
+naive_market @ test,0.5598,0.4527,0.3698,1.02,0.5324
+logreg_l2 @ val,0.5113,0.534,0.2513,0.6953,0.5116
+logreg_l2 @ test,0.5507,0.5197,0.2602,0.7158,0.5137
+logreg_l1 @ val,0.5113,0.534,0.2512,0.6953,0.511
+logreg_l1 @ test,0.5503,0.5193,0.2601,0.7156,0.5129
+random_forest @ val,0.5593,0.5821,0.2803,0.7863,0.5859
+random_forest @ test,0.4037,0.2828,0.4246,1.1823,0.4812
+isolation_forest @ val,0.4897,0.5006,0.3285,1.3937,0.4992
+isolation_forest @ test,0.5679,0.53,0.31,1.4398,0.521
