@@ -172,33 +172,42 @@ def panel_missingness(df: pd.DataFrame, out_path: Path) -> pd.Series:
 # 02. Class balance
 # ---------------------------------------------------------------------------
 def panel_class_balance(df: pd.DataFrame, out_path: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(FIG_W_WIDE, 3.6),
-                             constrained_layout=True,
-                             gridspec_kw={"width_ratios": [1, 1.4]})
+    mkt = df.groupby("question")[TARGET_COL].agg(["mean", "size"]).dropna()
+    mkt = mkt.sort_values("mean")
+    n_mkt = len(mkt)
+
+    # Tall figure so 74-market bars don't collide; left panel centred via
+    # a gridspec with spacer rows.
+    from matplotlib.gridspec import GridSpec
+    height = max(4.0, 0.18 * n_mkt + 1.2)
+    fig = plt.figure(figsize=(FIG_W_WIDE, height), constrained_layout=True)
+    gs = GridSpec(3, 2, width_ratios=[1, 1.6], height_ratios=[1, 2.5, 1],
+                  figure=fig)
+    ax_left = fig.add_subplot(gs[1, 0])
+    ax_right = fig.add_subplot(gs[:, 1])
 
     ct = (pd.crosstab(df[SPLIT_COL], df[TARGET_COL], normalize="index") * 100)
     ct = ct.reindex(["train", "val", "test"]).fillna(0)
     ct.columns = ["incorrect", "correct"] if set(ct.columns) == {0, 1} else ct.columns
-    axes[0].bar(ct.index, ct["correct"], color=COL_CORRECT, label="correct",
+    ax_left.bar(ct.index, ct["correct"], color=COL_CORRECT, label="correct",
                 edgecolor="white", width=0.6)
-    axes[0].bar(ct.index, ct["incorrect"], bottom=ct["correct"],
+    ax_left.bar(ct.index, ct["incorrect"], bottom=ct["correct"],
                 color=COL_INCORRECT, label="incorrect", edgecolor="white", width=0.6)
-    axes[0].axhline(50, color=COL_DARK, lw=0.8, ls="--", alpha=0.5)
-    axes[0].set_ylabel("share of trades (%)")
-    axes[0].set_ylim(0, 100)
-    axes[0].legend(frameon=False, loc="lower right")
-    clean_ax(axes[0])
+    ax_left.axhline(50, color=COL_DARK, lw=0.8, ls="--", alpha=0.5)
+    ax_left.set_ylabel("share of trades (%)")
+    ax_left.set_ylim(0, 100)
+    ax_left.legend(frameon=False, loc="lower right", fontsize=7)
+    clean_ax(ax_left)
 
-    mkt = df.groupby("question")[TARGET_COL].agg(["mean", "size"]).dropna()
-    mkt = mkt.sort_values("mean")
     labels = [q[:55] + ("..." if len(q) > 55 else "") for q in mkt.index]
     colors = [COL_CORRECT if v >= 0.5 else COL_INCORRECT for v in mkt["mean"]]
-    axes[1].barh(labels, mkt["mean"], color=colors, edgecolor="white", height=0.7)
-    axes[1].axvline(0.5, color=COL_DARK, lw=0.8, ls="--", alpha=0.5)
-    axes[1].set_xlim(0, 1)
-    axes[1].set_xlabel("mean bet_correct")
-    axes[1].tick_params(axis="y", labelsize=7)
-    clean_ax(axes[1])
+    ax_right.barh(labels, mkt["mean"], color=colors, edgecolor="white", height=0.7)
+    ax_right.axvline(0.5, color=COL_DARK, lw=0.8, ls="--", alpha=0.5)
+    ax_right.set_xlim(0, 1)
+    ax_right.set_xlabel("mean bet_correct")
+    ax_right.tick_params(axis="y", labelsize=6)
+    ax_right.margins(y=0.005)
+    clean_ax(ax_right)
 
     save_fig(fig, out_path)
 
@@ -266,19 +275,29 @@ def panel_outliers(df: pd.DataFrame, out_path: Path, top_k: int = 8) -> None:
         data.append(s.clip(lo, hi).values)
         labels.append(c)
 
-    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 3.8), constrained_layout=True)
-    bp = ax.boxplot(data, tick_labels=labels, vert=True, showfliers=False,
-                    patch_artist=True, widths=0.55,
-                    medianprops=dict(color=COL_DARK, lw=1.0),
-                    whiskerprops=dict(color=COL_DARK, lw=0.8),
-                    capprops=dict(color=COL_DARK, lw=0.8))
-    for i, patch in enumerate(bp["boxes"]):
-        patch.set_facecolor(PAL_10[min(1 + i, 9)])
-        patch.set_edgecolor(COL_DARK)
-        patch.set_alpha(0.8)
-    ax.set_ylabel("value (1–99th percentile clipped)")
-    ax.tick_params(axis="x", rotation=30, labelsize=7)
-    clean_ax(ax)
+    # One subplot per feature with independent y-axes - features have wildly
+    # different scales, so a shared axis squashes most boxes to invisible.
+    n = len(data)
+    n_cols = 4
+    n_rows = (n + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(FIG_W_WIDE, 2.7 * n_rows),
+                             constrained_layout=True)
+    axes_flat = axes.flatten() if n_rows > 1 else [axes] if n_cols == 1 else axes
+    for i, (ax, d, lbl) in enumerate(zip(axes_flat, data, labels)):
+        bp = ax.boxplot([d], tick_labels=[""], vert=True, showfliers=False,
+                        patch_artist=True, widths=0.55,
+                        medianprops=dict(color=COL_DARK, lw=1.0),
+                        whiskerprops=dict(color=COL_DARK, lw=0.8),
+                        capprops=dict(color=COL_DARK, lw=0.8))
+        bp["boxes"][0].set_facecolor(PAL_10[min(1 + i, 9)])
+        bp["boxes"][0].set_edgecolor(COL_DARK)
+        bp["boxes"][0].set_alpha(0.85)
+        ax.set_title(lbl, fontsize=7)
+        ax.tick_params(axis="y", labelsize=7)
+        clean_ax(ax)
+    for ax in axes_flat[len(data):]:
+        ax.set_visible(False)
+    fig.supylabel("value (1–99th percentile clipped)", fontsize=9)
     save_fig(fig, out_path)
 
 
@@ -292,19 +311,24 @@ def panel_correlation(df: pd.DataFrame, out_path: Path, txt_out: Path) -> None:
     )
     corr = sample.corr().fillna(0)
 
+    # Colorbar height tied to heatmap via make_axes_locatable so the bar
+    # spans the same vertical extent as the (square) matrix.
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
     n = len(feat)
-    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.45 * n + 1.2),
-                           constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.45 * n + 1.2))
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="3%", pad=0.15)
     sns.heatmap(
         corr, cmap=C_MAP, vmin=-1, vmax=1, center=0,
         square=True, linewidths=0.0,
-        annot=False, ax=ax,
-        cbar_kws={"pad": 0.02, "aspect": 30, "label": "Pearson r"},
+        annot=False, ax=ax, cbar_ax=cax,
+        cbar_kws={"label": "Pearson r"},
     )
     ax.tick_params(axis="x", rotation=45, labelsize=9)
     ax.tick_params(axis="y", rotation=0, labelsize=9)
     for lbl in ax.get_xticklabels():
         lbl.set_ha("right")
+    fig.tight_layout()
     save_fig(fig, out_path)
 
     upper = corr.abs().where(np.triu(np.ones_like(corr, dtype=bool), k=1))
@@ -351,6 +375,10 @@ def panel_pca_wallets(df: pd.DataFrame, out_path: Path) -> None:
                     edgecolors="none")
     ax.set_xlabel("PC1")
     ax.set_ylabel("PC2")
+    # Clip display range to focus on the dense core; extreme-wallet outliers
+    # sit off-plot but add no readable signal.
+    ax.set_xlim(left=-15)
+    ax.set_ylim(top=25)
     cb = fig.colorbar(sc, ax=ax, shrink=0.75, pad=0.02, aspect=30)
     cb.set_label("wallet mean bet_correct")
     clean_ax(ax)
