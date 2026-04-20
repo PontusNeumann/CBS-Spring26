@@ -17,23 +17,23 @@ the Polymarket Data API's ~7k-per-market cap restricting any market:
 
 Pipeline:
   1. Fetch market metadata for all four events via Polymarket Gamma API.
-  2. Ensure HF `markets.parquet` is present locally; use its condition_id
-     column to route each resolved market to 'hf' or 'api' source.
+  2. Ensure HF `00_hf_markets_master.parquet` is present locally; use its
+     condition_id column to route each resolved market to 'hf' or 'api' source.
   3. Build the 67-market HF trade subset:
        - If `data/trades.parquet` (38.7 GB) is present, filter it locally
          via duckdb.
        - Otherwise stream the remote file over HTTPS via duckdb httpfs,
          filter server-side by condition_id, and cache the result as
-         `data/trades_iran_subset.parquet` (~hundreds of MB). This keeps the
+         `data/00_hf_trades_cache.parquet` (~hundreds of MB). This keeps the
          on-disk footprint small for users with limited space.
   4. Fetch the 7 ceasefire markets' trades via Polymarket Data API (no cap
      impact: max per-market trade count is ~4.5k).
-  5. Normalise schemas, concatenate, write `trades.csv`.
-  6. Run `fetch_polymarket.enrich_trades` (+ expand_features + split) and
-     write `trades_enriched.csv`.
+  5. Normalise schemas, concatenate, write `02_trades.csv`.
+  6. Run `01_polymarket_api.enrich_trades` (+ expand_features + split) and
+     write `03_trades_features.csv`.
 
 Run from the project root:
-    python ML/report/scripts/build_iran_dataset.py
+    python ML/report/scripts/02_build_dataset.py
 
 Flags:
     --skip-download     Fail if parquets are missing instead of downloading.
@@ -56,8 +56,12 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPORT_DIR = SCRIPT_DIR.parent
 DATA_DIR = REPORT_DIR / "data"
 
-sys.path.insert(0, str(SCRIPT_DIR))
-import fetch_polymarket as fp  # noqa: E402
+import importlib.util as _ilu  # noqa: E402
+
+_fp_spec = _ilu.spec_from_file_location("polymarket_api", SCRIPT_DIR / "01_polymarket_api.py")
+fp = _ilu.module_from_spec(_fp_spec)
+sys.modules["polymarket_api"] = fp  # required so @dataclass can resolve cls.__module__
+_fp_spec.loader.exec_module(fp)
 
 HF_REPO = "SII-WANGZJ/Polymarket_data"
 HF_TRADES_URL = (
@@ -70,7 +74,7 @@ ALL_EVENT_IDS = HF_EVENT_IDS | API_EVENT_IDS
 
 # Local cache file containing only the Iran subset of HF trades. This is the
 # output of the remote-stream-filter step; all subsequent reads use it.
-TRADES_SUBSET_NAME = "trades_iran_subset.parquet"
+TRADES_SUBSET_NAME = "00_hf_trades_cache.parquet"
 
 
 def log(msg: str, t0: float | None = None) -> float:
@@ -138,7 +142,7 @@ def build_markets_meta(skip_download: bool, force: bool, t0: float) -> pd.DataFr
     """Build metadata for all resolved sub-markets across the four target events
     using the Polymarket Gamma API as the authoritative source of resolution
     status. Each row is then tagged with `source='hf'` if its condition_id is
-    present in the HF markets.parquet (trades will come from HF) or
+    present in the HF 00_hf_markets_master.parquet (trades will come from HF) or
     `source='api'` otherwise (trades will come from the Polymarket Data API).
     """
     log("fetching market metadata for all four events via Polymarket Gamma API...", t0)
@@ -169,7 +173,7 @@ def build_markets_meta(skip_download: bool, force: bool, t0: float) -> pd.DataFr
         ]
     )
 
-    markets_pq = ensure_parquet("markets.parquet", skip_download, force)
+    markets_pq = ensure_parquet("00_hf_markets_master.parquet", skip_download, force)
     hf_cids = set(pd.read_parquet(markets_pq, columns=["condition_id"])["condition_id"].astype(str))
     markets["source"] = markets["condition_id"].astype(str).apply(
         lambda c: "hf" if c in hf_cids else "api"
@@ -209,7 +213,7 @@ def build_trades_subset_remote(
 ) -> Path:
     """Stream HF trades.parquet over HTTPS in row-group chunks, filter to the
     HF-covered condition_ids, and write only matching rows to a local parquet
-    subset (`data/trades_iran_subset.parquet`).
+    subset (`data/00_hf_trades_cache.parquet`).
 
     Each row group is read independently with bounded retry + reopen on
     failure, so a single transient network or decompression fault no longer
@@ -338,7 +342,7 @@ def build_hf_trades(
 
     If `data/trades.parquet` (the full 38.7 GB file) is present locally, it is
     used directly. Otherwise, the remote-stream-filter path is used, which
-    writes `data/trades_iran_subset.parquet` and reads from that. The subset
+    writes `data/00_hf_trades_cache.parquet` and reads from that. The subset
     becomes the on-disk cache for future runs.
     """
     import duckdb
@@ -514,16 +518,16 @@ def main():
     # Write outputs.
     markets_out = markets.copy()
     markets_out["end_date"] = markets_out["end_date"].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-    markets_out.to_csv(DATA_DIR / "markets.csv", index=False)
-    trades.to_csv(DATA_DIR / "trades.csv", index=False)
+    markets_out.to_csv(DATA_DIR / "01_markets_meta.csv", index=False)
+    trades.to_csv(DATA_DIR / "02_trades.csv", index=False)
     if not api_prices.empty:
-        api_prices.to_csv(DATA_DIR / "prices.csv", index=False)
-    enriched.to_csv(DATA_DIR / "trades_enriched.csv", index=False)
+        api_prices.to_csv(DATA_DIR / "01_prices.csv", index=False)
+    enriched.to_csv(DATA_DIR / "03_trades_features.csv", index=False)
 
     log(f"DONE. enriched: {len(enriched):,} rows x {len(enriched.columns)} cols", t0)
-    log(f"  markets.csv        {(DATA_DIR / 'markets.csv').stat().st_size/1e3:,.0f} KB", t0)
-    log(f"  trades.csv         {(DATA_DIR / 'trades.csv').stat().st_size/1e6:,.1f} MB", t0)
-    log(f"  trades_enriched.csv {(DATA_DIR / 'trades_enriched.csv').stat().st_size/1e6:,.1f} MB", t0)
+    log(f"  01_markets_meta.csv     {(DATA_DIR / '01_markets_meta.csv').stat().st_size/1e3:,.0f} KB", t0)
+    log(f"  02_trades.csv           {(DATA_DIR / '02_trades.csv').stat().st_size/1e6:,.1f} MB", t0)
+    log(f"  03_trades_features.csv  {(DATA_DIR / '03_trades_features.csv').stat().st_size/1e6:,.1f} MB", t0)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ data/enrichment_dashboard.html every 5 seconds. Open the HTML in a browser —
 it meta-refreshes every 5s so it always shows fresh numbers.
 
 Usage:
-  nohup python scripts/render_dashboard.py > /dev/null 2>&1 &
+  nohup python scripts/03b_enrichment_dashboard.py > /dev/null 2>&1 &
   open data/enrichment_dashboard.html
 """
 

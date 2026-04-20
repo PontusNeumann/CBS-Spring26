@@ -11,7 +11,7 @@ history on Polygon, and saves a rich per-wallet output:
     - first_usdc_inbound_ts               timestamp of first USDC received
     - first_usdc_inbound_amount_usd       amount of first USDC inflow
 
-  Timestamp arrays (bisected at trade-time in build_dataset.py for strict
+  Timestamp arrays (bisected at trade-time in 02_build_dataset.py for strict
   causal per-trade features):
     - outbound_ts                 sorted list of outbound ERC-20 tx timestamps
     - inbound_ts                  sorted list of inbound ERC-20 tx timestamps

@@ -1,7 +1,7 @@
 """EDA for the Iran-markets enriched dataset.
 
-Reads `data/trades_enriched.csv` (the mother dataframe produced by
-`build_iran_dataset.py`) and writes figures plus a numeric summary to
+Reads `data/03_trades_features.csv` (the mother dataframe produced by
+`02_build_dataset.py`) and writes figures plus a numeric summary to
 `outputs/eda/`. All figures follow `report/Design.md` conventions so they drop
 straight into the Word document with no post-processing.
 
@@ -16,7 +16,7 @@ EDA stages (aligned to lectures 2, 5, 7):
     08  wallet behavioural quadrants
 
 Usage:
-    python scripts/eda.py [--csv data/trades_enriched.csv] [--out outputs/eda]
+    python scripts/04_eda.py [--csv data/03_trades_features.csv] [--out outputs/eda]
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ PRICE_COL = "price"
 TS_COL = "timestamp"
 
 # Numeric features used in distributions / correlation / outlier panels. All
-# strictly present in `trades_enriched.csv`; anything gated on Polygonscan or
+# strictly present in `03_trades_features.csv`; anything gated on Polygonscan or
 # GDELT is deliberately absent.
 NUM_FEATURES = [
     "log_size",
@@ -138,10 +138,10 @@ def load_dataset(csv_path: Path) -> pd.DataFrame:
     df = pd.read_csv(csv_path, low_memory=False)
     print(f"loaded {len(df):,} rows x {len(df.columns)} cols")
     if "question" not in df.columns:
-        mkts = pd.read_csv(DATA_DIR / "markets.csv",
+        mkts = pd.read_csv(DATA_DIR / "01_markets_meta.csv",
                            usecols=[MARKET_COL, "question"])
         df = df.merge(mkts, on=MARKET_COL, how="left")
-        print("joined question text from markets.csv")
+        print("joined question text from 01_markets_meta.csv")
     return df
 
 
@@ -550,7 +550,7 @@ def write_summary(df: pd.DataFrame, nulls: pd.Series, out_path: Path) -> None:
 # ---------------------------------------------------------------------------
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default=str(DATA_DIR / "trades_enriched.csv"))
+    ap.add_argument("--csv", default=str(DATA_DIR / "03_trades_features.csv"))
     ap.add_argument("--out", default=str(OUT_DIR_DEFAULT))
     args = ap.parse_args()
 

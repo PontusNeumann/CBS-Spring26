@@ -1,6 +1,6 @@
 """[LEGACY] Build labelled feature matrix for Alex's 7-market Iran-strike scope.
 
-SUPERSEDED by `scripts/build_iran_dataset.py`, which covers all 74 markets
+SUPERSEDED by `scripts/02_build_dataset.py`, which covers all 74 markets
 across the four target events using the hybrid HF + API pipeline. Kept for
 historical reference and for the design-decisions log; not part of the v1
 run-book. Input paths below expect the old pipeline's intermediate parquets,
@@ -384,7 +384,7 @@ def sanity_checks(df: pd.DataFrame, t0: float) -> None:
 
 def main() -> None:
     t0 = time.time()
-    log("build_dataset.py start", None)
+    log("02_build_dataset_legacy.py start", None)
 
     df = load_and_join(t0)
     df = add_bucket_and_label(df, t0)

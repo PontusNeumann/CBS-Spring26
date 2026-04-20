@@ -6,17 +6,17 @@ Pulls three layers of data from Polymarket's public APIs:
     3. Trade-level history per market       (Data API)
 
 Outputs CSV files into ../data/ (i.e. report/data/, one level above scripts/).
-Primarily used as a library by scripts/build_iran_dataset.py; the
+Primarily used as a library by scripts/02_build_dataset.py; the
 standalone `main()` is retained for ad-hoc API-only pulls.
 
 Targets: events 114242, 236884, 355299, 357625 (Iran strikes, Iran-Israel/US
 conflict end, Trump ceasefire announcement, ceasefire extensions).
-Run:     python scripts/fetch_polymarket.py
+Run:     python scripts/01_polymarket_api.py
 
 Known limitation of the standalone path: the Data API caps pagination offset
 at ~3000. Side-split fallback lifts the ceiling to ~7000 trades per market.
 For the 67 markets under events 114242 and 236884 this cap is bypassed by
-build_iran_dataset.py, which streams the HuggingFace `SII-WANGZJ/Polymarket_data`
+02_build_dataset.py, which streams the HuggingFace `SII-WANGZJ/Polymarket_data`
 mirror instead.
 """
 
@@ -609,9 +609,9 @@ def run(event_ids: Iterable[str] = TARGET_EVENT_IDS) -> None:
             for m in all_markets
         ]
     )
-    meta.to_csv(OUT_DIR / "markets.csv", index=False)
+    meta.to_csv(OUT_DIR / "01_markets_meta.csv", index=False)
     n_resolved = int(meta["resolved"].sum())
-    print(f"[meta] wrote {len(meta)} rows -> markets.csv ({n_resolved} resolved)")
+    print(f"[meta] wrote {len(meta)} rows -> 01_markets_meta.csv ({n_resolved} resolved)")
 
     price_frames: list[pd.DataFrame] = []
     trade_frames: list[pd.DataFrame] = []
@@ -633,19 +633,19 @@ def run(event_ids: Iterable[str] = TARGET_EVENT_IDS) -> None:
     prices = pd.DataFrame()
     if price_frames:
         prices = pd.concat([f for f in price_frames if not f.empty], ignore_index=True)
-        prices.to_csv(OUT_DIR / "prices.csv", index=False)
-        print(f"[prices] wrote {len(prices)} rows -> prices.csv")
+        prices.to_csv(OUT_DIR / "01_prices.csv", index=False)
+        print(f"[prices] wrote {len(prices)} rows -> 01_prices.csv")
     if trade_frames:
         trades = pd.concat([f for f in trade_frames if not f.empty], ignore_index=True)
-        trades.to_csv(OUT_DIR / "trades.csv", index=False)
-        print(f"[trades] wrote {len(trades)} rows -> trades.csv")
+        trades.to_csv(OUT_DIR / "02_trades.csv", index=False)
+        print(f"[trades] wrote {len(trades)} rows -> 02_trades.csv")
 
         enriched = enrich_trades(trades, meta, prices)
-        enriched.to_csv(OUT_DIR / "trades_enriched.csv", index=False)
+        enriched.to_csv(OUT_DIR / "03_trades_features.csv", index=False)
         n_labeled = int(enriched["bet_correct"].notna().sum())
         n_priced = int(enriched["market_implied_prob"].notna().sum()) if "market_implied_prob" in enriched.columns else 0
         print(
-            f"[enriched] wrote {len(enriched)} rows -> trades_enriched.csv "
+            f"[enriched] wrote {len(enriched)} rows -> 03_trades_features.csv "
             f"({n_labeled} labeled, {n_priced} with implied prob)"
         )
 

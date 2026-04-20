@@ -175,7 +175,7 @@ LLM_TABLE_ROWS = [
     ],
     [
         "2",
-        "Data extraction pipeline (fetch_polymarket.py, build_iran_dataset.py)",
+        "Data extraction pipeline (01_polymarket_api.py, 02_build_dataset.py)",
         "Authors + LLM",
         "Claude (Anthropic, Opus 4.7)",
         "Code drafting and refactoring",
@@ -185,7 +185,7 @@ LLM_TABLE_ROWS = [
     ],
     [
         "3",
-        "Exploratory data analysis script (eda.py)",
+        "Exploratory data analysis script (04_eda.py)",
         "Authors + LLM",
         "Claude (Anthropic, Opus 4.7)",
         "Code drafting to the Design.md specification",

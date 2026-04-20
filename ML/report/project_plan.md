@@ -80,8 +80,8 @@ The efficient-market null for Polymarket is that the market-implied price alread
 
 The project has deliberately chosen to re-stream the 38.7 GB HF trades parquet for each additional event cluster rather than download the full file once (~39 GB on disk).
 
-- Each cluster build takes ~60 min network + ~15 min enrichment, producing a cluster-specific `trades_iran_subset.parquet` (tens of MB) and `trades_enriched.csv` (hundreds of MB to ~1 GB).
-- After N clusters are built, their `trades_enriched.csv` files are concatenated into a single mother frame on disk. The concatenation must recompute two families of columns because they are cluster-local: (a) the running/prior features (`wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_prior_win_rate`, `market_trade_count_so_far`, `market_volume_so_far_usd`, `market_price_vol_last_1h`, and the `wallet_trades_in_market_last_*min` family), and (b) the `split` column, which is a trade-timestamp quantile inside the cluster and must be reissued globally on the merged frame.
+- Each cluster build takes ~60 min network + ~15 min enrichment, producing a cluster-specific `00_hf_trades_cache.parquet` (tens of MB) and `03_trades_features.csv` (hundreds of MB to ~1 GB).
+- After N clusters are built, their `03_trades_features.csv` files are concatenated into a single mother frame on disk. The concatenation must recompute two families of columns because they are cluster-local: (a) the running/prior features (`wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_prior_win_rate`, `market_trade_count_so_far`, `market_volume_so_far_usd`, `market_price_vol_last_1h`, and the `wallet_trades_in_market_last_*min` family), and (b) the `split` column, which is a trade-timestamp quantile inside the cluster and must be reissued globally on the merged frame.
 - Rationale for repeated streams over a one-time full download: disk is tight, the cluster list is small (Iran now, potentially Maduro / Biden pardons later per §8), and the per-cluster subset parquets are the only permanent cache we need to keep.
 
 ## 5. Method, Mapped to Course Lectures
@@ -197,9 +197,9 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 | 3 | True resolution-timestamp derivation (`resolution_ts`) and `settlement_minus_trade_sec` | done (19 Apr) | 2 |
 | 4 | Running market and wallet features (market-state, wallet-global) | done (19 Apr) | 2 |
 | 5 | Expanded six-layer feature set — time, log_size, wallet-in-market bursting, directional purity, position-aware, interactions | done (19 Apr, Alex-adoption pass) | 2 |
-| 6 | Trade-timestamp temporal split column in `trades_enriched.csv` | done (19 Apr, Alex-adoption pass) | 5 |
-| 7 | Hybrid HF + API build script (`scripts/build_iran_dataset.py`), rewritten 20 Apr to use pyarrow + fsspec chunked row-group reads with retry + reopen (duckdb httpfs hit Snappy decompression errors mid-stream on the 38.7 GB file) | done (20 Apr) | 5 |
-| 8 | Run the hybrid build end-to-end for the Iran cluster (events 114242, 236884, 355299, 357625). Output: `data/trades_enriched.csv`, 1,209,787 rows × 57 cols, 806 MB; 67 HF markets + 7 API markets; no market truncated. HF stream took ~64 min; enrichment ~13 min | done (20 Apr) | 7 |
+| 6 | Trade-timestamp temporal split column in `03_trades_features.csv` | done (19 Apr, Alex-adoption pass) | 5 |
+| 7 | Hybrid HF + API build script (`scripts/02_build_dataset.py`), rewritten 20 Apr to use pyarrow + fsspec chunked row-group reads with retry + reopen (duckdb httpfs hit Snappy decompression errors mid-stream on the 38.7 GB file) | done (20 Apr) | 5 |
+| 8 | Run the hybrid build end-to-end for the Iran cluster (events 114242, 236884, 355299, 357625). Output: `data/03_trades_features.csv`, 1,209,787 rows × 57 cols, 806 MB; 67 HF markets + 7 API markets; no market truncated. HF stream took ~64 min; enrichment ~13 min | done (20 Apr) | 7 |
 | 9 | Post-resolution filter applied (`settlement_minus_trade_sec > 0`) in modelling | open | 3 |
 | 10 | Polygonscan on-chain wallet enrichment | deferred (no API key, free-data-only scope) | 2 |
 | 11 | GDELT news-timing enrichment | deferred (free API, awaits feature-definition design) | 2 |
@@ -243,16 +243,22 @@ report/
 │       └── handover_<older>.md
 │
 ├── scripts/                          # Data-pipeline and modelling code
-│   ├── build_iran_dataset.py         # Primary entry point. Hybrid HF + API builder.
-│   ├── fetch_polymarket.py           # Gamma / CLOB / Data API client; feature enrichment.
-│   ├── build_dataset.py              # Legacy API-only builder. Superseded by build_iran_dataset.py but kept for reference.
-│   ├── enrich_onchain.py             # Polygonscan / Etherscan batch enrichment. Deferred — not wired in for v1.
-│   ├── eda.py                        # EDA plots and summary tables; reads trades_enriched.csv, writes to outputs/eda/.
-│   └── render_dashboard.py           # Live HTML dashboard for long-running enrichment runs.
+│   ├── 01_polymarket_api.py          # Gamma / CLOB / Data API client; feature enrichment library.
+│   ├── 02_build_dataset.py           # Primary entry point. Hybrid HF + API builder.
+│   ├── 02_build_dataset_legacy.py    # Legacy API-only builder. Superseded by 02_build_dataset.py but kept for reference.
+│   ├── 03_enrich_wallets.py          # Polygonscan / Etherscan batch enrichment. Deferred — not wired in for v1.
+│   ├── 03b_enrichment_dashboard.py   # Live HTML dashboard for long-running enrichment runs.
+│   ├── 04_eda.py                     # EDA plots and summary tables; reads 03_trades_features.csv, writes to outputs/eda/.
+│   ├── 05_docx_fix_text.py           # One-shot: align docx body text with project state.
+│   └── 06_docx_insert_eda.py         # One-shot: insert EDA narrative and appendix into the docx.
 │
 ├── data/                             # Local data outputs; .gitignored except for snapshots
-│   ├── markets.parquet               # HF markets metadata cache (116 MB)
-│   ├── trades.csv / prices.csv / trades_enriched.csv   # Produced by build_iran_dataset.py
+│   ├── 00_hf_markets_master.parquet  # HF markets metadata cache (116 MB) — routing table
+│   ├── 00_hf_trades_cache.parquet    # HF-path Iran trades cache (~50 MB)
+│   ├── 01_markets_meta.csv           # Iran markets metadata (74 resolved)
+│   ├── 01_prices.csv                 # Iran intraday price history
+│   ├── 02_trades.csv                 # Concatenated Iran trades (HF + API)
+│   ├── 03_trades_features.csv        # Mother dataframe (features + labels + split)
 │   └── _backup_<date>/               # Pre-refetch snapshots of the CSVs
 │
 ├── outputs/                          # Generated artefacts from scripts
@@ -268,6 +274,6 @@ report/
 ```
 
 **Reproduction workflow.** From `report/`:
-1. `python scripts/build_iran_dataset.py` — streams the HF subset, pulls the ceasefire markets via the API, writes `data/trades_enriched.csv` with train/val/test labels.
-2. `python scripts/eda.py` — writes plots and `report.html` into `outputs/eda/`.
+1. `python scripts/02_build_dataset.py` — streams the HF subset, pulls the ceasefire markets via the API, writes `data/03_trades_features.csv` with train/val/test labels.
+2. `python scripts/04_eda.py` — writes plots and `report.html` into `outputs/eda/`.
 3. Modelling code — to be added under `scripts/` (MLP, baselines, calibration, backtest). Each script reads from `data/`, writes to `outputs/<stage>/`.
