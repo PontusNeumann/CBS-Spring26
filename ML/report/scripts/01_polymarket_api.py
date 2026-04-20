@@ -282,6 +282,15 @@ def _add_running_market_features(df: pd.DataFrame) -> pd.DataFrame:
     df["market_price_vol_last_1h"] = vol
     df["market_vol_1h_log"] = np.log1p(vol_1h.fillna(0.0))
     df["market_vol_24h_log"] = np.log1p(vol_24h.fillna(0.0))
+
+    # Contextual market-state control: share of BUY trades in the market so
+    # far, strictly before t. Bounded in [0, 1]; informed-flow pressure shifts
+    # this away from 0.5 as informed wallets concentrate on one side.
+    if "side" in df.columns:
+        is_buy = df["side"].astype(str).str.upper().eq("BUY").astype("int64")
+        prior_buys = is_buy.groupby(df["condition_id"]).cumsum() - is_buy
+        n_prior = df["market_trade_count_so_far"]
+        df["market_buy_share_running"] = prior_buys / n_prior.where(n_prior > 0)
     return df
 
 
@@ -394,6 +403,58 @@ WHALE_QUANTILE = 0.95
 SPLIT_QUANTILES = (0.70, 0.85)
 
 
+# Canonical feature groupings for downstream feature-importance plots and
+# the methodology narrative. Keeps cluster membership in one place so the
+# plot stays readable as the feature count grows.
+FEATURE_CLUSTERS: dict[str, list[str]] = {
+    "trade_local": [
+        "log_size", "side", "outcomeIndex", "trade_value_usd",
+    ],
+    "market_context": [
+        "market_trade_count_so_far",
+        "market_volume_so_far_usd",
+        "market_price_vol_last_1h",
+        "market_vol_1h_log",
+        "market_vol_24h_log",
+        "market_buy_share_running",
+    ],
+    "time": [
+        "time_to_settlement_s", "log_time_to_settlement", "pct_time_elapsed",
+    ],
+    "wallet_global": [
+        "wallet_prior_trades", "wallet_prior_volume_usd",
+        "wallet_prior_win_rate", "wallet_first_minus_trade_sec",
+    ],
+    "bet_slicing": [
+        "wallet_trades_in_market_last_1min",
+        "wallet_trades_in_market_last_10min",
+        "wallet_trades_in_market_last_60min",
+        "wallet_is_burst",
+        "wallet_prior_trades_in_market",
+        "wallet_cumvol_same_side_last_10min",
+        "wallet_median_gap_in_market",
+    ],
+    "spread_builder": [
+        "wallet_directional_purity_in_market",
+        "wallet_has_both_sides_in_market",
+        "wallet_spread_ratio",
+    ],
+    "whale_exit": [
+        "wallet_position_size_before_trade",
+        "trade_size_vs_position_pct",
+        "is_position_exit",
+        "is_position_flip",
+        "wallet_is_whale_in_market",
+    ],
+    "interactions": [
+        "size_vs_wallet_avg",
+        "size_x_time_to_settlement",
+        "size_vs_market_cumvol_pct",
+        "size_vs_market_avg",
+    ],
+}
+
+
 def _rolling_count_by_group(
     df: pd.DataFrame, group_cols: list[str], window: str
 ) -> pd.Series:
@@ -486,6 +547,16 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
         df[f"wallet_trades_in_market_last_{'10min'}"] >= BURST_K
     ).astype("int64")
 
+    # Median gap between consecutive trades within (wallet, market), over all
+    # pairs strictly before t. Expanding median over .diff() gaps, shifted by 1
+    # within group so row k uses only gaps from pairs fully before k.
+    gaps_sec = (df.groupby([wallet_col, "condition_id"])["timestamp"]
+                  .diff().dt.total_seconds())
+    df["wallet_median_gap_in_market"] = (
+        gaps_sec.groupby([df[wallet_col], df["condition_id"]])
+                .transform(lambda s: s.expanding().median().shift(1))
+    )
+
     # --- Wallet-in-market directional purity ---
     oi = pd.to_numeric(df["outcomeIndex"], errors="coerce")
     is0 = (oi == 0).astype("int64")
@@ -563,6 +634,14 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
     # mark abnormally big bets relative to the market's activity so far.
     mv_prior = pd.to_numeric(df.get("market_volume_so_far_usd"), errors="coerce")
     df["size_vs_market_cumvol_pct"] = tv / mv_prior.where(mv_prior > 0)
+
+    # Trade size relative to the running mean trade size in the market so far
+    # (strictly prior). Complements size_vs_market_cumvol_pct: the fraction
+    # version captures absolute market dominance, this one captures
+    # "big-relative-to-typical-trade."
+    mc_prior = pd.to_numeric(df.get("market_trade_count_so_far"), errors="coerce")
+    avg_size_market = mv_prior / mc_prior.where(mc_prior > 0)
+    df["size_vs_market_avg"] = tv / avg_size_market.where(avg_size_market > 0)
 
     return df
 
