@@ -77,6 +77,14 @@ The efficient-market null for Polymarket is that the market-implied price alread
 | Class balance | Current `bet_correct` rate is 0.518, inside the 35 to 65 percent band, so no resampling is required up front. If imbalance develops after filtering or per split fold, apply `class_weight="balanced"` first, then SMOTE on the training fold only as a secondary option (Lecture 7). |
 | Known limitation | Previously: Polymarket Data API caps pagination offset at ~7000 trades per market (after side-split), truncating 21 of 74 markets. **Mitigated** by routing events 114242 and 236884 through the HuggingFace mirror, which carries the complete on-chain trade history for those 67 markets. Residual limitation: the HF snapshot cutoff of 2026-03-31; any market still trading or created after that date must use the API path (which applies only to the 7 ceasefire markets, each well under the ~7k ceiling). |
 
+### Multi-cluster data strategy
+
+The project has deliberately chosen to re-stream the 38.7 GB HF trades parquet for each additional event cluster rather than download the full file once (~39 GB on disk).
+
+- Each cluster build takes ~60 min network + ~15 min enrichment, producing a cluster-specific `trades_iran_subset.parquet` (tens of MB) and `trades_enriched.csv` (hundreds of MB to ~1 GB).
+- After N clusters are built, their `trades_enriched.csv` files are concatenated into a single mother frame on disk. The concatenation must recompute two families of columns because they are cluster-local: (a) the running/prior features (`wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_prior_win_rate`, `market_trade_count_so_far`, `market_volume_so_far_usd`, `market_price_vol_last_1h`, and the `wallet_trades_in_market_last_*min` family), and (b) the `split` column, which is a trade-timestamp quantile inside the cluster and must be reissued globally on the merged frame.
+- Rationale for repeated streams over a one-time full download: disk is tight, the cluster list is small (Iran now, potentially Maduro / Biden pardons later per §8), and the per-cluster subset parquets are the only permanent cache we need to keep.
+
 ## 5. Method, Mapped to Course Lectures
 
 ### 5.1 Primary model: MLP for probability estimation (Lectures 8, 9)
@@ -191,8 +199,8 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 | 4 | Running market and wallet features (market-state, wallet-global) | done (19 Apr) | 2 |
 | 5 | Expanded six-layer feature set — time, log_size, wallet-in-market bursting, directional purity, position-aware, interactions | done (19 Apr, Alex-adoption pass) | 2 |
 | 6 | Trade-timestamp temporal split column in `trades_enriched.csv` | done (19 Apr, Alex-adoption pass) | 5 |
-| 7 | Hybrid HF + API build script (`scripts/build_iran_dataset.py`) using duckdb httpfs for remote-stream-filter of the HF trades parquet | done (19 Apr, code) | 5 |
-| 8 | Run the hybrid build to lift the ~7k cap on 21 markets | **pending user run** | 7 |
+| 7 | Hybrid HF + API build script (`scripts/build_iran_dataset.py`), rewritten 20 Apr to use pyarrow + fsspec chunked row-group reads with retry + reopen (duckdb httpfs hit Snappy decompression errors mid-stream on the 38.7 GB file) | done (20 Apr) | 5 |
+| 8 | Run the hybrid build end-to-end for the Iran cluster (events 114242, 236884, 355299, 357625). Output: `data/trades_enriched.csv`, 1,209,787 rows × 57 cols, 806 MB; 67 HF markets + 7 API markets; no market truncated. HF stream took ~64 min; enrichment ~13 min | done (20 Apr) | 7 |
 | 9 | Post-resolution filter applied (`settlement_minus_trade_sec > 0`) in modelling | open | 3 |
 | 10 | Polygonscan on-chain wallet enrichment | deferred (no API key, free-data-only scope) | 2 |
 | 11 | GDELT news-timing enrichment | deferred (free API, awaits feature-definition design) | 2 |

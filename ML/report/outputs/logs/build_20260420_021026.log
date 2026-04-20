@@ -1,0 +1,19 @@
+building Iran markets dataset (hybrid HF + Polymarket API)...
+[   0.0s] fetching market metadata for all four events via Polymarket Gamma API...
+[   1.6s] Gamma markets across target events: 83 total, 74 resolved
+[   2.7s] markets routed:  hf=67  api=7  (by-event: {('114242', 'hf'): 64, ('236884', 'hf'): 3, ('355299', 'api'): 5, ('357625', 'api'): 2})
+[   2.8s] markets union: 74 rows   (hf=67, api=7)
+[   4.5s] streaming https://huggingface.co/datasets/SII-WANGZJ/Polymarket_data/resolve/main/trades.parquet via duckdb httpfs; filtering to 67 condition_ids; writing trades_iran_subset.parquet
+[   4.5s]   network transfer ~38.7 GB one-time; local disk footprint = subset only
+Traceback (most recent call last):
+  File "/Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/scripts/build_iran_dataset.py", line 426, in <module>
+    main()
+  File "/Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/scripts/build_iran_dataset.py", line 389, in main
+    hf_trades = build_hf_trades(markets, args.skip_download, args.force_download, t0)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/scripts/build_iran_dataset.py", line 269, in build_hf_trades
+    source_path = build_trades_subset_remote(markets, force, t0)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/scripts/build_iran_dataset.py", line 220, in build_trades_subset_remote
+    con.execute(
+_duckdb.InvalidInputException: Invalid Input Error: Failed to read file "https://huggingface.co/datasets/SII-WANGZJ/Polymarket_data/resolve/main/trades.parquet": Snappy decompression failure

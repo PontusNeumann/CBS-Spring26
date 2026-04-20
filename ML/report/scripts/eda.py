@@ -1,37 +1,22 @@
-"""Comprehensive EDA script for the Iran-markets enriched dataset.
+"""EDA for the Iran-markets enriched dataset.
 
-Reads the enriched per-trade table produced by `build_iran_dataset.py` and
-writes figures plus a numeric summary to `outputs/eda/`. The loader accepts
-either `data/trades_enriched.parquet` or `data/trades_enriched.csv`; extension
-is auto-detected.
+Reads `data/trades_enriched.csv` (the mother dataframe produced by
+`build_iran_dataset.py`) and writes figures plus a numeric summary to
+`outputs/eda/`. All figures follow `report/Design.md` conventions so they drop
+straight into the Word document with no post-processing.
 
-Covers every item in the EDA test plan from PR #1:
-  1. Shape + null check
-  2. Class balance per bucket + per market
-  3. Feature distributions + skewness (confirms log1p choices)
-  4. Correlation heatmap — identify near-duplicates
-  5. PCA projection — the behavioural-taxonomy four-quadrant plot
-  6. Per-market price trajectory + volume timing
-  7. Wallet-level aggregates: who are the whales, the spread-builders, the
-     brand-new wallets? (distribution summaries)
-  8. Magamyman-window inspection — what's happening in Feb 27-28 trades?
+EDA stages (aligned to lectures 2, 5, 7):
+    01  shape + dtypes + missingness            (L2 preprocessing)
+    02  class balance per split + per market    (target)
+    03  feature distributions split by target + skewness table
+    04  outlier boxplots on top-skew features   (L7)
+    05  correlation heatmap + redundant pairs
+    06  PCA on wallet behavioural aggregates    (L5)
+    07  per-market price trajectory
+    08  wallet behavioural quadrants
 
 Usage:
-  python scripts/eda.py
-    [--labeled data/trades_enriched.csv]
-    [--out outputs/eda/]
-
-Outputs (under `outputs/eda/`):
-    01_class_balance.png
-    02_feature_distributions.png
-    03_skewness_table.csv
-    04_correlation_heatmap.png
-    05_pca_wallets.png
-    06_price_trajectories.png
-    07_feb28_final_days_volume.png
-    08_wallet_type_distributions.png
-    summary.txt
-    report.html
+    python scripts/eda.py [--csv data/trades_enriched.csv] [--out outputs/eda]
 """
 
 from __future__ import annotations
@@ -43,430 +28,495 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from matplotlib.colors import LinearSegmentedColormap
 
 ROOT = Path(__file__).resolve().parents[1]
-sns.set_theme(style="whitegrid", context="paper")
-plt.rcParams.update({"figure.dpi": 110, "savefig.dpi": 150, "font.size": 9})
-
-# A restrained palette that reads well in print (for the report)
-PALETTE = {
-    "train": "#4C72B0",
-    "val": "#DD8452",
-    "test": "#55A868",
-    "correct": "#2E8B57",
-    "incorrect": "#C44E52",
-    "accent": "#7B2CBF",
-}
+DATA_DIR = ROOT / "data"
+OUT_DIR_DEFAULT = ROOT / "outputs" / "eda"
 
 
-# -----------------------------------------------------------------------------
-# 1. Shape + sanity
-# -----------------------------------------------------------------------------
-def basic_diagnostics(df: pd.DataFrame, out_txt_path: Path) -> None:
-    lines = []
-    lines.append(f"dataset shape: {df.shape}")
-    lines.append(f"total unique wallets (taker): {df['wallet'].nunique():,}")
-    lines.append(f"total unique markets: {df['condition_id'].nunique()}")
-    lines.append(f"total nulls: {int(df.isna().sum().sum()):,}")
-    lines.append("\nbucket sizes:")
-    lines.append(str(df["bucket"].value_counts().to_frame("n")))
-    lines.append("\nbet_correct mean per bucket:")
-    lines.append(str(df.groupby("bucket")["bet_correct"].mean().round(3)))
-    lines.append("\nbet_correct mean per market (resolved + trades):")
-    per_market = (
-        df.groupby(["question", "resolved"])
-        .agg(n_trades=("bet_correct", "size"), correct_rate=("bet_correct", "mean"))
-        .round(3)
-    )
-    lines.append(str(per_market))
-    out_txt_path.write_text("\n".join(lines))
-    print("\n".join(lines))
+# ---------------------------------------------------------------------------
+# Design.md theme
+# ---------------------------------------------------------------------------
+sns.set_theme(style="white", context="paper")
+plt.rcParams.update({
+    "figure.dpi": 140,
+    "savefig.dpi": 300,
+    "font.size": 9,
+    "axes.titlesize": 10,
+    "axes.labelsize": 9,
+    "legend.fontsize": 8,
+})
+
+C_MAP = sns.color_palette("rocket_r", as_cmap=True)
+PAL_10 = sns.color_palette("rocket_r", 10)
+PAL_K = [PAL_10[i] for i in (1, 3, 6, 8, 9)]
+INK = PAL_10[8]
+COL_DARK = "0.15"
+COL_CORRECT = PAL_10[6]
+COL_INCORRECT = PAL_10[2]
+
+FIG_W = 6.3
+FIG_W_HALF = 3.1
+FIG_W_WIDE = 7.8
 
 
-# -----------------------------------------------------------------------------
-# 2. Class balance
-# -----------------------------------------------------------------------------
-def plot_class_balance(df: pd.DataFrame, out_path: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4), constrained_layout=True)
+def clean_ax(ax) -> None:
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
 
-    # Per bucket
-    ct = pd.crosstab(df["bucket"], df["bet_correct"], normalize="index") * 100
-    ct = ct.reindex(["train", "val", "test"])
-    ct.plot(
-        kind="bar",
-        stacked=True,
-        ax=axes[0],
-        color=[PALETTE["incorrect"], PALETTE["correct"]],
-        edgecolor="white",
-        width=0.7,
-    )
-    axes[0].set_title("bet_correct rate per bucket")
-    axes[0].set_ylabel("% of trades")
-    axes[0].set_xlabel("")
-    axes[0].legend(["incorrect", "correct"], frameon=False)
-    axes[0].tick_params(axis="x", rotation=0)
 
-    # Per market
-    mkt = df.groupby("question")["bet_correct"].mean().sort_values()
-    colors = [
-        PALETTE["correct"] if v >= 0.5 else PALETTE["incorrect"] for v in mkt.values
-    ]
-    axes[1].barh(
-        [
-            q.replace("US strikes Iran by ", "").replace(", 2026?", "")
-            for q in mkt.index
-        ],
-        mkt.values,
-        color=colors,
-        edgecolor="white",
-    )
-    axes[1].axvline(0.5, color="black", linestyle="--", lw=0.8, alpha=0.5)
+def save_fig(fig, path: Path) -> None:
+    fig.savefig(path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print(f"saved {path.name}")
+
+
+# ---------------------------------------------------------------------------
+# Feature taxonomies — grouped by the six layers in project_plan.md §4
+# ---------------------------------------------------------------------------
+TARGET_COL = "bet_correct"
+SPLIT_COL = "split"
+WALLET_COL = "proxyWallet"
+MARKET_COL = "condition_id"
+PRICE_COL = "price"
+TS_COL = "timestamp"
+
+# Numeric features used in distributions / correlation / outlier panels. All
+# strictly present in `trades_enriched.csv`; anything gated on Polygonscan or
+# GDELT is deliberately absent.
+NUM_FEATURES = [
+    "log_size",
+    "time_to_settlement_s",
+    "log_time_to_settlement",
+    "pct_time_elapsed",
+    "trade_value_usd",
+    "market_trade_count_so_far",
+    "market_volume_so_far_usd",
+    "market_price_vol_last_1h",
+    "wallet_prior_trades",
+    "wallet_prior_volume_usd",
+    "wallet_prior_win_rate",
+    "wallet_first_minus_trade_sec",
+    "wallet_trades_in_market_last_1min",
+    "wallet_trades_in_market_last_10min",
+    "wallet_trades_in_market_last_60min",
+    "wallet_directional_purity_in_market",
+    "wallet_spread_ratio",
+    "wallet_position_size_before_trade",
+    "trade_size_vs_position_pct",
+    "size_vs_wallet_avg",
+    "size_x_time_to_settlement",
+]
+
+# Distributions panel is a 3x4 grid, so take the first 12 that exist.
+DIST_PRIORITY = [
+    "log_size",
+    "log_time_to_settlement",
+    "pct_time_elapsed",
+    "market_price_vol_last_1h",
+    "market_volume_so_far_usd",
+    "wallet_prior_trades",
+    "wallet_prior_win_rate",
+    "wallet_directional_purity_in_market",
+    "wallet_spread_ratio",
+    "wallet_trades_in_market_last_10min",
+    "trade_size_vs_position_pct",
+    "size_x_time_to_settlement",
+]
+
+
+# ---------------------------------------------------------------------------
+# Load
+# ---------------------------------------------------------------------------
+def load_dataset(csv_path: Path) -> pd.DataFrame:
+    print(f"loading {csv_path}...")
+    df = pd.read_csv(csv_path, low_memory=False)
+    print(f"loaded {len(df):,} rows x {len(df.columns)} cols")
+    if "question" not in df.columns:
+        mkts = pd.read_csv(DATA_DIR / "markets.csv",
+                           usecols=[MARKET_COL, "question"])
+        df = df.merge(mkts, on=MARKET_COL, how="left")
+        print("joined question text from markets.csv")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# 01. Shape, dtypes, missingness
+# ---------------------------------------------------------------------------
+def panel_missingness(df: pd.DataFrame, out_path: Path) -> pd.Series:
+    nulls = df.isna().sum()
+    present = nulls[nulls > 0].sort_values(ascending=True)
+    if present.empty:
+        print("no nulls present; skipping missingness figure")
+        return nulls
+
+    fig, ax = plt.subplots(figsize=(FIG_W, max(2.5, 0.22 * len(present))),
+                           constrained_layout=True)
+    pct = present / len(df) * 100
+    ax.barh(pct.index, pct.values, color=INK, edgecolor="white", height=0.7)
+    for y, (name, v) in enumerate(pct.items()):
+        ax.text(v + 0.5, y, f"{v:.1f}%", va="center", fontsize=7, color=COL_DARK)
+    ax.set_xlabel("missing (%)")
+    ax.set_xlim(0, max(pct.max() * 1.15, 5))
+    clean_ax(ax)
+    save_fig(fig, out_path)
+    return nulls
+
+
+# ---------------------------------------------------------------------------
+# 02. Class balance
+# ---------------------------------------------------------------------------
+def panel_class_balance(df: pd.DataFrame, out_path: Path) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_W_WIDE, 3.6),
+                             constrained_layout=True,
+                             gridspec_kw={"width_ratios": [1, 1.4]})
+
+    ct = (pd.crosstab(df[SPLIT_COL], df[TARGET_COL], normalize="index") * 100)
+    ct = ct.reindex(["train", "val", "test"]).fillna(0)
+    ct.columns = ["incorrect", "correct"] if set(ct.columns) == {0, 1} else ct.columns
+    axes[0].bar(ct.index, ct["correct"], color=COL_CORRECT, label="correct",
+                edgecolor="white", width=0.6)
+    axes[0].bar(ct.index, ct["incorrect"], bottom=ct["correct"],
+                color=COL_INCORRECT, label="incorrect", edgecolor="white", width=0.6)
+    axes[0].axhline(50, color=COL_DARK, lw=0.8, ls="--", alpha=0.5)
+    axes[0].set_ylabel("share of trades (%)")
+    axes[0].set_ylim(0, 100)
+    axes[0].legend(frameon=False, loc="lower right")
+    clean_ax(axes[0])
+
+    mkt = df.groupby("question")[TARGET_COL].agg(["mean", "size"]).dropna()
+    mkt = mkt.sort_values("mean")
+    labels = [q[:55] + ("..." if len(q) > 55 else "") for q in mkt.index]
+    colors = [COL_CORRECT if v >= 0.5 else COL_INCORRECT for v in mkt["mean"]]
+    axes[1].barh(labels, mkt["mean"], color=colors, edgecolor="white", height=0.7)
+    axes[1].axvline(0.5, color=COL_DARK, lw=0.8, ls="--", alpha=0.5)
     axes[1].set_xlim(0, 1)
-    axes[1].set_title("bet_correct rate per market")
     axes[1].set_xlabel("mean bet_correct")
+    axes[1].tick_params(axis="y", labelsize=7)
+    clean_ax(axes[1])
 
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"saved {out_path.name}")
+    save_fig(fig, out_path)
 
 
-# -----------------------------------------------------------------------------
-# 3. Feature distributions + skewness
-# -----------------------------------------------------------------------------
-def plot_feature_distributions(
-    df: pd.DataFrame, out_path: Path, skew_out: Path
-) -> None:
-    feat_cols = [
-        "log_size",
-        "log_time_to_settlement",
-        "pct_time_elapsed",
-        "market_cumvol_log",
-        "market_price_std_1h",
-        "wallet_polymarket_age_days",
-        "wallet_prior_trades_log",
-        "wallet_directional_purity_in_market",
-        "wallet_spread_ratio",
-        "wallet_trades_in_market_last_10min",
-        "trade_size_vs_position_pct",
-        "size_x_log_time",
-    ]
-    present = [c for c in feat_cols if c in df.columns]
-    fig, axes = plt.subplots(3, 4, figsize=(14, 9), constrained_layout=True)
+# ---------------------------------------------------------------------------
+# 03. Feature distributions split by target + skewness table
+# ---------------------------------------------------------------------------
+def panel_distributions(df: pd.DataFrame, fig_path: Path, skew_path: Path) -> None:
+    present = [c for c in DIST_PRIORITY if c in df.columns]
+    if len(present) < 12:
+        extra = [c for c in NUM_FEATURES if c in df.columns and c not in present]
+        present = (present + extra)[:12]
+
+    n_rows, n_cols = 3, 4
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(FIG_W_WIDE, 6.3),
+                             constrained_layout=True)
     for ax, col in zip(axes.flatten(), present):
-        # separate by bet_correct
-        for lbl, cc in [(0, PALETTE["incorrect"]), (1, PALETTE["correct"])]:
-            vals = (
-                df.loc[df["bet_correct"] == lbl, col]
-                .replace([np.inf, -np.inf], np.nan)
-                .dropna()
-            )
-            if len(vals) > 0:
-                # clip for plotting readability
-                lo, hi = np.percentile(vals, [1, 99])
-                vals = vals.clip(lo, hi)
-                ax.hist(
-                    vals,
-                    bins=40,
-                    alpha=0.55,
-                    color=cc,
-                    label=f"correct={lbl}",
-                    density=True,
-                )
-        ax.set_title(col, fontsize=9)
-        ax.tick_params(labelsize=8)
-    axes[0, 0].legend(fontsize=7)
-    fig.suptitle("Feature distributions split by bet_correct", y=1.02)
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"saved {out_path.name}")
+        for lbl, color in [(0, COL_INCORRECT), (1, COL_CORRECT)]:
+            vals = pd.to_numeric(
+                df.loc[df[TARGET_COL] == lbl, col], errors="coerce"
+            ).replace([np.inf, -np.inf], np.nan).dropna()
+            if vals.empty:
+                continue
+            lo, hi = np.percentile(vals, [1, 99])
+            if lo == hi:
+                continue
+            vals = vals.clip(lo, hi)
+            ax.hist(vals, bins=40, alpha=0.55, color=color,
+                    label="correct" if lbl == 1 else "incorrect",
+                    density=True)
+        ax.set_title(col, fontsize=8)
+        ax.tick_params(labelsize=7)
+        clean_ax(ax)
+    axes[0, 0].legend(frameon=False, fontsize=7)
+    save_fig(fig, fig_path)
 
-    # Skewness table
-    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    skew_vals = df[numeric_cols].skew().sort_values(key=abs, ascending=False)
-    skew_vals.to_csv(skew_out, header=["skewness"])
-    print(f"saved {skew_out.name} — top 10 most skewed:")
-    print(skew_vals.head(10).round(2))
+    numeric_cols = [c for c in NUM_FEATURES if c in df.columns]
+    skew = (df[numeric_cols].apply(pd.to_numeric, errors="coerce")
+                             .replace([np.inf, -np.inf], np.nan)
+                             .skew()
+                             .sort_values(key=abs, ascending=False))
+    skew.to_csv(skew_path, header=["skewness"])
+    print(f"saved {skew_path.name} — top 8 most skewed:")
+    print(skew.head(8).round(2).to_string())
 
 
-# -----------------------------------------------------------------------------
-# 4. Correlation heatmap
-# -----------------------------------------------------------------------------
-def plot_correlation_heatmap(df: pd.DataFrame, out_path: Path) -> None:
-    feat_cols = [c for c in df.columns if df[c].dtype.kind in "bif"]
-    drop_meta = {
-        "timestamp",
-        "block_number",
-        "settlement_ts",
-        "polygon_first_tx_ts",
-        "first_usdc_inbound_ts",
-    }
-    feat_cols = [c for c in feat_cols if c not in drop_meta]
-    # subsample rows if very big for speed
-    sample = df[feat_cols].sample(min(50_000, len(df)), random_state=42)
-    corr = sample.corr(numeric_only=True).fillna(0)
-    fig, ax = plt.subplots(figsize=(14, 11), constrained_layout=True)
-    sns.heatmap(
-        corr,
-        cmap="coolwarm",
-        center=0,
-        vmin=-1,
-        vmax=1,
-        annot=False,
-        ax=ax,
-        cbar_kws={"shrink": 0.7, "label": "Pearson r"},
+# ---------------------------------------------------------------------------
+# 04. Outlier boxplots on top-skew features
+# ---------------------------------------------------------------------------
+def panel_outliers(df: pd.DataFrame, out_path: Path, top_k: int = 8) -> None:
+    numeric_cols = [c for c in NUM_FEATURES if c in df.columns]
+    skew = (df[numeric_cols].apply(pd.to_numeric, errors="coerce")
+                             .replace([np.inf, -np.inf], np.nan)
+                             .skew()
+                             .sort_values(key=abs, ascending=False))
+    cols = skew.head(top_k).index.tolist()
+
+    data, labels = [], []
+    for c in cols:
+        s = pd.to_numeric(df[c], errors="coerce")
+        s = s.replace([np.inf, -np.inf], np.nan).dropna()
+        if s.empty:
+            continue
+        lo, hi = np.percentile(s, [1, 99])
+        data.append(s.clip(lo, hi).values)
+        labels.append(c)
+
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 3.8), constrained_layout=True)
+    bp = ax.boxplot(data, labels=labels, vert=True, showfliers=False,
+                    patch_artist=True, widths=0.55,
+                    medianprops=dict(color=COL_DARK, lw=1.0),
+                    whiskerprops=dict(color=COL_DARK, lw=0.8),
+                    capprops=dict(color=COL_DARK, lw=0.8))
+    for i, patch in enumerate(bp["boxes"]):
+        patch.set_facecolor(PAL_10[min(1 + i, 9)])
+        patch.set_edgecolor(COL_DARK)
+        patch.set_alpha(0.8)
+    ax.set_ylabel("value (1–99th percentile clipped)")
+    ax.tick_params(axis="x", rotation=30, labelsize=7)
+    clean_ax(ax)
+    save_fig(fig, out_path)
+
+
+# ---------------------------------------------------------------------------
+# 05. Correlation heatmap
+# ---------------------------------------------------------------------------
+def panel_correlation(df: pd.DataFrame, out_path: Path, txt_out: Path) -> None:
+    feat = [c for c in NUM_FEATURES if c in df.columns]
+    sample = df[feat].apply(pd.to_numeric, errors="coerce").sample(
+        min(100_000, len(df)), random_state=42
     )
-    ax.set_title("Feature correlation heatmap (50k-row sample)")
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"saved {out_path.name}")
+    corr = sample.corr().fillna(0)
 
-    # Report highly-correlated feature pairs
-    corr_abs = corr.abs()
-    # Mask the diagonal and lower triangle (avoid duplicates)
-    upper = corr_abs.where(np.triu(np.ones_like(corr_abs, dtype=bool), k=1))
-    pairs = upper.stack().sort_values(ascending=False).head(20).round(3)
-    print("\ntop 20 feature-pair correlations (|r| desc):")
-    print(pairs.to_string())
+    n = len(feat)
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.45 * n + 1.2),
+                           constrained_layout=True)
+    sns.heatmap(
+        corr, cmap=C_MAP, vmin=-1, vmax=1, center=0,
+        square=True, linewidths=0.0,
+        annot=False, ax=ax,
+        cbar_kws={"pad": 0.02, "aspect": 30, "label": "Pearson r"},
+    )
+    ax.tick_params(axis="x", rotation=45, labelsize=9)
+    ax.tick_params(axis="y", rotation=0, labelsize=9)
+    for lbl in ax.get_xticklabels():
+        lbl.set_ha("right")
+    save_fig(fig, out_path)
+
+    upper = corr.abs().where(np.triu(np.ones_like(corr, dtype=bool), k=1))
+    pairs = (upper.stack().sort_values(ascending=False).head(20).round(3))
+    with txt_out.open("w") as f:
+        f.write("top 20 |Pearson r| feature pairs\n")
+        f.write(pairs.to_string())
+    print(f"saved {txt_out.name} — top 20 pairs written")
 
 
-# -----------------------------------------------------------------------------
-# 5. PCA projection — wallet-level taxonomy
-# -----------------------------------------------------------------------------
-def plot_pca_wallets(df: pd.DataFrame, out_path: Path) -> None:
+# ---------------------------------------------------------------------------
+# 06. Wallet PCA
+# ---------------------------------------------------------------------------
+def panel_pca_wallets(df: pd.DataFrame, out_path: Path) -> None:
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
 
-    # Aggregate per wallet: behavioural summary
-    agg = (
-        df.groupby("wallet")
-        .agg(
-            trades=("bet_correct", "size"),
-            correct_rate=("bet_correct", "mean"),
-            log_size_mean=("log_size", "mean"),
-            age_days_at_last=("wallet_polymarket_age_days", "max"),
-            purity=("wallet_directional_purity_in_market", "mean"),
-            burst_rate=("wallet_is_burst", "mean"),
-            whale=("wallet_is_whale_in_market", "max"),
-            spread_ratio=("wallet_spread_ratio", "mean"),
-            n_markets=("wallet_prior_markets", "max"),
-        )
-        .query("trades >= 5")  # drop noisy single-trade wallets
-    )
+    agg = (df.groupby(WALLET_COL)
+             .agg(trades=(TARGET_COL, "size"),
+                  correct_rate=(TARGET_COL, "mean"),
+                  log_size_mean=("log_size", "mean"),
+                  purity=("wallet_directional_purity_in_market", "mean"),
+                  burst_rate=("wallet_is_burst", "mean"),
+                  whale=("wallet_is_whale_in_market", "max"),
+                  spread_ratio=("wallet_spread_ratio", "mean"),
+                  prior_vol=("wallet_prior_volume_usd", "max"))
+             .query("trades >= 5"))
+    if agg.empty:
+        print("pca skipped — no wallets with >=5 trades")
+        return
 
-    features = [
-        "log_size_mean",
-        "age_days_at_last",
-        "purity",
-        "burst_rate",
-        "spread_ratio",
-        "n_markets",
-    ]
-    X = agg[features].replace([np.inf, -np.inf], np.nan).fillna(0).values
+    features = ["log_size_mean", "purity", "burst_rate",
+                "spread_ratio", "prior_vol"]
+    X = (agg[features].replace([np.inf, -np.inf], np.nan)
+                      .fillna(agg[features].median(numeric_only=True))
+                      .to_numpy())
     Xs = StandardScaler().fit_transform(X)
     pcs = PCA(n_components=2).fit_transform(Xs)
 
-    fig, ax = plt.subplots(figsize=(8, 6), constrained_layout=True)
-    sc = ax.scatter(
-        pcs[:, 0],
-        pcs[:, 1],
-        c=agg["correct_rate"],
-        cmap="RdYlGn",
-        s=8,
-        alpha=0.6,
-        vmin=0,
-        vmax=1,
-        edgecolors="none",
-    )
+    fig, ax = plt.subplots(figsize=(FIG_W, 4.4), constrained_layout=True)
+    sc = ax.scatter(pcs[:, 0], pcs[:, 1],
+                    c=agg["correct_rate"], cmap=C_MAP,
+                    s=6, alpha=0.6, vmin=0.3, vmax=0.7,
+                    edgecolors="none")
     ax.set_xlabel("PC1")
     ax.set_ylabel("PC2")
-    ax.set_title(
-        f"Wallet-level PCA (n={len(agg):,} wallets with ≥5 trades) — colour = mean correctness"
-    )
-    cb = fig.colorbar(sc, ax=ax, shrink=0.75)
+    cb = fig.colorbar(sc, ax=ax, shrink=0.75, pad=0.02, aspect=30)
     cb.set_label("wallet mean bet_correct")
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"saved {out_path.name}")
+    clean_ax(ax)
+    save_fig(fig, out_path)
+    print(f"  pca on {len(agg):,} wallets with >=5 trades")
 
 
-# -----------------------------------------------------------------------------
-# 6. Per-market price trajectory
-# -----------------------------------------------------------------------------
-def plot_price_trajectories(df: pd.DataFrame, out_path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(12, 6), constrained_layout=True)
-    order = df.groupby("question")["settlement_ts"].first().sort_values().index.tolist()
-    cmap = plt.get_cmap("viridis", len(order))
+# ---------------------------------------------------------------------------
+# 07. Per-market price trajectory
+# ---------------------------------------------------------------------------
+def panel_price_trajectories(df: pd.DataFrame, out_path: Path) -> None:
+    ts = pd.to_datetime(df[TS_COL], utc=True, errors="coerce")
+    use = df.assign(_ts=ts).dropna(subset=["_ts", PRICE_COL, "question"])
+    order = (use.groupby("question")["_ts"].min().sort_values().index.tolist())
+    n = len(order)
+    colors = sns.color_palette("rocket_r", max(n, 3))
+
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 4.2), constrained_layout=True)
     for i, q in enumerate(order):
-        sub = df[df["question"] == q].sort_values("timestamp")
-        # downsample for legibility
-        sub = sub.iloc[:: max(1, len(sub) // 2000)]
-        ax.plot(
-            pd.to_datetime(sub["timestamp"], unit="s", utc=True),
-            sub["price"],
-            lw=0.5,
-            alpha=0.7,
-            color=cmap(i),
-            label=q.replace("US strikes Iran by ", "").replace(", 2026?", ""),
-        )
-    ax.set_xlabel("Trade timestamp")
-    ax.set_ylabel("Trade price (token1 probability)")
+        sub = use[use["question"] == q].sort_values("_ts")
+        if len(sub) > 2000:
+            sub = sub.iloc[:: max(1, len(sub) // 2000)]
+        short = q[:50] + ("..." if len(q) > 50 else "")
+        ax.plot(sub["_ts"], sub[PRICE_COL], lw=0.4, alpha=0.7,
+                color=colors[i], label=short)
+    ax.set_xlabel("trade time")
+    ax.set_ylabel("trade price")
     ax.set_ylim(0, 1)
-    ax.set_title("Per-market price trajectory across 7 sub-markets")
-    ax.legend(loc="upper left", fontsize=8, ncol=2, frameon=False)
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"saved {out_path.name}")
+    if n <= 20:
+        ax.legend(loc="center left", bbox_to_anchor=(1.0, 0.5),
+                  fontsize=6, frameon=False, ncol=1)
+    clean_ax(ax)
+    save_fig(fig, out_path)
 
 
-# -----------------------------------------------------------------------------
-# 7. Feb-27/28 volume spike
-# -----------------------------------------------------------------------------
-def plot_feb28_spike(df: pd.DataFrame, out_path: Path) -> None:
-    feb28 = df[df["question"] == "US strikes Iran by February 28, 2026?"].copy()
-    feb28["hour"] = pd.to_datetime(feb28["timestamp"], unit="s", utc=True).dt.floor("h")
-    hourly = feb28.groupby("hour").agg(
-        trades=("usd_amount", "size"),
-        volume=("usd_amount", "sum"),
-        correct_rate=("bet_correct", "mean"),
-    )
-    fig, ax1 = plt.subplots(figsize=(12, 5), constrained_layout=True)
-    ax1.plot(
-        hourly.index,
-        hourly["volume"],
-        color=PALETTE["accent"],
-        lw=1.5,
-        label="hourly USD volume",
-    )
-    ax1.set_ylabel("hourly USD volume", color=PALETTE["accent"])
-    ax1.tick_params(axis="y", labelcolor=PALETTE["accent"])
-    ax2 = ax1.twinx()
-    ax2.plot(
-        hourly.index,
-        hourly["correct_rate"],
-        color=PALETTE["train"],
-        lw=1,
-        alpha=0.6,
-        label="hourly correct rate",
-    )
-    ax2.set_ylabel("hourly correct rate", color=PALETTE["train"])
-    ax2.set_ylim(0, 1)
-    ax2.tick_params(axis="y", labelcolor=PALETTE["train"])
-    ax1.set_title(
-        "Feb 28 market — hourly volume and correctness (Magamyman's window is Feb 27-28)"
-    )
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
-    print(f"saved {out_path.name}")
-
-
-# -----------------------------------------------------------------------------
-# 8. Wallet-type distributions
-# -----------------------------------------------------------------------------
-def plot_wallet_types(df: pd.DataFrame, out_path: Path) -> None:
-    agg = df.groupby("wallet").agg(
-        trades=("bet_correct", "size"),
-        mean_purity=("wallet_directional_purity_in_market", "mean"),
+# ---------------------------------------------------------------------------
+# 08. Wallet behavioural quadrants
+# ---------------------------------------------------------------------------
+def panel_wallet_quadrants(df: pd.DataFrame, out_path: Path, txt_out: Path) -> None:
+    agg = df.groupby(WALLET_COL).agg(
+        trades=(TARGET_COL, "size"),
+        purity=("wallet_directional_purity_in_market", "mean"),
         burst_rate=("wallet_is_burst", "mean"),
-        whale_any=("wallet_is_whale_in_market", "max"),
-        new=("wallet_is_new_to_polymarket", "max"),
-        correct_rate=("bet_correct", "mean"),
-    )
-    fig, axes = plt.subplots(2, 2, figsize=(11, 8), constrained_layout=True)
+        correct_rate=(TARGET_COL, "mean"),
+    ).query("trades >= 5")
+    if agg.empty:
+        print("wallet quadrants skipped — no wallets with >=5 trades")
+        return
 
-    axes[0, 0].hist(
-        agg["mean_purity"].dropna(), bins=40, color=PALETTE["accent"], alpha=0.8
-    )
-    axes[0, 0].set_title("directional purity — wallet mean")
-    axes[0, 0].set_xlabel("purity")
+    fig, axes = plt.subplots(2, 2, figsize=(FIG_W_WIDE, 5.6),
+                             constrained_layout=True)
+
+    axes[0, 0].hist(agg["purity"].dropna(), bins=40, color=PAL_10[3],
+                    alpha=0.85, edgecolor="white")
+    axes[0, 0].set_xlabel("wallet mean directional purity")
     axes[0, 0].set_ylabel("n wallets")
+    clean_ax(axes[0, 0])
 
-    axes[0, 1].hist(
-        agg["burst_rate"].dropna(), bins=40, color=PALETTE["train"], alpha=0.8
-    )
-    axes[0, 1].set_title("burst rate — share of wallet's trades that are bursty")
-    axes[0, 1].set_xlabel("burst rate")
+    axes[0, 1].hist(agg["burst_rate"].dropna(), bins=40, color=PAL_10[5],
+                    alpha=0.85, edgecolor="white")
+    axes[0, 1].set_xlabel("wallet burst rate")
     axes[0, 1].set_ylabel("n wallets")
+    clean_ax(axes[0, 1])
 
-    axes[1, 0].hist(
-        np.log1p(agg["trades"]), bins=40, color=PALETTE["correct"], alpha=0.8
-    )
-    axes[1, 0].set_title("wallet trade count (log1p) — the Pareto tail")
-    axes[1, 0].set_xlabel("log1p(trades)")
+    axes[1, 0].hist(np.log1p(agg["trades"]), bins=40, color=PAL_10[7],
+                    alpha=0.85, edgecolor="white")
+    axes[1, 0].set_xlabel("log1p(wallet trades)")
     axes[1, 0].set_ylabel("n wallets")
+    clean_ax(axes[1, 0])
 
-    # correctness by wallet-type quadrant
-    q_high_purity = agg["mean_purity"] > 0.7
-    q_bursty = agg["burst_rate"] > 0.2
-    quadrants = pd.Series(index=agg.index, dtype=object)
-    quadrants[q_high_purity & q_bursty] = "pure + bursty\n(informed?)"
-    quadrants[q_high_purity & ~q_bursty] = "pure, not bursty\n(retail)"
-    quadrants[~q_high_purity & q_bursty] = "not pure, bursty\n(MM/vol)"
-    quadrants[~q_high_purity & ~q_bursty] = "not pure, not bursty\n(rebalancer)"
-    by_q = agg.groupby(quadrants)["correct_rate"].mean()
-    by_q.plot(
-        kind="bar",
-        ax=axes[1, 1],
-        color=[
-            PALETTE["accent"],
-            PALETTE["train"],
-            PALETTE["val"],
-            PALETTE["incorrect"],
-        ],
-    )
-    axes[1, 1].axhline(0.5, color="black", linestyle="--", lw=0.8, alpha=0.5)
-    axes[1, 1].set_title("mean correct rate per behavioural quadrant")
+    high_p = agg["purity"] > 0.7
+    hi_b = agg["burst_rate"] > 0.2
+    labels = pd.Series(index=agg.index, dtype=object)
+    labels[high_p & hi_b] = "pure + bursty"
+    labels[high_p & ~hi_b] = "pure, not bursty"
+    labels[~high_p & hi_b] = "mixed + bursty"
+    labels[~high_p & ~hi_b] = "mixed, not bursty"
+    order = ["pure + bursty", "pure, not bursty",
+             "mixed + bursty", "mixed, not bursty"]
+    summary = agg.groupby(labels).agg(
+        n_wallets=("correct_rate", "size"),
+        mean_correct=("correct_rate", "mean"),
+    ).reindex(order)
+
+    colors = [PAL_10[i] for i in (2, 4, 6, 8)]
+    axes[1, 1].bar(summary.index, summary["mean_correct"], color=colors,
+                   edgecolor="white")
+    axes[1, 1].axhline(0.5, color=COL_DARK, lw=0.8, ls="--", alpha=0.5)
+    axes[1, 1].set_ylim(0.3, 0.7)
     axes[1, 1].set_ylabel("mean bet_correct")
-    axes[1, 1].tick_params(axis="x", rotation=20)
+    axes[1, 1].tick_params(axis="x", rotation=18, labelsize=7)
+    clean_ax(axes[1, 1])
 
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
+    save_fig(fig, out_path)
+
+    with txt_out.open("w") as f:
+        f.write("wallet behavioural quadrants (wallets with >=5 trades)\n\n")
+        f.write(summary.round(3).to_string())
+    print(f"saved {txt_out.name}")
+
+
+# ---------------------------------------------------------------------------
+# summary.txt
+# ---------------------------------------------------------------------------
+def write_summary(df: pd.DataFrame, nulls: pd.Series, out_path: Path) -> None:
+    lines = []
+    lines.append("=" * 60)
+    lines.append(f"shape: {df.shape[0]:,} rows x {df.shape[1]} cols")
+    lines.append(f"wallets ({WALLET_COL}): {df[WALLET_COL].nunique():,}")
+    lines.append(f"markets ({MARKET_COL}): {df[MARKET_COL].nunique()}")
+    lines.append(f"timespan: {pd.to_datetime(df[TS_COL]).min()} "
+                 f"-> {pd.to_datetime(df[TS_COL]).max()}")
+    lines.append(f"{TARGET_COL} mean: {df[TARGET_COL].mean():.3f}")
+
+    lines.append("")
+    lines.append("split sizes and target mean:")
+    lines.append(df.groupby(SPLIT_COL)[TARGET_COL]
+                  .agg(["size", "mean"]).round(3).to_string())
+
+    lines.append("")
+    lines.append("missing cells (columns with >0 nulls):")
+    present = nulls[nulls > 0].sort_values(ascending=False)
+    if present.empty:
+        lines.append("  none")
+    else:
+        pct = (present / len(df) * 100).round(2)
+        lines.append(pd.DataFrame({"n": present, "pct": pct}).to_string())
+
+    lines.append("")
+    lines.append("per-market correctness (top 5 + bottom 5):")
+    per_market = (df.groupby("question")[TARGET_COL]
+                    .agg(["size", "mean"]).round(3)
+                    .sort_values("mean"))
+    lines.append("bottom 5:")
+    lines.append(per_market.head(5).to_string())
+    lines.append("top 5:")
+    lines.append(per_market.tail(5).to_string())
+
+    out_path.write_text("\n".join(str(x) for x in lines))
     print(f"saved {out_path.name}")
-    print("\nquadrant correctness means:")
-    print(by_q.round(3))
 
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Main
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--labeled", default=str(ROOT / "data" / "trades_enriched.csv")
-    )
-    ap.add_argument("--out", default=str(ROOT / "outputs" / "eda"))
+    ap.add_argument("--csv", default=str(DATA_DIR / "trades_enriched.csv"))
+    ap.add_argument("--out", default=str(OUT_DIR_DEFAULT))
     args = ap.parse_args()
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"loading {args.labeled}...")
-    labeled_path = Path(args.labeled)
-    if labeled_path.suffix == ".parquet":
-        df = pd.read_parquet(labeled_path)
-    else:
-        df = pd.read_csv(labeled_path)
-    print(f"loaded {len(df):,} rows, {len(df.columns)} columns")
+    df = load_dataset(Path(args.csv))
 
-    # Attach question text from markets.csv if missing
-    if "question" not in df.columns:
-        mkts = pd.read_csv(
-            ROOT / "data" / "markets.csv",
-            usecols=["condition_id", "question"],
-        )
-        df = df.merge(mkts, on="condition_id", how="left")
-        print("joined question text from markets.csv")
-
-    basic_diagnostics(df, out_dir / "summary.txt")
-    plot_class_balance(df, out_dir / "01_class_balance.png")
-    plot_feature_distributions(
-        df, out_dir / "02_feature_distributions.png", out_dir / "03_skewness_table.csv"
-    )
-    plot_correlation_heatmap(df, out_dir / "04_correlation_heatmap.png")
-    plot_pca_wallets(df, out_dir / "05_pca_wallets.png")
-    plot_price_trajectories(df, out_dir / "06_price_trajectories.png")
-    plot_feb28_spike(df, out_dir / "07_feb28_final_days_volume.png")
-    plot_wallet_types(df, out_dir / "08_wallet_type_distributions.png")
+    nulls = panel_missingness(df, out_dir / "01_missingness.png")
+    panel_class_balance(df, out_dir / "02_class_balance.png")
+    panel_distributions(df,
+                        out_dir / "03_feature_distributions.png",
+                        out_dir / "03_skewness_table.csv")
+    panel_outliers(df, out_dir / "04_outlier_boxplots.png")
+    panel_correlation(df,
+                      out_dir / "05_correlation_heatmap.png",
+                      out_dir / "05_top_correlations.txt")
+    panel_pca_wallets(df, out_dir / "06_pca_wallets.png")
+    panel_price_trajectories(df, out_dir / "07_price_trajectories.png")
+    panel_wallet_quadrants(df,
+                           out_dir / "08_wallet_quadrants.png",
+                           out_dir / "08_wallet_quadrants.txt")
+    write_summary(df, nulls, out_dir / "summary.txt")
 
     print(f"\nall EDA outputs in {out_dir}/")
 

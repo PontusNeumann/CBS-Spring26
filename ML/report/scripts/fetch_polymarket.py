@@ -349,6 +349,11 @@ def enrich_trades(
         )
         df["asset"] = df["asset"].astype(str)
         pm["asset"] = pm["asset"].astype(str)
+        # pandas 3.0 returns datetime64[s, UTC] from pd.to_datetime(..., unit="s");
+        # merge_asof rejects mixed precision on the sort key, so normalise both
+        # sides to ns here.
+        df["timestamp"] = df["timestamp"].astype("datetime64[ns, UTC]")
+        pm["timestamp"] = pm["timestamp"].astype("datetime64[ns, UTC]")
         df = df.sort_values("timestamp").reset_index(drop=True)
         pm = pm.sort_values("timestamp").reset_index(drop=True)
         df = pd.merge_asof(

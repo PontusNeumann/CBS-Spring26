@@ -183,21 +183,44 @@ def build_markets_meta(skip_download: bool, force: bool, t0: float) -> pd.DataFr
     return markets
 
 
+HF_TRADES_COLUMNS = [
+    "timestamp", "block_number", "transaction_hash", "condition_id",
+    "maker", "taker", "taker_direction", "maker_direction",
+    "nonusdc_side", "price", "usd_amount", "token_amount",
+]
+REMOTE_READ_MAX_ATTEMPTS = 6
+REMOTE_READ_BACKOFF_CAP_S = 60
+
+
+def _open_remote_parquet_handle():
+    """Open a fresh seekable, byte-range-backed file handle to the HF parquet.
+
+    A new handle is opened on every retry so a transient connection fault
+    cannot poison subsequent reads.
+    """
+    import fsspec
+
+    of = fsspec.open(HF_TRADES_URL, "rb")
+    return of.open()
+
+
 def build_trades_subset_remote(
     markets: pd.DataFrame, force: bool, t0: float
 ) -> Path:
-    """Stream HF trades.parquet over HTTPS via duckdb's httpfs, filter to the
-    HF-covered condition_ids server-side, and write only matching rows to a
-    local parquet subset (`data/trades_iran_subset.parquet`).
+    """Stream HF trades.parquet over HTTPS in row-group chunks, filter to the
+    HF-covered condition_ids, and write only matching rows to a local parquet
+    subset (`data/trades_iran_subset.parquet`).
 
-    Rationale: the full HF trades.parquet is ~38.7 GB, which may not fit on
-    disk. The filtered subset is ~200-500 MB. duckdb streams the remote file
-    in row groups, reads only required columns, keeps only rows matching the
-    WHERE clause in memory, then writes the filtered result locally.
+    Each row group is read independently with bounded retry + reopen on
+    failure, so a single transient network or decompression fault no longer
+    aborts the whole 38.7 GB transfer (as duckdb httpfs did). The parquet
+    footer is fetched once via HTTP Range; only row-group byte ranges are
+    transferred thereafter.
 
     Network transfer = full 38.7 GB one time (no parquet filter-pushdown on
     condition_id unless the producer wrote row-group stats); local disk usage
-    = subset size only.
+    = subset size only. Output is written to a `.tmp` file and atomically
+    renamed on success, so an aborted run leaves no half-written subset.
     """
     subset = DATA_DIR / TRADES_SUBSET_NAME
     if subset.exists() and not force:
@@ -205,34 +228,100 @@ def build_trades_subset_remote(
             f"({subset.stat().st_size/1e6:,.1f} MB); reusing", t0)
         return subset
 
-    import duckdb
+    import pyarrow as pa
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
 
     hf_mask = markets["source"] == "hf"
     hf_cids = markets.loc[hf_mask, "condition_id"].astype(str).tolist()
-    log(f"streaming {HF_TRADES_URL} via duckdb httpfs; "
+    hf_cids_arr = pa.array(hf_cids, type=pa.string())
+
+    log(f"streaming {HF_TRADES_URL} via pyarrow + fsspec (row-group chunked); "
         f"filtering to {len(hf_cids)} condition_ids; "
         f"writing {subset.name}", t0)
     log("  network transfer ~38.7 GB one-time; local disk footprint = subset only", t0)
 
-    con = duckdb.connect()
-    con.execute("INSTALL httpfs; LOAD httpfs;")
-    con.execute("SET enable_progress_bar = true;")
-    con.execute(
-        """
-        COPY (
-            SELECT timestamp, block_number, transaction_hash, condition_id,
-                   maker, taker, taker_direction, maker_direction,
-                   nonusdc_side, price, usd_amount, token_amount
-            FROM read_parquet($url)
-            WHERE CAST(condition_id AS VARCHAR) IN (SELECT UNNEST(CAST($cids AS VARCHAR[])))
-        ) TO $out (FORMAT PARQUET, COMPRESSION ZSTD)
-        """,
-        {"url": HF_TRADES_URL, "cids": hf_cids, "out": str(subset)},
-    )
-    con.close()
+    fh = _open_remote_parquet_handle()
+    pf = pq.ParquetFile(fh)
+    num_rg = pf.num_row_groups
+    total_rows = pf.metadata.num_rows
+    log(f"remote parquet: {num_rg} row groups, {total_rows:,} rows", t0)
 
+    tmp = subset.with_suffix(subset.suffix + ".tmp")
+    if tmp.exists():
+        tmp.unlink()
+
+    writer = None
+    rows_read = 0
+    rows_kept = 0
+
+    for rg_idx in range(num_rg):
+        tbl = None
+        last_err: Exception | None = None
+        for attempt in range(1, REMOTE_READ_MAX_ATTEMPTS + 1):
+            try:
+                tbl = pf.read_row_group(rg_idx, columns=HF_TRADES_COLUMNS)
+                break
+            except Exception as e:
+                last_err = e
+                backoff = min(REMOTE_READ_BACKOFF_CAP_S, 2 ** attempt)
+                log(f"  row group {rg_idx}: attempt {attempt}/"
+                    f"{REMOTE_READ_MAX_ATTEMPTS} failed "
+                    f"({type(e).__name__}: {e}); reopening and retrying "
+                    f"in {backoff}s", t0)
+                try:
+                    fh.close()
+                except Exception:
+                    pass
+                time.sleep(backoff)
+                fh = _open_remote_parquet_handle()
+                pf = pq.ParquetFile(fh)
+        if tbl is None:
+            if writer is not None:
+                writer.close()
+            raise RuntimeError(
+                f"row group {rg_idx} failed after "
+                f"{REMOTE_READ_MAX_ATTEMPTS} attempts: {last_err}"
+            )
+
+        rows_read += tbl.num_rows
+        mask = pc.is_in(
+            pc.cast(tbl["condition_id"], pa.string()),
+            value_set=hf_cids_arr,
+        )
+        filtered = tbl.filter(mask)
+        if filtered.num_rows:
+            if writer is None:
+                writer = pq.ParquetWriter(
+                    str(tmp), filtered.schema, compression="zstd"
+                )
+            writer.write_table(filtered)
+            rows_kept += filtered.num_rows
+
+        if (rg_idx + 1) % 10 == 0 or rg_idx == num_rg - 1:
+            pct = 100.0 * (rg_idx + 1) / num_rg
+            log(f"  progress: row group {rg_idx+1}/{num_rg} ({pct:5.1f}%)  "
+                f"rows_read={rows_read:,}  rows_kept={rows_kept:,}", t0)
+
+    if writer is not None:
+        writer.close()
+    try:
+        fh.close()
+    except Exception:
+        pass
+
+    if rows_kept == 0 or not tmp.exists():
+        if tmp.exists():
+            tmp.unlink()
+        raise RuntimeError(
+            "no rows matched the HF condition_id filter — schema mismatch "
+            "or empty intersection; aborting"
+        )
+
+    tmp.rename(subset)
     size_mb = subset.stat().st_size / 1e6
-    log(f"subset written: {subset.name}  ({size_mb:,.1f} MB)", t0)
+    log(f"subset written: {subset.name}  ({size_mb:,.1f} MB, "
+        f"{rows_kept:,} rows)", t0)
     return subset
 
 
@@ -313,7 +402,9 @@ def build_hf_trades(
 
     df["outcomeIndex"] = df.apply(_oidx, axis=1)
 
-    ts = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    ts = pd.to_datetime(df["timestamp"], utc=True, errors="coerce").astype(
+        "datetime64[ns, UTC]"
+    )
     out = pd.DataFrame(
         {
             "proxyWallet": df["taker"].astype(str),
