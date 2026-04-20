@@ -8,7 +8,6 @@
 **Document purpose:** Finalise the research question, approach, and method, and map each methodological choice to the course syllabus. Supersedes earlier options discussed in the handover and in chat.
 
 **Companion documents (read-only supporting material):**
-- `docs/design-decisions.md` — running rationale log. Every non-trivial decision, the alternatives considered, and the justification. The plan summarises; the log carries the reasoning.
 - `handovers/handover_<date>.md` — per-session handover covering only the most recent work done. Anything that matters long-term is folded back into this plan.
 - `docs/archive/mldp-project-overview.md` — Alex's narrower 7-sub-market proposal. Superseded by this plan; kept for history only.
 
@@ -204,7 +203,7 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 | 9 | Post-resolution filter applied (`settlement_minus_trade_sec > 0`) in modelling | open | 3 |
 | 10 | Polygonscan on-chain wallet enrichment | deferred (no API key, free-data-only scope) | 2 |
 | 11 | GDELT news-timing enrichment | deferred (free API, awaits feature-definition design) | 2 |
-| 12 | EDA notebook following repository Design.md conventions | open | 9 |
+| 12 | EDA script following repository Design.md conventions; figures and tables inserted into report Appendix with cross-references from the EDA body | done (20 Apr) | 8 |
 | 13 | MLP training and baselines (logistic regression, random forest, isolation forest, naive market, autoencoder) | open | 6 |
 | 14 | Isotonic calibration on validation slice | open | 13 |
 | 15 | Streaming event-replay backtest — general +EV and home-run, cutoff-date sweep | open | 14 |
@@ -233,9 +232,8 @@ report/
 ├── ML_final_exam_paper.docx          # The paper itself — updated with text and results as the project progresses
 ├── project_plan.md                   # This file. The source of truth. Read first.
 │
-├── docs/                             # Supporting design documents
-│   ├── design-decisions.md           # Running rationale log with alternatives considered
-│   └── archive/                      # Superseded material kept for history
+├── docs/                             # Superseded material kept for history
+│   └── archive/
 │       └── mldp-project-overview.md  # Alex's narrower 7-sub-market proposal (superseded)
 │
 ├── handovers/                        # Per-session handovers; latest only at top level
