@@ -1,0 +1,10 @@
+volume and mean bet_correct by time-to-settlement bucket
+
+        trades    volume_usd  mean_correct
+bucket                                    
+<1h      31926  1.012269e+07        0.5442
+1-6h     75645  2.230523e+07        0.5088
+6-24h   209170  4.524150e+07        0.5292
+1-7d    421442  7.315627e+07        0.4872
+7-30d   284107  4.055115e+07        0.4967
+>30d     62096  5.528511e+06        0.5304

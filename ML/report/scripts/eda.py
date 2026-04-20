@@ -93,6 +93,8 @@ NUM_FEATURES = [
     "market_trade_count_so_far",
     "market_volume_so_far_usd",
     "market_price_vol_last_1h",
+    "market_vol_1h_log",
+    "market_vol_24h_log",
     "wallet_prior_trades",
     "wallet_prior_volume_usd",
     "wallet_prior_win_rate",
@@ -104,8 +106,11 @@ NUM_FEATURES = [
     "wallet_spread_ratio",
     "wallet_position_size_before_trade",
     "trade_size_vs_position_pct",
+    "wallet_prior_trades_in_market",
+    "wallet_cumvol_same_side_last_10min",
     "size_vs_wallet_avg",
     "size_x_time_to_settlement",
+    "size_vs_market_cumvol_pct",
 ]
 
 # Distributions panel is a 3x4 grid, so take the first 12 that exist.
@@ -262,7 +267,7 @@ def panel_outliers(df: pd.DataFrame, out_path: Path, top_k: int = 8) -> None:
         labels.append(c)
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 3.8), constrained_layout=True)
-    bp = ax.boxplot(data, labels=labels, vert=True, showfliers=False,
+    bp = ax.boxplot(data, tick_labels=labels, vert=True, showfliers=False,
                     patch_artist=True, widths=0.55,
                     medianprops=dict(color=COL_DARK, lw=1.0),
                     whiskerprops=dict(color=COL_DARK, lw=0.8),
@@ -357,7 +362,7 @@ def panel_pca_wallets(df: pd.DataFrame, out_path: Path) -> None:
 # 07. Per-market price trajectory
 # ---------------------------------------------------------------------------
 def panel_price_trajectories(df: pd.DataFrame, out_path: Path) -> None:
-    ts = pd.to_datetime(df[TS_COL], utc=True, errors="coerce")
+    ts = pd.to_datetime(df[TS_COL], format="mixed", utc=True, errors="coerce")
     use = df.assign(_ts=ts).dropna(subset=["_ts", PRICE_COL, "question"])
     order = (use.groupby("question")["_ts"].min().sort_values().index.tolist())
     n = len(order)
@@ -382,7 +387,59 @@ def panel_price_trajectories(df: pd.DataFrame, out_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 08. Wallet behavioural quadrants
+# 08. Event timing — volume and correctness by time-to-settlement bucket
+# ---------------------------------------------------------------------------
+def panel_event_timing(df: pd.DataFrame, fig_path: Path, txt_path: Path) -> None:
+    """Aggregate USD volume and mean bet_correct by time-to-settlement bucket
+    across all resolved markets. Empirical justification for the home-run
+    gating rule (`time_to_settlement < 6h`) in §5.2.
+    """
+    tts = pd.to_numeric(df["time_to_settlement_s"], errors="coerce")
+    tv = pd.to_numeric(df["trade_value_usd"], errors="coerce")
+    bc = pd.to_numeric(df[TARGET_COL], errors="coerce")
+
+    mask = tts.notna() & (tts > 0)  # drop post-resolution close-outs
+    sub = pd.DataFrame({
+        "tts": tts[mask], "tv": tv[mask].fillna(0.0),
+        "bc": bc[mask],
+    })
+
+    bins = [0, 3600, 6 * 3600, 24 * 3600, 7 * 86400, 30 * 86400, np.inf]
+    labels = ["<1h", "1-6h", "6-24h", "1-7d", "7-30d", ">30d"]
+    sub["bucket"] = pd.cut(sub["tts"], bins=bins, labels=labels, right=False)
+
+    agg = sub.groupby("bucket", observed=True).agg(
+        trades=("bc", "size"),
+        volume_usd=("tv", "sum"),
+        mean_correct=("bc", "mean"),
+    ).reindex(labels)
+
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_W_WIDE, 3.6),
+                             constrained_layout=True)
+    colors = [PAL_10[i] for i in (1, 3, 5, 6, 7, 8)][: len(labels)]
+    axes[0].bar(agg.index.astype(str), agg["volume_usd"] / 1e6,
+                color=colors, edgecolor="white")
+    axes[0].set_ylabel("total volume (million USD)")
+    axes[0].set_xlabel("time to settlement")
+    clean_ax(axes[0])
+
+    axes[1].bar(agg.index.astype(str), agg["mean_correct"],
+                color=colors, edgecolor="white")
+    axes[1].axhline(0.5, color=COL_DARK, lw=0.8, ls="--", alpha=0.5)
+    axes[1].set_ylim(0.3, 0.7)
+    axes[1].set_ylabel("mean bet_correct")
+    axes[1].set_xlabel("time to settlement")
+    clean_ax(axes[1])
+    save_fig(fig, fig_path)
+
+    with txt_path.open("w") as f:
+        f.write("volume and mean bet_correct by time-to-settlement bucket\n\n")
+        f.write(agg.round(4).to_string())
+    print(f"saved {txt_path.name}")
+
+
+# ---------------------------------------------------------------------------
+# 09. Wallet behavioural quadrants
 # ---------------------------------------------------------------------------
 def panel_wallet_quadrants(df: pd.DataFrame, out_path: Path, txt_out: Path) -> None:
     agg = df.groupby(WALLET_COL).agg(
@@ -456,8 +513,8 @@ def write_summary(df: pd.DataFrame, nulls: pd.Series, out_path: Path) -> None:
     lines.append(f"shape: {df.shape[0]:,} rows x {df.shape[1]} cols")
     lines.append(f"wallets ({WALLET_COL}): {df[WALLET_COL].nunique():,}")
     lines.append(f"markets ({MARKET_COL}): {df[MARKET_COL].nunique()}")
-    lines.append(f"timespan: {pd.to_datetime(df[TS_COL]).min()} "
-                 f"-> {pd.to_datetime(df[TS_COL]).max()}")
+    ts = pd.to_datetime(df[TS_COL], format="mixed", utc=True, errors="coerce")
+    lines.append(f"timespan: {ts.min()} -> {ts.max()}")
     lines.append(f"{TARGET_COL} mean: {df[TARGET_COL].mean():.3f}")
 
     lines.append("")
@@ -513,9 +570,12 @@ def main() -> None:
                       out_dir / "05_top_correlations.txt")
     panel_pca_wallets(df, out_dir / "06_pca_wallets.png")
     panel_price_trajectories(df, out_dir / "07_price_trajectories.png")
+    panel_event_timing(df,
+                       out_dir / "08_event_timing.png",
+                       out_dir / "08_event_timing.txt")
     panel_wallet_quadrants(df,
-                           out_dir / "08_wallet_quadrants.png",
-                           out_dir / "08_wallet_quadrants.txt")
+                           out_dir / "09_wallet_quadrants.png",
+                           out_dir / "09_wallet_quadrants.txt")
     write_summary(df, nulls, out_dir / "summary.txt")
 
     print(f"\nall EDA outputs in {out_dir}/")

@@ -1,0 +1,7 @@
+wallet behavioural quadrants (wallets with >=5 trades)
+
+                   n_wallets  mean_correct
+pure + bursty           1370         0.501
+pure, not bursty       27480         0.484
+mixed + bursty          1246         0.470
+mixed, not bursty       8474         0.497

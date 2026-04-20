@@ -266,14 +266,22 @@ def _add_running_market_features(df: pd.DataFrame) -> pd.DataFrame:
 
     mp = pd.to_numeric(df["market_implied_prob"], errors="coerce")
     vol = pd.Series(float("nan"), index=df.index, dtype="float64")
+    vol_1h = pd.Series(0.0, index=df.index, dtype="float64")
+    vol_24h = pd.Series(0.0, index=df.index, dtype="float64")
     for _, gdf in df.groupby("condition_id", sort=False):
         order = gdf["timestamp"].argsort(kind="mergesort")
         idx_sorted = gdf.index.to_numpy()[order.to_numpy()]
         ts_sorted = gdf["timestamp"].to_numpy()[order.to_numpy()]
-        s = pd.Series(mp.loc[idx_sorted].to_numpy(), index=pd.DatetimeIndex(ts_sorted))
-        rolled = s.rolling("1h", closed="left").std()
-        vol.loc[idx_sorted] = rolled.to_numpy()
+        mp_series = pd.Series(mp.loc[idx_sorted].to_numpy(),
+                              index=pd.DatetimeIndex(ts_sorted))
+        vol.loc[idx_sorted] = mp_series.rolling("1h", closed="left").std().to_numpy()
+        tv_series = pd.Series(tv.loc[idx_sorted].to_numpy(),
+                              index=pd.DatetimeIndex(ts_sorted))
+        vol_1h.loc[idx_sorted] = tv_series.rolling("1h", closed="left").sum().to_numpy()
+        vol_24h.loc[idx_sorted] = tv_series.rolling("24h", closed="left").sum().to_numpy()
     df["market_price_vol_last_1h"] = vol
+    df["market_vol_1h_log"] = np.log1p(vol_1h.fillna(0.0))
+    df["market_vol_24h_log"] = np.log1p(vol_24h.fillna(0.0))
     return df
 
 
@@ -406,6 +414,28 @@ def _rolling_count_by_group(
     return out.fillna(0).astype("int64")
 
 
+def _rolling_sum_by_group(
+    df: pd.DataFrame, group_cols: list[str], value_col: str, window: str
+) -> pd.Series:
+    """Per-group rolling sum of `value_col` within `window` ending at each
+    timestamp, excluding the current row (closed='left'). Strictly no-lookahead.
+    """
+    vals = pd.to_numeric(df[value_col], errors="coerce").fillna(0.0)
+    out = pd.Series(0.0, index=df.index, dtype="float64")
+    for _, gdf in df.groupby(group_cols, sort=False):
+        if len(gdf) == 1:
+            out.loc[gdf.index] = 0.0
+            continue
+        order = gdf["timestamp"].argsort(kind="mergesort").to_numpy()
+        idx_sorted = gdf.index.to_numpy()[order]
+        ts_sorted = gdf["timestamp"].to_numpy()[order]
+        s = pd.Series(vals.loc[idx_sorted].to_numpy(),
+                      index=pd.DatetimeIndex(ts_sorted))
+        rolled = s.rolling(window, closed="left").sum()
+        out.loc[idx_sorted] = rolled.to_numpy()
+    return out.fillna(0.0)
+
+
 def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.DataFrame:
     """Add the six-layer feature taxonomy on top of `enrich_trades`'s output.
 
@@ -422,7 +452,10 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
       wallet-in-market position-aware: wallet_position_size_before_trade,
         trade_size_vs_position_pct, is_position_exit, is_position_flip,
         wallet_is_whale_in_market
-      interactions: size_vs_wallet_avg, size_x_time_to_settlement
+      wallet-in-market depth: wallet_prior_trades_in_market,
+        wallet_cumvol_same_side_last_10min
+      interactions: size_vs_wallet_avg, size_x_time_to_settlement,
+        size_vs_market_cumvol_pct
     """
     df = df.copy()
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
@@ -507,12 +540,29 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
     # Fallback for markets with no p95 (shouldn't happen, but safe):
     df.loc[p95_map.isna(), "wallet_is_whale_in_market"] = 0
 
+    # --- Wallet-in-market depth ---
+    # Prior trade count in THIS market (cumulative, strictly prior).
+    one = pd.Series(1, index=df.index, dtype="int64")
+    df["wallet_prior_trades_in_market"] = (
+        one.groupby([df[wallet_col], df["condition_id"]]).cumsum() - one
+    )
+
+    # Same-side rolling USD volume in the last 10 minutes.
+    df["wallet_cumvol_same_side_last_10min"] = _rolling_sum_by_group(
+        df, [wallet_col, "condition_id", "outcomeIndex"], "trade_value_usd", "600s",
+    )
+
     # --- Interactions ---
     wpt = pd.to_numeric(df.get("wallet_prior_trades"), errors="coerce")
     wpv = pd.to_numeric(df.get("wallet_prior_volume_usd"), errors="coerce")
     wallet_avg_prior = wpv / wpt.where(wpt > 0)
     df["size_vs_wallet_avg"] = tv / wallet_avg_prior.where(wallet_avg_prior > 0)
     df["size_x_time_to_settlement"] = df["log_size"] * df["log_time_to_settlement"]
+
+    # Trade size as a fraction of prior market cumulative volume. Large values
+    # mark abnormally big bets relative to the market's activity so far.
+    mv_prior = pd.to_numeric(df.get("market_volume_so_far_usd"), errors="coerce")
+    df["size_vs_market_cumvol_pct"] = tv / mv_prior.where(mv_prior > 0)
 
     return df
 

@@ -385,35 +385,48 @@ def build_hf_trades(
         return pd.DataFrame()
 
     df["condition_id"] = df["condition_id"].astype(str)
+    # HF encodes the trade side as a 1-indexed Solidity-style label ("token1"
+    # / "token2") rather than as the actual ERC-1155 token id that Gamma
+    # returns (77-digit decimal). Map HF's label -> Gamma's token_ids[i] so
+    # `asset` is the real token id (needed for merge_asof on CLOB prices and
+    # for derive_resolution_timestamps) and `outcomeIndex` is 0/1 (needed for
+    # bet_correct and every wallet-in-market directional feature).
+    HF_TOKEN_TO_INDEX = {"token1": 0, "token2": 1}
     token_map = {
-        row.condition_id: str(row.token_ids).split(";")
+        str(row.condition_id): str(row.token_ids).split(";")
         for row in markets.loc[hf_mask].itertuples()
     }
-    def _oidx(row):
-        toks = token_map.get(row["condition_id"])
-        if not toks or len(toks) != 2:
-            return pd.NA
-        ns = str(row["nonusdc_side"])
-        if ns == toks[0]:
-            return 0
-        if ns == toks[1]:
-            return 1
-        return pd.NA
 
-    df["outcomeIndex"] = df.apply(_oidx, axis=1)
+    def _asset_oidx(ns: object, cid: object) -> tuple[object, object]:
+        idx = HF_TOKEN_TO_INDEX.get(str(ns).strip().lower())
+        toks = token_map.get(str(cid))
+        if idx is None or not toks or len(toks) <= idx:
+            return pd.NA, pd.NA
+        return toks[idx], idx
 
-    ts = pd.to_datetime(df["timestamp"], utc=True, errors="coerce").astype(
-        "datetime64[ns, UTC]"
-    )
+    mapped = [
+        _asset_oidx(ns, cid)
+        for ns, cid in zip(df["nonusdc_side"], df["condition_id"])
+    ]
+    asset_ids = [m[0] for m in mapped]
+    outcome_idx = [m[1] for m in mapped]
+
+    # HF parquet stores timestamps as uint64 Unix seconds; without unit="s"
+    # pandas interprets integers as nanoseconds (giving 1970-01-01 + 1.77s
+    # for every row). Force seconds, then cast to [ns, UTC] for merge_asof
+    # consistency across HF and API paths.
+    ts = pd.to_datetime(
+        df["timestamp"], unit="s", utc=True, errors="coerce"
+    ).astype("datetime64[ns, UTC]")
     out = pd.DataFrame(
         {
             "proxyWallet": df["taker"].astype(str),
             "side": df["taker_direction"].astype(str).str.upper(),
-            "asset": df["nonusdc_side"].astype(str),
+            "asset": pd.Series(asset_ids, dtype="object").astype(str),
             "size": pd.to_numeric(df["token_amount"], errors="coerce"),
             "price": pd.to_numeric(df["price"], errors="coerce"),
             "timestamp": ts,
-            "outcomeIndex": df["outcomeIndex"],
+            "outcomeIndex": pd.Series(outcome_idx, dtype="Int64"),
             "transactionHash": df["transaction_hash"].astype(str),
             "condition_id": df["condition_id"].astype(str),
             "source": "hf",

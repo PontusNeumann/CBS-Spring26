@@ -1,0 +1,21 @@
+top 20 |Pearson r| feature pairs
+market_trade_count_so_far            market_volume_so_far_usd              0.918
+wallet_directional_purity_in_market  wallet_spread_ratio                   0.917
+market_vol_1h_log                    market_vol_24h_log                    0.813
+wallet_trades_in_market_last_10min   wallet_trades_in_market_last_60min    0.786
+log_size                             size_x_time_to_settlement             0.685
+wallet_trades_in_market_last_1min    wallet_trades_in_market_last_10min    0.666
+wallet_prior_trades                  wallet_prior_volume_usd               0.658
+pct_time_elapsed                     market_vol_24h_log                    0.642
+wallet_trades_in_market_last_60min   wallet_prior_trades_in_market         0.621
+market_volume_so_far_usd             market_vol_24h_log                    0.600
+log_time_to_settlement               pct_time_elapsed                      0.583
+time_to_settlement_s                 log_time_to_settlement                0.575
+log_time_to_settlement               size_x_time_to_settlement             0.543
+market_trade_count_so_far            market_vol_24h_log                    0.536
+market_volume_so_far_usd             market_vol_1h_log                     0.522
+time_to_settlement_s                 pct_time_elapsed                      0.511
+pct_time_elapsed                     market_vol_1h_log                     0.483
+wallet_directional_purity_in_market  trade_size_vs_position_pct            0.440
+wallet_trades_in_market_last_1min    wallet_trades_in_market_last_60min    0.438
+wallet_prior_trades                  wallet_prior_trades_in_market         0.438

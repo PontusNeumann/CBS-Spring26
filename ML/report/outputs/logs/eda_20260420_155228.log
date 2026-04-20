@@ -1,0 +1,27 @@
+loading /Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/data/trades_enriched.csv...
+loaded 1,209,787 rows x 62 cols
+saved 01_missingness.png
+saved 02_class_balance.png
+saved 03_feature_distributions.png
+saved 03_skewness_table.csv — top 8 most skewed:
+size_vs_market_cumvol_pct             994.09
+size_vs_wallet_avg                    542.67
+trade_value_usd                        84.96
+wallet_cumvol_same_side_last_10min     45.19
+wallet_trades_in_market_last_1min      22.43
+wallet_trades_in_market_last_60min     14.14
+wallet_position_size_before_trade     -13.93
+wallet_trades_in_market_last_10min     13.31
+saved 04_outlier_boxplots.png
+saved 05_correlation_heatmap.png
+saved 05_top_correlations.txt — top 20 pairs written
+saved 06_pca_wallets.png
+  pca on 38,570 wallets with >=5 trades
+saved 07_price_trajectories.png
+saved 08_event_timing.png
+saved 08_event_timing.txt
+saved 09_wallet_quadrants.png
+saved 09_wallet_quadrants.txt
+saved summary.txt
+
+all EDA outputs in /Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/outputs/eda/

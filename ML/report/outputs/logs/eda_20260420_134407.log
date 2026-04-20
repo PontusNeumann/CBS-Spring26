@@ -1,0 +1,51 @@
+/Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/scripts/eda.py:265: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  bp = ax.boxplot(data, labels=labels, vert=True, showfliers=False,
+loading /Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/data/trades_enriched.csv...
+loaded 1,209,787 rows x 57 cols
+saved 01_missingness.png
+saved 02_class_balance.png
+saved 03_feature_distributions.png
+saved 03_skewness_table.csv — top 8 most skewed:
+size_vs_wallet_avg                    604.68
+trade_value_usd                        84.96
+wallet_first_minus_trade_sec          -21.81
+wallet_position_size_before_trade      13.02
+log_time_to_settlement                -10.92
+pct_time_elapsed                       10.48
+trade_size_vs_position_pct             10.17
+wallet_trades_in_market_last_60min     10.13
+saved 04_outlier_boxplots.png
+saved 05_correlation_heatmap.png
+saved 05_top_correlations.txt — top 20 pairs written
+saved 06_pca_wallets.png
+  pca on 38,570 wallets with >=5 trades
+saved 07_price_trajectories.png
+saved 08_wallet_quadrants.png
+saved 08_wallet_quadrants.txt
+Traceback (most recent call last):
+  File "/Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/scripts/eda.py", line 525, in <module>
+    main()
+  File "/Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/scripts/eda.py", line 519, in main
+    write_summary(df, nulls, out_dir / "summary.txt")
+  File "/Users/pontusneumann/Documents/GitHub/CBS-Spring26/ML/report/scripts/eda.py", line 459, in write_summary
+    lines.append(f"timespan: {pd.to_datetime(df[TS_COL]).min()} "
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Applications/anaconda3/envs/py312/lib/python3.12/site-packages/pandas/core/tools/datetimes.py", line 1036, in to_datetime
+    cache_array = _maybe_cache(arg, format, cache, convert_listlike)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Applications/anaconda3/envs/py312/lib/python3.12/site-packages/pandas/core/tools/datetimes.py", line 254, in _maybe_cache
+    cache_dates = convert_listlike(unique_dates, format)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Applications/anaconda3/envs/py312/lib/python3.12/site-packages/pandas/core/tools/datetimes.py", line 435, in _convert_listlike_datetimes
+    return _array_strptime_with_fallback(arg, name, utc, format, exact, errors)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Applications/anaconda3/envs/py312/lib/python3.12/site-packages/pandas/core/tools/datetimes.py", line 470, in _array_strptime_with_fallback
+    result, tz_out = array_strptime(arg, fmt, exact=exact, errors=errors, utc=utc)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "pandas/_libs/tslibs/strptime.pyx", line 563, in pandas._libs.tslibs.strptime.array_strptime
+  File "pandas/_libs/tslibs/strptime.pyx", line 511, in pandas._libs.tslibs.strptime.array_strptime
+  File "pandas/_libs/tslibs/strptime.pyx", line 617, in pandas._libs.tslibs.strptime._parse_with_format
+ValueError: time data "2026-04-12 05:35:13+00:00" doesn't match format "%Y-%m-%d %H:%M:%S.%f%z". You might want to try:
+    - passing `format` if your strings have a consistent format;
+    - passing `format='ISO8601'` if your strings are all ISO8601 but not necessarily in exactly the same format;
+    - passing `format='mixed'`, and the format will be inferred for each element individually. You might want to use `dayfirst` alongside this.
