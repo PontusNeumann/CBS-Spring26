@@ -127,3 +127,46 @@ Report backups preserved: `ML_final_exam_paper.pre07.docx` (pre-restructure), `M
 1. **Bucket 2 go/no-go.** Pursue #4 (~2–3 h, low-risk), Layer 6 (~5–6 h, higher-payoff but more moving parts), both, or leave both as documented future work.
 2. **Modelling kickoff.** MLP + baselines + calibration + backtest. Alex's `train_mlp_reframed.py` in `alex_updates_before_incorporation/` is scoped to his 7-market dataset and does not transfer directly; our pipeline will be a parallel implementation on the 65-column 74-market frame.
 3. **Figure-to-prose cross-ref pass** once modelling results are in. Current EDA prose references every figure correctly; post-modelling we'll need to add references to any new results figures in Results and Discussion.
+
+---
+
+## Evening update (21 Apr, late PM)
+
+### Layer 7 cross-market entropy — DONE (other terminal)
+
+Streamed the 568 M-row HF trades mirror via duckdb hash-partition-write, bucketed slugs into 8 coarse categories, computed expanding Shannon entropy per wallet. +1 column `wallet_market_category_entropy` (nats). Frame now **66 cols, 91.9 % real values**. Script: `scripts/10_wallet_category_entropy.py`.
+
+### Layer 6 on-chain identity — RUNNING
+
+- Three Etherscan V2 free-tier keys (3 cps / 100 K-per-day each) written to `report/.env`.
+- `scripts/03_enrich_wallets.py` launched. First run at 9 workers only hit 2.0 rps; **restarted at 18 workers (3 keys × 6 workers/key)** for 2.6 rps aggregate. Rate limiter still caps each key at 2.86 rps, so Etherscan sees no change.
+- **Current state at 21 Apr 22:30 local: ~75.8 K / 109.1 K wallets done (70 %), ETA ~3 h → finish ~01:30 22 Apr.**
+- **Failure rate 5.8 %** — Etherscan V2 returning `status=0 message='NOTOK'` on specific addresses, non-retryable. Higher than the ~1 % originally estimated; logged in `project_plan.md` §11 and promoted to Methodology → Known Limitations when the run lands. Those wallets get `wallet_enriched=0` per §5.6.
+- Diagnosis of observed throughput: Etherscan server-side latency is spiky (~0.6 s baseline, but ~20–30 % of calls spike to 5–14 s). Not local-network bound — confirmed ping 150 ms RTT / 0 % loss. Not rate-limit bound either — daily cap ~20 K / 100 K used per key. Just slow servers.
+- Output: `data/wallet_enrichment.parquet` (199 MB, 12 cols: scalars + timestamp arrays). Atomic checkpoint every 500 wallets, fully resumable. Killed and restarted once cleanly during the 9→18 worker transition with zero loss.
+- `caffeinate -i -m -s` running (pid 90494) to keep the Mac awake overnight; lid must stay open unless clamshell-mode prerequisites are met.
+
+### Modelling scaffold — READY
+
+- `scripts/12_train_mlp.py` written and `py_compile`-clean.
+- Feature selection by exclusion set, so Layer 6 + Layer 7 columns are auto-picked once they land (target 75 cols).
+- LogReg + RF (both `class_weight='balanced'`) + PyTorch MLP (2–4 HL, SELU, Glorot, dropout 0.3, BatchNorm, Adam + `ReduceLROnPlateau`, `BCEWithLogitsLoss`, early-stop on val BCE) + isotonic calibration on val + ECE helper (15-bin equal-width) + loss-curve PNG + `metrics.json` + `feature_list.json`.
+- Torch 2.2.2 CPU wheel installed in `py312` env.
+
+### Report — docx now covers Layer 6 / 7 / missingness
+
+- `scripts/13_docx_add_layer6_layer7.py` — one-shot edit on `ML_final_exam_paper.docx`:
+  - §5.1 pipeline paragraph: replaced the outdated "No Polygonscan or external on-chain enrichment is used" with an Etherscan V2 description.
+  - §5.1 features paragraph: rewritten from six to seven layers; Layer 6 (nine on-chain identity features) and Layer 7 (cross-market category entropy) described explicitly.
+  - New paragraph inserted after §5.1 features: missingness treatment (5 binary indicators, train-split-only median imputation at the modelling stage, indicator columns always retained).
+- Backup: `handovers/ML_final_exam_paper.pre09.docx`.
+
+### Open reframing question (not decided)
+
+Consideration: elevate the insider-flagger angle from §8 (out-of-scope / Discussion) to a co-primary **RQ2: do the model's largest-gap trades concentrate on features documented in the informed-trading literature?** Same model, zero extra training — just feature-importance + the Magamyman sanity check already planned. Gives a non-zero finding even if the trading rule (RQ1) only breaks even. Decide before Results writeup.
+
+### Tomorrow (22 Apr)
+
+1. Confirm enrichment landed clean; run `scripts/11_add_layer6.py` → +9 cols → frame at 75 cols. Verify with `describe()` on the 9 new columns and `wallet_enriched` coverage.
+2. Final EDA pass: regenerate any figures that benefit from the two new feature layers; refresh Table 1 / Table 2 numbers only if the post-resolution filter or Layer 6/7 change them materially.
+3. Kick off modelling: run `12_train_mlp.py` on the 75-col frame; land first LogReg + RF + MLP val metrics. Backtest and calibration sweep follow.
