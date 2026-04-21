@@ -8,3 +8,7 @@ ML/report/data/
 
 # Python bytecode
 __pycache__/
+
+# Secrets — never commit
+.env
+ML/report/.env

@@ -1,8 +1,9 @@
 """Enrich taker wallets with on-chain activity history (causal-ready).
 
-Reads taker wallet list from data/iran_strike_labeled.parquet, queries
-Etherscan V2 `account/tokentx` endpoint for each wallet's full ERC-20 transfer
-history on Polygon, and saves a rich per-wallet output:
+Reads taker wallet list from data/03_trades_features.csv (column
+`proxyWallet`), queries Etherscan V2 `account/tokentx` endpoint for each
+wallet's full ERC-20 transfer history on Polygon, and saves a rich per-wallet
+output:
 
   Time-invariant scalars (safe to use on any trade row for the wallet):
     - polygon_first_tx_ts                 first ERC-20 event timestamp
@@ -18,10 +19,11 @@ history on Polygon, and saves a rich per-wallet output:
     - cex_deposit_ts              sorted list of timestamps receiving USDC from CEX
     - cex_deposit_amounts_usd     amounts paired with cex_deposit_ts
 
-Runtime: 6 concurrent workers, 3 Etherscan keys (2 workers per key via
+Runtime: 9 concurrent workers, 3 Etherscan keys (3 workers per key via
 round-robin). HTTP keep-alive via per-thread requests.Session. Per-call
-pacing keeps each key under its 5-rps free-tier cap. Expected wall-clock
-~60 minutes for 55k wallets.
+pacing keeps each key under its 3-cps free-tier cap (verified on
+docs.etherscan.io/resources/rate-limits, 21 Apr 2026). Expected wall-clock
+~3.5 hours for 109k wallets (our full 74-market scope).
 
 Resumable: checkpoints to parquet every 500 wallets. Re-running skips already
 enriched wallets. Progress snapshot written to
@@ -57,9 +59,12 @@ if len(KEYS) < 1:
 API_URL = "https://api.etherscan.io/v2/api"
 CHAIN_ID = 137  # Polygon
 
-WORKERS_PER_KEY = 3  # 9 workers total when 3 keys present
+WORKERS_PER_KEY = 6  # 18 workers total when 3 keys present; still capped at 2.86 rps/key by PER_KEY_INTERVAL
 N_WORKERS = max(1, len(KEYS) * WORKERS_PER_KEY)
-PER_KEY_INTERVAL = 0.22  # 1/0.22 = 4.55 rps per key — just under 5 rps server cap
+# Etherscan V2 free tier caps each key at 3 cps (verified 21 Apr 2026 on
+# docs.etherscan.io/resources/rate-limits). Pace at 2.85 rps/key for a
+# 5% headroom against burst variance.
+PER_KEY_INTERVAL = 0.35  # 1/0.35 = 2.86 rps per key, safely under 3 cps cap
 
 # Per-key rate limiter: one lock + next-allowed-time per key. All workers
 # sharing a key queue on its slot. Enforces the 5 rps server cap regardless
@@ -67,7 +72,8 @@ PER_KEY_INTERVAL = 0.22  # 1/0.22 = 4.55 rps per key — just under 5 rps server
 _key_locks = {k: threading.Lock() for k in KEYS}
 _key_next_allowed = {k: 0.0 for k in KEYS}
 
-LABELED_IN = ROOT / "data" / "iran_strike_labeled.parquet"
+LABELED_IN = ROOT / "data" / "03_trades_features.csv"
+WALLET_COL = "proxyWallet"
 OUT_PATH = ROOT / "data" / "wallet_enrichment.parquet"
 STATUS_PATH = ROOT / "data" / "enrichment_progress.json"
 LOG_PATH = ROOT / "data" / "enrichment.log"
@@ -315,9 +321,9 @@ def main() -> None:
         f"n_keys={len(KEYS)}, n_workers={N_WORKERS}, per-key interval={PER_KEY_INTERVAL}s (={1 / PER_KEY_INTERVAL:.1f} rps/key)"
     )
 
-    # Load wallet list
-    df = pd.read_parquet(LABELED_IN, columns=["wallet"])
-    wallets = df["wallet"].dropna().unique().tolist()
+    # Load wallet list from the 74-market feature CSV
+    df = pd.read_csv(LABELED_IN, usecols=[WALLET_COL])
+    wallets = df[WALLET_COL].dropna().unique().tolist()
     print(f"{len(wallets):,} unique taker wallets to enrich")
 
     # Resume support
