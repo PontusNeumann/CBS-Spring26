@@ -130,7 +130,19 @@ The two-strategy design reflects the shape of the underlying phenomenon. The Col
 - If still degenerate, apply SMOTE to the training fold only, never to validation or test.
 - Outlier handling before training: winsorise `trade_value_usd` and `wallet_total_volume_usd` at the 1st and 99th percentiles. No whole-row removal, since extreme trades are part of the phenomenon of interest.
 
-### 5.6 Validation strategy
+### 5.6 Missing-data typology and handling
+
+Missingness in the feature frame partitions into two classes.
+
+**Structural missingness** is NaN on expanding / running quantities that are mathematically undefined given the prior history available at row time: expanding win-rate on a wallet's first trade, cross-market category entropy before two distinct markets have been observed, directional purity on the first (wallet, market) trade, `size_vs_wallet_avg` on the first trade. The NaN is the truthful value. Filling with a sentinel (zero in particular) would conflate "not yet defined" with a legitimate realised value — for category entropy specifically, zero is a valid realised value meaning a wallet concentrated in exactly one category, so imputing 0 for undefined entropy would erase the distinction.
+
+**Pipeline missingness** is NaN where the underlying quantity exists but could not be observed: all nine Layer 6 on-chain features on rows whose wallet failed Etherscan V2 enrichment, and `pct_time_elapsed` on markets missing both `resolution_ts` and `end_date` metadata. For these, zero would be semantically wrong for most features (a real wallet is never zero days old on Polygon; a real market does resolve); NaN plus the enrichment/pipeline flag is the faithful representation.
+
+The dataset preserves NaN in every affected raw feature and carries one binary indicator column per missingness species: `wallet_has_prior_trades`, `wallet_has_prior_trades_in_market`, `wallet_has_cross_market_history`, `market_timing_known` (added by `scripts/11b_add_missingness_flags.py`), and `wallet_enriched` (added by `scripts/11_add_layer6.py`). Imputation is applied only at the modelling stage and differs by classifier: tree-based models accept NaN natively in sklearn ≥ 1.4 and pass raw columns through; logistic regression and the MLP impute using train-split-only medians followed by standardisation. In all cases the indicator columns are retained as features, so whatever value is imputed for the raw feature the model still sees the "was this missing" signal. Per-column assignments, share statistics, and policy details are recorded in `data/MISSING_DATA.md` and updated there as decisions evolve.
+
+Row dropping is not used. Sensitivity analyses restricted to rows where a given indicator equals one may appear in the Discussion if they sharpen a result, but the main evaluation uses the full 1.21-million-row frame. The framework follows Rubin (1976) and Little & Rubin (2019), extended with a structural missingness sub-type appropriate to running / expanding features in event-time panel data.
+
+### 5.7 Validation strategy
 
 Three layers, all on held-out data:
 
@@ -171,7 +183,7 @@ Concretely, the section will cover:
 
 The following observation is explicitly *outside* the research question and the evaluation. It is reserved for the Discussion and theory sections of the report and may be extended in future work.
 
-- **Feature-importance parallel to informed-trading traits.** If the features driving the `p_hat − market_implied_prob` gap resemble those documented in the informed-trading literature (within-trader bet size, cross-sectional bet size, pre-event timing, directional concentration, wallet newness; see Mitts and Ofir 2026), the Discussion will flag the parallel and note that the signal may be partially picking up informed flow. The Magamyman sanity check in Section 5.6 feeds this discussion.
+- **Feature-importance parallel to informed-trading traits.** If the features driving the `p_hat − market_implied_prob` gap resemble those documented in the informed-trading literature (within-trader bet size, cross-sectional bet size, pre-event timing, directional concentration, wallet newness; see Mitts and Ofir 2026), the Discussion will flag the parallel and note that the signal may be partially picking up informed flow. The Magamyman sanity check in Section 5.7 feeds this discussion.
 - **Documented-case anecdotes** (Burdensome-Mix on Maduro, Biden-pardons wallets) are illustrative rather than evaluation targets. The Iran ceasefire cluster, by contrast, is part of the main evaluation scope via events 355299 and 357625.
 - **Cross-market sibling-price injection.** A second-order arbitrage feature layer using prices of related sub-markets (e.g. "by Feb 14" price as a feature for the "by Feb 28" market) is deferred.
 - **Cross-event-family pooling** with non-Iran clusters (Maduro, Biden pardons, Taylor Swift) is deferred.
@@ -203,7 +215,8 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 | 9 | Post-resolution filter applied (`settlement_minus_trade_sec > 0`) in modelling | open | 3 |
 | 10 | Polygonscan on-chain wallet enrichment (Layer 6 collection, `scripts/03_enrich_wallets.py`) — Etherscan V2 multichain free tier, 3 keys × 3 workers, ~3 h wall-time for 109K wallets | open (21 Apr Bucket 2 go-ahead) | 2 |
 | 10b | Layer 6 integration (`scripts/11_add_layer6.py`) — bisect per-wallet timestamp arrays onto each trade, +9 cols, in-place CSV patch with `.pre11.csv` backup | open | 10 |
-| 10c | Cross-market category-entropy feature (`scripts/10_wallet_category_entropy.py`) — stream HF mirror for 109K wallets' full Polymarket history, bucket event slugs into 8 categories, expanding entropy per wallet, +1 col | open (21 Apr Bucket 2 go-ahead) | 2 |
+| 10c | Cross-market category-entropy feature (`scripts/10_wallet_category_entropy.py`) — stream HF mirror for 109K wallets' full Polymarket history, bucket event slugs into 8 categories, expanding entropy per wallet, +1 col | done (21 Apr evening) | 2 |
+| 10d | Missing-data policy + indicator columns (`scripts/11b_add_missingness_flags.py`, `data/MISSING_DATA.md`) — 4 binary indicators + typology doc; §5.6 policy landed | done (21 Apr evening) | 10c |
 | 11 | GDELT news-timing enrichment | deferred (free API, awaits feature-definition design) | 2 |
 | 12 | EDA script following repository Design.md conventions; figures and tables inserted into report Appendix with cross-references from the EDA body | done (20 Apr) | 8 |
 | 13 | MLP training and baselines (logistic regression, random forest, isolation forest, naive market, autoencoder) | open | 6 |
@@ -220,62 +233,94 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 - Position-sizing rule for the home-run strategy: flat larger stake versus Kelly-scaled.
 - Whether to model trade value in USD as a feature (already included via `trade_value_usd` and `log_size`) or additionally as a sample weight during training.
 - Exact quantile boundaries for the trade-timestamp train / validation / test split (default 0.70 / 0.85 / 1.00).
-- Treatment of `wallet_prior_win_rate` NaN on first-trade rows (~21%): impute to global mean (0.518), use the raw NaN with `wallet_prior_trades == 0` as a categorical indicator, or exclude first-trade rows.
-- Treatment of NaN on the expanded wallet-in-market features. Expected null rates on first occurrence per (wallet, market): `wallet_directional_purity_in_market` and `wallet_spread_ratio` around 48 percent; `size_vs_wallet_avg` around 21 percent; `pct_time_elapsed` around 2 percent (markets missing both `resolution_ts` and `end_date`).
+- *Resolved 21 Apr evening.* Treatment of NaN on running / expanding features (`wallet_prior_win_rate`, `wallet_directional_purity_in_market`, `wallet_spread_ratio`, `wallet_median_gap_in_market`, `size_vs_wallet_avg`, `pct_time_elapsed`, `wallet_market_category_entropy`, and the 9 Layer 6 on-chain features): preserve NaN in the feature frame, attach five binary missingness indicators (`wallet_has_prior_trades`, `wallet_has_prior_trades_in_market`, `wallet_has_cross_market_history`, `market_timing_known`, `wallet_enriched`), defer imputation to the modelling stage per the classifier family. Full policy in §5.6 and `data/MISSING_DATA.md`.
 - Burst-detection thresholds: number of trades `K` in a rolling window `N` minutes that triggers `wallet_is_burst`. Default `K=3, N=10min`.
 - Whale threshold for `wallet_is_whale_in_market`: default 95th percentile of per-market cumulative wallet volume.
 
 ## 12. Repository Layout
 
-Everything lives under `ML/report/`. The folder layout after the 19 April restructure:
+Everything lives under `ML/report/`. Current folder layout:
 
 ```
 report/
-├── ML_final_exam_paper.docx          # The paper itself — updated with text and results as the project progresses
-├── project_plan.md                   # This file. The source of truth. Read first.
+├── ML_final_exam_paper.docx                 # The paper. Updated as the project progresses.
+├── project_plan.md                          # This file. Source of truth. Read first.
+├── Design.md                                # Naming and code-style conventions for scripts.
+├── .env.example                             # Template for Etherscan V2 keys (copy to .env).
 │
-├── docs/                             # Superseded material kept for history
-│   └── archive/
-│       └── mldp-project-overview.md  # Alex's narrower 7-sub-market proposal (superseded)
+├── alex_updates_before_incorporation/       # Reference-only: Alex's narrower-scope material.
+│   ├── design-decisions.md                  # Framing, features, baselines — we adopted the pre-EDA parts only.
+│   ├── mldp-project-overview.md             # His 7-sub-market proposal (superseded for our scope).
+│   └── SESSION-HANDOVER.md                  # Alex's end-state handover after the v2/v3 runs.
 │
-├── handovers/                        # Per-session handovers; latest only at top level
-│   ├── handover_<latest>.md          # Most recent session, covers what was done since previous handover
-│   ├── ML_final_exam_paper_backup.docx
-│   └── archive/
-│       └── handover_<older>.md
+├── archive/                                 # Older checkpoints preserved just in case.
+│   └── ML_final_exam_paper.pre08.docx       # Pre-Alex-incorporation snapshot of the paper.
 │
-├── scripts/                          # Data-pipeline and modelling code
-│   ├── 01_polymarket_api.py          # Gamma / CLOB / Data API client; feature enrichment library.
-│   ├── 02_build_dataset.py           # Primary entry point. Hybrid HF + API builder.
-│   ├── 02_build_dataset_legacy.py    # Legacy API-only builder. Superseded by 02_build_dataset.py but kept for reference.
-│   ├── 03_enrich_wallets.py          # Polygonscan / Etherscan batch enrichment. Deferred — not wired in for v1.
-│   ├── 03b_enrichment_dashboard.py   # Live HTML dashboard for long-running enrichment runs.
-│   ├── 04_eda.py                     # EDA plots and summary tables; reads 03_trades_features.csv, writes to outputs/eda/.
-│   ├── 05_docx_fix_text.py           # One-shot: align docx body text with project state.
-│   └── 06_docx_insert_eda.py         # One-shot: insert EDA narrative and appendix into the docx.
+├── assets/                                  # Static image assets used inside the docx.
+│   ├── cbs_paper_image_{1,2,3}.png          # CBS cover/branding images.
+│   └── trading_image.jpg                    # Motivation-section illustration.
 │
-├── data/                             # Local data outputs; .gitignored except for snapshots
-│   ├── 00_hf_markets_master.parquet  # HF markets metadata cache (116 MB) — routing table
-│   ├── 00_hf_trades_cache.parquet    # HF-path Iran trades cache (~50 MB)
-│   ├── 01_markets_meta.csv           # Iran markets metadata (74 resolved)
-│   ├── 01_prices.csv                 # Iran intraday price history
-│   ├── 02_trades.csv                 # Concatenated Iran trades (HF + API)
-│   ├── 03_trades_features.csv        # Mother dataframe (features + labels + split)
-│   └── _backup_<date>/               # Pre-refetch snapshots of the CSVs
+├── data/                                    # Local outputs; .gitignored except committed evidence.
+│   ├── 00_hf_markets_master.parquet         # HF markets metadata cache (116 MB) — join table for event_slug / category.
+│   ├── 00_hf_trades_cache.parquet           # HF-path Iran trades subset (~50 MB).
+│   ├── 01_markets_meta.csv                  # 74 resolved Iran markets' metadata.
+│   ├── 01_prices.csv                        # Iran intraday price history.
+│   ├── 02_trades.csv                        # Concatenated Iran trades (HF + API).
+│   ├── 03_trades_features.csv               # Mother dataframe (features + labels + split + missingness flags).
+│   ├── 03_trades_features.pre11.csv         # Single safety backup, kept one step behind current.
+│   ├── MISSING_DATA.md                      # Authoritative policy for NaN handling and indicator columns; cited by §5.6.
+│   ├── wallet_enrichment.parquet            # Layer 6 Etherscan enrichment output; written by 03_enrich_wallets.py.
+│   ├── enrichment_progress.json             # Live status snapshot of 03_enrich_wallets.py.
+│   ├── enrichment_stdout.log                # Streaming log for the enrichment run.
+│   ├── iran_strike_labeled_v2.parquet       # Alex's 7-market dataset — git-tracked as evidence, not our pipeline.
+│   ├── backtest_v{2,3}_outputs/             # Alex's evidence artefacts — git-tracked, not our results.
+│   └── mlp_reframed_v{2,3}_outputs/         # Same — Alex's exploration runs.
 │
-├── outputs/                          # Generated artefacts from scripts
-│   └── eda/                          # Figures, skewness table, HTML report, summary.txt
+├── guidelines/                              # CBS course materials and reference exemplars.
+│   ├── 01_Project_Guidelines_original.pdf
+│   ├── 02_Project_Guidelines_extended.pdf   # Newer instructions — the one we follow.
+│   ├── 03_CBS_GenAI_Guidelines.pdf
+│   └── 04_Sample_Report_Face_Mask_Detection.pdf
 │
-├── assets/                           # Static image assets used in the docx cover and figures
+├── handovers/                               # Per-session handovers; newest at top level.
+│   └── handover_21_apr.md                   # Evening 21 Apr: Bucket 2 entropy done, Layer 6 enrichment in flight.
 │
-└── guidelines/                       # CBS course materials and reference exemplars
-    ├── Project_guidelines.pdf
-    ├── Project_guidelines_new_extended_instructions.pdf
-    ├── Face_Mask_Detection_sample_report.pdf
-    └── Guidelines-for-the-use-of-Generative-Artificial-Intelligence-GenAI-in-exams-at-CBS.pdf
+├── outputs/                                 # Generated artefacts from scripts.
+│   └── eda/                                 # Figures (01–09), skewness table, top-correlations list, summary.txt.
+│
+└── scripts/                                 # Data pipeline + modelling code.
+    ├── 01_polymarket_api.py                 # Gamma / CLOB / Data API client + feature-enrichment library.
+    ├── 02_build_dataset.py                  # Primary entry point. Hybrid HF + API builder; writes 03_trades_features.csv.
+    ├── 02_build_dataset_legacy.py           # API-only builder, superseded; kept for reference.
+    ├── 03_enrich_wallets.py                 # Etherscan V2 on-chain enrichment (Layer 6 collection).
+    ├── 03b_enrichment_dashboard.py          # Live HTML progress dashboard for long enrichment runs.
+    ├── 04_eda.py                            # Writes EDA figures + tables to outputs/eda/.
+    ├── 05_docx_fix_text.py                  # One-shot: align docx body text with project state.
+    ├── 06_docx_insert_eda.py                # One-shot: insert EDA narrative + appendix into the docx.
+    ├── 07_docx_restructure.py               # One-shot: page-break / References / headroom / inline-table fixes.
+    ├── 08_docx_incorporate_alex.py          # One-shot: 14 pre-EDA text edits adopting Alex's sharper framing.
+    ├── 09_patch_new_features.py             # One-shot Bucket 1 patcher: 3 Layer-5 features in-place.
+    ├── 10_wallet_category_entropy.py        # Bucket 2 #4: HF-stream + duckdb bucketed entropy → +1 col.
+    ├── 11_add_layer6.py                     # Bucket 2 #5: bisect-based Layer 6 integrator → +9 cols (NaN-aware).
+    ├── 11b_add_missingness_flags.py         # Adds 4 binary missingness indicator columns per §5.6 policy.
+    └── 12_train_mlp.py                      # MLP + LogReg + RF baselines + isotonic calibration (scaffolded).
 ```
 
 **Reproduction workflow.** From `report/`:
-1. `python scripts/02_build_dataset.py` — streams the HF subset, pulls the ceasefire markets via the API, writes `data/03_trades_features.csv` with train/val/test labels.
-2. `python scripts/04_eda.py` — writes plots and `report.html` into `outputs/eda/`.
-3. Modelling code — to be added under `scripts/` (MLP, baselines, calibration, backtest). Each script reads from `data/`, writes to `outputs/<stage>/`.
+
+1. **Pipeline build (first run or full rebuild):**
+   - `python scripts/02_build_dataset.py` — streams HF + pulls ceasefire markets via API, writes `data/03_trades_features.csv` at the base feature set with train/val/test labels.
+   - `python scripts/09_patch_new_features.py` — in-place Bucket 1 Layer 5 patch (+3 cols).
+2. **Enrichment + feature expansion (needs `.env` with Etherscan V2 keys):**
+   - `python scripts/10_wallet_category_entropy.py` — HF-stream cross-market history → duckdb bucketed entropy → +1 col. Resumable.
+   - `python scripts/11b_add_missingness_flags.py` — derives 4 binary missingness indicators from the running/expanding feature columns → +4 cols. Fast (~1 min).
+   - `python scripts/03_enrich_wallets.py` — Etherscan V2 tokentx per wallet → `data/wallet_enrichment.parquet`. Resumable via 500-wallet checkpoints.
+   - `python scripts/11_add_layer6.py` — bisect per-trade Layer 6 features → +9 cols; NaN on un-enriched rows per §5.6 policy.
+3. **EDA:**
+   - `python scripts/04_eda.py` — writes plots and summaries into `outputs/eda/`. Figures then flow from there into the docx.
+4. **Modelling (scaffolded, pending data completion):**
+   - `python scripts/12_train_mlp.py` — LogReg + RF + MLP + isotonic calibration on the 75-col frame. Outputs per-model `metrics.json`, `feature_list.json`, MLP `loss_curve.png` into `outputs/modelling/<model>/`.
+5. **Report integration:**
+   - `ML_final_exam_paper.docx` consumes figures from `outputs/eda/` (already wired) and will consume modelling outputs next.
+
+The one-shot `05–09_docx_*` scripts were run once during the pre-EDA restructure pass; they are not part of the routine rebuild loop but remain in-tree as evidence of the edits applied.

@@ -1,25 +1,37 @@
 """Add cross-market category-entropy feature for each wallet (Bucket 2 #4).
 
-Streams the HuggingFace mirror `SII-WANGZJ/Polymarket_data` trades parquet
-via fsspec in row-group chunks (no 38 GB local cache), filters server-side
-on our 109K proxyWallet addresses (either side of the trade), looks up
-`condition_id → event_slug` via the locally-cached
-`data/00_hf_markets_master.parquet`, buckets each visited market into a
-coarse category by keyword, and computes an expanding Shannon entropy
-over categories per wallet — strictly causal: entropy at trade k uses only
-trades with timestamp < trade_k's timestamp.
+Pipeline (4 phases, each resumable and memory-bounded under ~2 GB):
 
-Output: new column on `data/03_trades_features.csv`:
-  - wallet_market_category_entropy    Shannon entropy (nats) over prior category
-                                      distribution for the wallet; NaN on first
-                                      cross-market trade (< 2 prior markets).
+  1. Stream HF mirror `SII-WANGZJ/Polymarket_data` trades.parquet via fsspec
+     row-group chunks (no 38 GB local cache). Filter server-side on our
+     109K proxyWallet addresses (either maker or taker). Writes one shard
+     per 10 row groups into `data/00_hf_wallet_cross_markets_chunks/`, then
+     consolidates into `data/00_hf_wallet_cross_markets.parquet`. Skipped
+     on rerun if all 592 row-group shards are already on disk.
 
-Runtime estimate: 1–2 h HF stream (network bound) + ~0.5 h bucketing +
-expanding entropy. Resumable — the per-wallet cross-market trade set is
-cached at `data/00_hf_wallet_cross_markets.parquet`; rerunning skips the
-stream if the cache covers all our wallets.
+  2. duckdb stream-join of cross-markets with `00_hf_markets_master.parquet`
+     to attach `event_slug`, sorted by (wallet, timestamp). Output:
+     `data/00_hf_wallet_cross_markets_enriched.parquet`. Streams — peak
+     RSS stays under ~1 GB regardless of input size. Skipped on rerun if
+     output present.
 
-Requires `pyarrow`, `fsspec` (already used by 02_build_dataset.py).
+  3. Arrow-batch streamed expanding entropy: read the enriched parquet in
+     200K-row batches, maintain per-wallet state across batch boundaries,
+     emit one (wallet, timestamp, condition_id, entropy) row per input.
+     Peak RSS ~500 MB. Output: `data/00_wallet_entropy.parquet`. Skipped
+     on rerun if row count matches the enriched parquet.
+
+  4. duckdb stream-join the entropy parquet into the mother
+     `data/03_trades_features.csv`, writing a new CSV with one new
+     column — `wallet_market_category_entropy` (Shannon nats; NaN on first
+     cross-market trade). Peak RSS ~2 GB. Backup written to
+     `data/03_trades_features.pre10.csv`.
+
+Runtime estimate: phase 1 ≈ 1.5–2 h network-bound (skipped on rerun);
+phase 2 ≈ 5 min; phase 3 ≈ 15–25 min (pure-Python loop, I/O-bounded by the
+Arrow batch reader); phase 4 ≈ 5–10 min. End-to-end on a warm cache: ~30 min.
+
+Requires `pyarrow`, `fsspec`, `duckdb` (already in the py312 env).
 
 Usage:
   python scripts/10_wallet_category_entropy.py
@@ -38,13 +50,26 @@ ROOT = Path(__file__).resolve().parents[1]
 FEATURES_CSV = ROOT / "data" / "03_trades_features.csv"
 BACKUP_CSV = ROOT / "data" / "03_trades_features.pre10.csv"
 CROSS_MARKETS_CACHE = ROOT / "data" / "00_hf_wallet_cross_markets.parquet"
+BUCKETS_DIR = ROOT / "data" / "00_hf_wallet_cross_markets_buckets"
+ENTROPY_PARQUET = ROOT / "data" / "00_wallet_entropy.parquet"
 CHUNKS_DIR = ROOT / "data" / "00_hf_wallet_cross_markets_chunks"
 MARKETS_MASTER = ROOT / "data" / "00_hf_markets_master.parquet"
+
+# Hash-bucket count for wallet-partitioned entropy compute. 64 buckets
+# over ~130M rows gives ~2M rows per bucket → sorts in pandas under
+# 500 MB RAM per bucket. Avoids the global 130M-row sort which
+# overwhelmed 16 GB of disk spill space on the last run.
+NUM_BUCKETS = 64
 
 # Write a parquet shard every CHUNK_SIZE_RG row groups so a dropped
 # connection mid-stream resumes from the last persisted shard, not from
 # scratch. Each shard is named rg_{start:05d}-{end:05d}.parquet.
 CHUNK_SIZE_RG = 10
+
+# Arrow batch size for wallet-partitioned entropy streaming. 200K rows of
+# four columns is ~15 MB — keeps peak RSS on the entropy compute below
+# 500 MB even on 130M-row inputs.
+ENTROPY_BATCH_ROWS = 200_000
 
 WALLET_COL = "proxyWallet"
 TIMESTAMP_COL = "timestamp"
@@ -299,9 +324,13 @@ def stream_cross_market_history(wallets: set[str]) -> pd.DataFrame:
     return out
 
 
-def attach_category(cross: pd.DataFrame) -> pd.DataFrame:
-    """Look up event_slug for each condition_id via the cached markets master,
-    then bucket into a category. Falls back to 'other' for missing slugs.
+def attach_category_and_bucket() -> str:
+    """duckdb stream-joins cross-markets with markets master to attach
+    event_slug, then writes ONE parquet file per wallet-hash bucket into
+    BUCKETS_DIR. No global sort — the sort happens per bucket inside
+    compute_expanding_entropy_streaming().
+
+    Returns the slug column name that was matched (for logging).
     """
     if not MARKETS_MASTER.exists():
         raise FileNotFoundError(
@@ -309,165 +338,401 @@ def attach_category(cross: pd.DataFrame) -> pd.DataFrame:
             f"first (or copy from another cluster's build)."
         )
 
-    print(f"loading markets master for category lookup...")
-    master = pd.read_parquet(MARKETS_MASTER)
-    # The master is expected to have `condition_id` and `event_slug`; if the
-    # column name differs, surface a clear error.
-    if "condition_id" not in master.columns:
-        raise RuntimeError(
-            f"markets master missing `condition_id` column. "
-            f"Columns present: {list(master.columns)}"
-        )
+    import duckdb
+
+    con = duckdb.connect()
+    # Conservative caps: streaming JOIN + partitioned write needs no sort,
+    # so 2 GB RAM + minimal temp disk is enough.
+    con.execute("PRAGMA memory_limit='2GB'")
+    con.execute("PRAGMA temp_directory='/tmp/duckdb_entropy'")
+    con.execute("PRAGMA threads=2")
+    con.execute("PRAGMA preserve_insertion_order=false")
+
+    master_cols = [
+        r[0]
+        for r in con.execute(
+            f"DESCRIBE SELECT * FROM read_parquet('{MARKETS_MASTER}') LIMIT 0"
+        ).fetchall()
+    ]
     slug_col = next(
-        (c for c in ("event_slug", "eventSlug", "slug") if c in master.columns),
+        (c for c in ("event_slug", "eventSlug", "slug") if c in master_cols),
         None,
     )
     if slug_col is None:
         raise RuntimeError(
             f"markets master has no event_slug/eventSlug/slug column. "
-            f"Columns present: {list(master.columns)}"
+            f"Columns present: {master_cols}"
         )
-    lookup = master[["condition_id", slug_col]].drop_duplicates("condition_id")
-    lookup = lookup.rename(columns={slug_col: "event_slug"})
-
-    cross = cross.merge(lookup, on="condition_id", how="left")
-    missing = cross["event_slug"].isna().sum()
-    if missing:
-        print(
-            f"  {missing:,} / {len(cross):,} rows missing event_slug "
-            f"({missing / len(cross) * 100:.2f}%) — bucketed as 'other'"
+    if "condition_id" not in master_cols:
+        raise RuntimeError(
+            f"markets master missing `condition_id` column. "
+            f"Columns present: {master_cols}"
         )
 
-    print("bucketing slugs into categories...")
-    cross["category"] = cross["event_slug"].map(bucket_slug)
-    cross["cat_idx"] = cross["category"].map(CAT_TO_IDX).astype(np.int8)
-    print("  category distribution (row counts):")
-    print(cross["category"].value_counts().to_string())
-    return cross
+    BUCKETS_DIR.mkdir(parents=True, exist_ok=True)
+    # Clean any stale bucket files so PARTITION_BY writes don't mix runs.
+    for p in BUCKETS_DIR.glob("**/*.parquet"):
+        p.unlink()
+    for d in sorted(BUCKETS_DIR.glob("bucket=*"), reverse=True):
+        if d.is_dir():
+            for f in d.iterdir():
+                f.unlink()
+            d.rmdir()
+
+    print(
+        f"duckdb: streaming JOIN + hash-partitioned write into "
+        f"{NUM_BUCKETS} buckets (no global sort)..."
+    )
+    t0 = time.time()
+    # Hash-bucket the wallet so all trades for a given wallet land in the
+    # same bucket file. Per-bucket sort happens in phase 3.
+    con.execute(
+        f"""
+        COPY (
+            SELECT c.wallet                             AS wallet,
+                   c.timestamp                          AS timestamp,
+                   c.condition_id                       AS condition_id,
+                   m.{slug_col}                         AS event_slug,
+                   CAST(hash(c.wallet) % {NUM_BUCKETS} AS INTEGER) AS bucket
+            FROM read_parquet('{CROSS_MARKETS_CACHE}') c
+            LEFT JOIN (
+                SELECT DISTINCT ON (condition_id) condition_id, {slug_col}
+                FROM read_parquet('{MARKETS_MASTER}')
+            ) m ON c.condition_id = m.condition_id
+        )
+        TO '{BUCKETS_DIR}'
+        (FORMAT PARQUET, COMPRESSION ZSTD, PARTITION_BY (bucket),
+         OVERWRITE_OR_IGNORE);
+        """
+    )
+    bucket_dirs = sorted(BUCKETS_DIR.glob("bucket=*"))
+    total_bytes = sum(
+        p.stat().st_size for p in BUCKETS_DIR.rglob("*.parquet")
+    )
+    print(
+        f"  wrote {len(bucket_dirs)} bucket dirs ({total_bytes / 1e6:.0f} MB) "
+        f"in {time.time() - t0:.0f}s"
+    )
+    return slug_col
 
 
-def compute_expanding_entropy(cross: pd.DataFrame) -> pd.DataFrame:
-    """Per wallet, over time: Shannon entropy (nats) over the distinct-market
-    category distribution, strictly before each trade's timestamp.
+def compute_expanding_entropy_streaming() -> None:
+    """Process each wallet-hash bucket in isolation: load the bucket's
+    parquet into pandas (max ~2 M rows), sort in memory by (wallet,
+    timestamp), compute causal expanding-entropy per wallet, append to
+    the output parquet. Peak RSS per bucket is ~500 MB.
+
+    Input:  BUCKETS_DIR/bucket=K/*.parquet for K in 0..NUM_BUCKETS-1.
+    Output: ENTROPY_PARQUET with (wallet, timestamp, condition_id,
+            wallet_market_category_entropy).
     """
-    cross = cross.sort_values(["wallet", "timestamp"], kind="mergesort").reset_index(
-        drop=True
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    print("per-bucket entropy compute (sort + causal expanding)...")
+    t_total = time.time()
+
+    bucket_dirs = sorted(
+        BUCKETS_DIR.glob("bucket=*"),
+        key=lambda p: int(p.name.split("=")[1]),
+    )
+    if not bucket_dirs:
+        raise RuntimeError(
+            f"no bucket directories found in {BUCKETS_DIR} — "
+            f"attach_category_and_bucket() must run first"
+        )
+
+    out_schema = pa.schema(
+        [
+            pa.field("wallet", pa.string()),
+            pa.field("timestamp", pa.int64()),
+            pa.field("condition_id", pa.string()),
+            pa.field("wallet_market_category_entropy", pa.float64()),
+        ]
+    )
+    writer = pq.ParquetWriter(ENTROPY_PARQUET, out_schema, compression="zstd")
+
+    category_counts: dict[str, int] = {c: 0 for c in CATEGORY_LABELS}
+    rows_done = 0
+    rows_total = 0
+
+    for bd in bucket_dirs:
+        bi = int(bd.name.split("=")[1])
+        t_bucket = time.time()
+        files = sorted(bd.glob("*.parquet"))
+        if not files:
+            continue
+        df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+        df = df.sort_values(["wallet", "timestamp"], kind="mergesort").reset_index(
+            drop=True
+        )
+        # Dedup on (wallet, timestamp, condition_id). A wallet making
+        # multiple order fills at the same second on the same market
+        # produces duplicate rows — but entropy only depends on
+        # strictly-prior DISTINCT markets, so the entropy value is
+        # identical across duplicates. Dedupe here (inside the bucket,
+        # guaranteed safe because a wallet's rows are all in one bucket)
+        # keeps the output one-to-one with (wallet, ts, cond) triples
+        # and prevents a 5× row explosion at merge time.
+        n_pre = len(df)
+        df = df.drop_duplicates(
+            subset=["wallet", "timestamp", "condition_id"], keep="first"
+        ).reset_index(drop=True)
+        n = len(df)
+        rows_total += n
+        n_dedup_dropped = n_pre - n
+
+        wallets = df["wallet"].values
+        timestamps = df["timestamp"].values.astype(np.int64)
+        conds = df["condition_id"].values
+        slugs = df["event_slug"].values
+
+        entropy = np.full(n, np.nan, dtype=np.float64)
+        cur_wallet: str | None = None
+        seen: set[str] = set()
+        counts = np.zeros(K, dtype=np.int32)
+        total_markets = 0
+
+        for i in range(n):
+            w = wallets[i]
+            if w != cur_wallet:
+                cur_wallet = w
+                seen = set()
+                counts = np.zeros(K, dtype=np.int32)
+                total_markets = 0
+
+            if total_markets >= 2:
+                p = counts / total_markets
+                nz = p > 0
+                entropy[i] = float(-(p[nz] * np.log(p[nz])).sum())
+
+            c = conds[i]
+            if c not in seen:
+                seen.add(c)
+                cat = bucket_slug(slugs[i])
+                counts[CAT_TO_IDX[cat]] += 1
+                total_markets += 1
+                category_counts[cat] += 1
+
+        out_batch = pa.record_batch(
+            [
+                pa.array(wallets, type=pa.string()),
+                pa.array(timestamps),
+                pa.array(conds, type=pa.string()),
+                pa.array(entropy, type=pa.float64()),
+            ],
+            schema=out_schema,
+        )
+        writer.write_batch(out_batch)
+
+        rows_done += n
+        del df, wallets, timestamps, conds, slugs, entropy
+
+        print(
+            f"  bucket {bi:>2d}/{NUM_BUCKETS}  rows={n:>9,}  "
+            f"(dedup dropped {n_dedup_dropped:>9,})  "
+            f"cumulative={rows_done:>11,}  "
+            f"bucket_secs={time.time() - t_bucket:5.1f}  "
+            f"elapsed={time.time() - t_total:5.0f}s"
+        )
+
+    writer.close()
+    print(
+        f"\n  wrote {ENTROPY_PARQUET.name} — {rows_total:,} rows "
+        f"in {time.time() - t_total:.0f}s"
+    )
+    print("  category distribution (distinct-market counts across all wallets):")
+    total_cat = sum(category_counts.values())
+    for c in CATEGORY_LABELS:
+        n = category_counts[c]
+        pct = n / max(1, total_cat) * 100
+        print(f"    {c:20s} {n:>12,}  ({pct:5.1f}%)")
+
+
+def merge_entropy_into_csv_duckdb() -> None:
+    """Stream-join the entropy parquet into the mother CSV via duckdb and
+    write a new CSV. Memory stays under ~2 GB — duckdb streams rows rather
+    than loading pandas DataFrames.
+    """
+    import duckdb
+
+    con = duckdb.connect()
+    con.execute("PRAGMA memory_limit='3GB'")
+    con.execute("PRAGMA temp_directory='/tmp/duckdb_entropy'")
+    con.execute("PRAGMA threads=4")
+
+    # Preserve the first-good backup. If .pre10.csv already exists and
+    # its column count is 65 (pre-entropy), trust it as the canonical
+    # pre-merge state and do not overwrite it with a possibly-broken
+    # intermediate state from a previous failed run.
+    t0 = time.time()
+    if BACKUP_CSV.exists():
+        with BACKUP_CSV.open("r") as fh:
+            backup_cols = len(fh.readline().split(","))
+        if backup_cols == 65:
+            print(
+                f"  {BACKUP_CSV.name} already present (65 cols, pre-entropy) "
+                f"— reusing, not overwriting"
+            )
+        else:
+            print(
+                f"  {BACKUP_CSV.name} exists but has {backup_cols} cols "
+                f"(expected 65) — overwriting with current CSV"
+            )
+            shutil.copy2(FEATURES_CSV, BACKUP_CSV)
+    else:
+        print(f"backing up current CSV to {BACKUP_CSV.name}...")
+        shutil.copy2(FEATURES_CSV, BACKUP_CSV)
+    print(f"  backup step done in {time.time() - t0:.0f}s")
+
+    print("duckdb: stream-joining entropy parquet into CSV...")
+    t1 = time.time()
+    tmp_out = FEATURES_CSV.with_suffix(".csv.tmp")
+    if tmp_out.exists():
+        tmp_out.unlink()
+
+    # The mother CSV's `timestamp` is ISO-formatted strings (e.g.
+    # "2025-12-22 16:57:07+00:00") from 02_build_dataset.py, while the
+    # entropy parquet's `timestamp` is BIGINT Unix seconds. The CSV is
+    # auto-detected as TIMESTAMP; we convert to epoch seconds inside the
+    # JOIN via EPOCH(). The entropy parquet is already deduped per
+    # (wallet, timestamp, condition_id) during phase 3.
+    con.execute(
+        f"""
+        COPY (
+            SELECT c.*,
+                   e.wallet_market_category_entropy
+            FROM read_csv(
+                '{BACKUP_CSV}',
+                HEADER=TRUE,
+                AUTO_DETECT=TRUE,
+                SAMPLE_SIZE=-1
+            ) c
+            LEFT JOIN read_parquet('{ENTROPY_PARQUET}') e
+              ON c.{WALLET_COL}                            = e.wallet
+             AND CAST(EPOCH(c.{TIMESTAMP_COL}) AS BIGINT)  = e.timestamp
+             AND c.condition_id                            = e.condition_id
+        )
+        TO '{tmp_out}'
+        (FORMAT CSV, HEADER);
+        """
+    )
+    tmp_out.replace(FEATURES_CSV)
+    print(f"  merge + CSV write done in {time.time() - t1:.0f}s")
+
+    # Quick sanity check — col count and match rate
+    col_count = len(
+        con.execute(
+            f"SELECT * FROM read_csv('{FEATURES_CSV}', HEADER=TRUE, "
+            f"AUTO_DETECT=TRUE, SAMPLE_SIZE=-1) LIMIT 0"
+        ).description
+    )
+    n_rows = con.execute(
+        f"SELECT COUNT(*) FROM read_csv('{FEATURES_CSV}', HEADER=TRUE, "
+        f"AUTO_DETECT=TRUE, SAMPLE_SIZE=-1)"
+    ).fetchone()[0]
+    n_matched = con.execute(
+        f"SELECT COUNT(*) FROM read_csv('{FEATURES_CSV}', HEADER=TRUE, "
+        f"AUTO_DETECT=TRUE, SAMPLE_SIZE=-1) "
+        f"WHERE wallet_market_category_entropy IS NOT NULL"
+    ).fetchone()[0]
+    print(
+        f"  final CSV shape: {n_rows:,} rows × {col_count} cols; "
+        f"entropy matched on {n_matched:,} rows "
+        f"({n_matched / max(1, n_rows) * 100:.1f}%)"
     )
 
-    print("computing expanding entropy per wallet...")
-    t0 = time.time()
-    n = len(cross)
-    entropy = np.full(n, np.nan, dtype=np.float64)
 
-    cur_wallet: str | None = None
-    seen: set[str] = set()
-    counts = np.zeros(K, dtype=np.int32)
-    total_markets = 0
-
-    wallets = cross["wallet"].values
-    conds = cross["condition_id"].values
-    cat_idxs = cross["cat_idx"].values
-
-    for i in range(n):
-        w = wallets[i]
-        if w != cur_wallet:
-            cur_wallet = w
-            seen = set()
-            counts = np.zeros(K, dtype=np.int32)
-            total_markets = 0
-
-        if total_markets >= 2:
-            p = counts / total_markets
-            nz = p > 0
-            entropy[i] = float(-(p[nz] * np.log(p[nz])).sum())
-
-        c = conds[i]
-        if c not in seen:
-            seen.add(c)
-            counts[cat_idxs[i]] += 1
-            total_markets += 1
-
-        if (i + 1) % 500_000 == 0:
-            print(
-                f"  {i + 1:,} / {n:,} "
-                f"({(i + 1) / n * 100:.1f}%, {time.time() - t0:.0f}s)"
-            )
-
-    cross["wallet_market_category_entropy"] = entropy
-    print(f"  done in {time.time() - t0:.0f}s")
-    return cross[
-        ["wallet", "timestamp", "condition_id", "wallet_market_category_entropy"]
-    ]
+def _shards_cover_all_row_groups() -> bool:
+    """True if every HF row group 0..591 is present in CHUNKS_DIR. Avoids
+    the false-alarm re-stream when some of our wallets simply never
+    appeared on the HF mirror as maker/taker (which is legitimate — they
+    may have only traded on post-cutoff ceasefire markets not in the HF
+    snapshot)."""
+    if not CHUNKS_DIR.exists():
+        return False
+    covered = _covered_row_groups(CHUNKS_DIR)
+    # Total row group count lives in the consolidated parquet's metadata
+    # once we have one; for the common case we just trust that 0..591 are
+    # expected and verify against the schema we've used throughout.
+    # Hard-coded here because the 592 total is a property of the dataset,
+    # not our code.
+    expected = set(range(592))
+    return expected.issubset(covered)
 
 
 def main() -> None:
     t_total = time.time()
 
+    print("phase 1 — cross-market trade history (HF mirror stream)")
     print("loading mother dataframe join keys...")
     df_keys = pd.read_csv(
         FEATURES_CSV,
-        usecols=[WALLET_COL, TIMESTAMP_COL, "condition_id"],
-        dtype={WALLET_COL: "string", "condition_id": "string"},
+        usecols=[WALLET_COL],
+        dtype={WALLET_COL: "string"},
     )
-    print(f"  {len(df_keys):,} rows")
-
     wallets = set(df_keys[WALLET_COL].dropna().unique().tolist())
     print(f"  {len(wallets):,} unique wallets")
 
-    if CROSS_MARKETS_CACHE.exists():
-        print(f"cache found at {CROSS_MARKETS_CACHE.name} — loading")
-        cross = pd.read_parquet(CROSS_MARKETS_CACHE)
-        cached_wallets = set(cross["wallet"].unique().tolist())
-        missing = wallets - cached_wallets
-        if missing:
-            print(
-                f"  WARNING: cache missing {len(missing):,} of our wallets — "
-                f"re-streaming"
-            )
-            cross = stream_cross_market_history(wallets)
-            cross.to_parquet(CROSS_MARKETS_CACHE, index=False)
-        else:
-            print(f"  cache covers all {len(wallets):,} wallets — skipping stream")
+    need_stream = True
+    if CROSS_MARKETS_CACHE.exists() and _shards_cover_all_row_groups():
+        print(f"  cache + all 592 shards present — skipping stream entirely")
+        need_stream = False
+    elif CROSS_MARKETS_CACHE.exists():
+        print(
+            f"  cache exists but shards incomplete — re-streaming missing "
+            f"row groups only"
+        )
     else:
-        print("no cache — streaming HF mirror (this is the long step, ~1–2 h)")
+        print(f"  no cache — full HF mirror stream (long step, ~1–2 h)")
+
+    if need_stream:
         cross = stream_cross_market_history(wallets)
         cross.to_parquet(CROSS_MARKETS_CACHE, index=False)
         print(f"  cached to {CROSS_MARKETS_CACHE}")
+        del cross  # free pandas frame before the duckdb phase
 
-    cross = attach_category(cross)
-    entropy_frame = compute_expanding_entropy(cross)
+    print("\nphase 2 — markets-master join + hash-bucketed write (duckdb)")
+    existing_buckets = sorted(BUCKETS_DIR.glob("bucket=*")) if BUCKETS_DIR.exists() else []
+    if len(existing_buckets) == NUM_BUCKETS:
+        print(
+            f"  all {NUM_BUCKETS} bucket dirs present at {BUCKETS_DIR.name} — reusing"
+        )
+    else:
+        attach_category_and_bucket()
 
-    print("joining entropy feature back to mother dataframe...")
-    t_join = time.time()
-    full = pd.read_csv(FEATURES_CSV)
-    # Deduplicate entropy frame on (wallet, timestamp, condition_id) to
-    # guarantee a one-to-one join with the mother frame.
-    entropy_frame = entropy_frame.drop_duplicates(
-        ["wallet", "timestamp", "condition_id"], keep="last"
-    )
-    merged = full.merge(
-        entropy_frame.rename(columns={"wallet": WALLET_COL}),
-        on=[WALLET_COL, TIMESTAMP_COL, "condition_id"],
-        how="left",
-    )
-    n_matched = int(merged["wallet_market_category_entropy"].notna().sum())
+    print("\nphase 3 — expanding entropy per bucket")
+    skip_phase3 = False
+    if ENTROPY_PARQUET.exists():
+        import pyarrow.parquet as pq
+
+        entropy_rows = pq.ParquetFile(ENTROPY_PARQUET).metadata.num_rows
+        # Sum rows across all bucket parquets as the source-of-truth.
+        bucket_rows = 0
+        for bd in BUCKETS_DIR.glob("bucket=*"):
+            for f in bd.glob("*.parquet"):
+                bucket_rows += pq.ParquetFile(f).metadata.num_rows
+        if entropy_rows == bucket_rows and entropy_rows > 0:
+            print(
+                f"  {ENTROPY_PARQUET.name} matches bucket total "
+                f"({entropy_rows:,} rows) — reusing"
+            )
+            skip_phase3 = True
+        else:
+            print(
+                f"  row count mismatch (entropy={entropy_rows:,} "
+                f"vs buckets={bucket_rows:,}) — recomputing"
+            )
+            ENTROPY_PARQUET.unlink()
+    if not skip_phase3:
+        compute_expanding_entropy_streaming()
+
+    print("\nphase 4 — CSV merge (duckdb, streamed)")
+    merge_entropy_into_csv_duckdb()
+
     print(
-        f"  matched {n_matched:,} / {len(merged):,} rows "
-        f"({n_matched / len(merged) * 100:.1f}%) in {time.time() - t_join:.0f}s"
-    )
-
-    print(
-        f"\nwallet_market_category_entropy summary:\n"
-        f"{merged['wallet_market_category_entropy'].describe().round(3)}"
-    )
-
-    print(f"\nbacking up to {BACKUP_CSV.name} and writing patched CSV...")
-    shutil.copy2(FEATURES_CSV, BACKUP_CSV)
-    merged.to_csv(FEATURES_CSV, index=False)
-
-    print(
-        f"\nwrote {FEATURES_CSV.name} — shape {merged.shape} "
-        f"in {time.time() - t_total:.0f}s total"
+        f"\nwrote {FEATURES_CSV.name} in {time.time() - t_total:.0f}s total. "
+        f"Layer-6 integrator (11_add_layer6.py) can now run on top."
     )
 
 

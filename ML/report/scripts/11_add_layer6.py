@@ -183,26 +183,43 @@ def main() -> None:
     print(f"  done in {time.time() - t3:.1f}s")
 
     df["wallet_enriched"] = wallet_enriched
-    df["wallet_polygon_age_at_t_days"] = polygon_age_at_t
-    df["wallet_polygon_nonce_at_t"] = polygon_nonce_at_t
-    df["wallet_log_polygon_nonce_at_t"] = np.log1p(polygon_nonce_at_t)
-    df["wallet_n_inbound_at_t"] = n_inbound_at_t
-    df["wallet_log_n_inbound_at_t"] = np.log1p(n_inbound_at_t)
-    df["wallet_n_cex_deposits_at_t"] = n_cex_deposits_at_t
+    # For continuous features and cumulative-amount features, cast to float
+    # so we can distinguish "real 0" (enriched wallet with no activity) from
+    # NaN (un-enriched wallet — ground truth unobserved). See
+    # data/MISSING_DATA.md for the full typology.
+    df["wallet_polygon_age_at_t_days"] = polygon_age_at_t  # float, NaN preserved
+    df["wallet_polygon_nonce_at_t"] = polygon_nonce_at_t.astype(np.float64)
+    df["wallet_log_polygon_nonce_at_t"] = np.log1p(polygon_nonce_at_t).astype(np.float64)
+    df["wallet_n_inbound_at_t"] = n_inbound_at_t.astype(np.float64)
+    df["wallet_log_n_inbound_at_t"] = np.log1p(n_inbound_at_t).astype(np.float64)
+    df["wallet_n_cex_deposits_at_t"] = n_cex_deposits_at_t.astype(np.float64)
     df["wallet_cex_usdc_cumulative_at_t"] = cex_usdc_cum_at_t
     df["wallet_log_cex_usdc_cum"] = np.log1p(cex_usdc_cum_at_t)
-    df["days_from_first_usdc_to_t"] = days_from_first_usdc
+    df["days_from_first_usdc_to_t"] = days_from_first_usdc  # float, NaN preserved
     df["wallet_funded_by_cex"] = funded_by_cex_static
     df["wallet_funded_by_cex_scoped"] = funded_by_cex_scoped
 
-    # Fill NaNs on missing/failed wallets with a sentinel (0) + the
-    # wallet_enriched flag carries the presence information.
-    fill_zero = [
+    # Pipeline-missingness rewrite: on un-enriched rows, set all
+    # numeric/continuous Layer 6 features to NaN. For enriched rows, 0 is a
+    # real value (never sent a tx, never received CEX USDC, polygon_first_tx_ts
+    # within the same second as the trade). The `wallet_enriched` flag
+    # distinguishes the two cases so downstream imputation preserves the
+    # "unobserved" signal. The binary flags (wallet_funded_by_cex{_scoped})
+    # stay as 0 on un-enriched rows — "not observed to be funded" is a
+    # semantically safe default for a boolean.
+    unenriched = df["wallet_enriched"] == 0
+    layer6_numeric_cols = [
         "wallet_polygon_age_at_t_days",
+        "wallet_polygon_nonce_at_t",
+        "wallet_log_polygon_nonce_at_t",
+        "wallet_n_inbound_at_t",
+        "wallet_log_n_inbound_at_t",
+        "wallet_n_cex_deposits_at_t",
+        "wallet_cex_usdc_cumulative_at_t",
+        "wallet_log_cex_usdc_cum",
         "days_from_first_usdc_to_t",
     ]
-    for c in fill_zero:
-        df[c] = df[c].fillna(0.0)
+    df.loc[unenriched, layer6_numeric_cols] = np.nan
 
     print(f"\nLayer 6 feature summary:")
     print(df[NEW_COLS].describe().T[["mean", "50%", "min", "max"]].round(3))
