@@ -23,6 +23,7 @@ mirror instead.
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -116,6 +117,68 @@ def parse_markets(event: dict) -> list[MarketRef]:
             )
         )
     return refs
+
+
+_MONTHS = {
+    m.lower(): i
+    for i, m in enumerate(
+        [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December",
+        ],
+        start=1,
+    )
+}
+_DEADLINE_FULL_RE = re.compile(
+    r"\bby\s+(January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b",
+    re.IGNORECASE,
+)
+_DEADLINE_NOYEAR_RE = re.compile(
+    r"\bby\s+(January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)\s+(\d{1,2})\b",
+    re.IGNORECASE,
+)
+
+
+def parse_deadline_from_question(
+    question: str | None, fallback_year: int | None = None
+) -> pd.Timestamp | None:
+    """Extract the advertised deadline from a Polymarket question.
+
+    Matches patterns like:
+      - "US strikes Iran by February 27, 2026?"      → 2026-02-27
+      - "Iran x Israel/US conflict ends by March 7?" → <fallback_year>-03-07
+        (the year is inferred when not explicit; pass `fallback_year` from
+         `end_date.year` on the same row so behaviour stays deterministic).
+
+    The deadline is the market's own published resolution boundary — part of
+    the question string known at market creation — so using it as a feature
+    reference is strictly non-leaky. Returns None when parsing fails.
+    """
+    if not isinstance(question, str) or not question:
+        return None
+    m = _DEADLINE_FULL_RE.search(question)
+    if m is not None:
+        mo, d, y = m.groups()
+        try:
+            return pd.Timestamp(
+                year=int(y), month=_MONTHS[mo.lower()], day=int(d), tz="UTC"
+            )
+        except (ValueError, KeyError):
+            return None
+    if fallback_year is None:
+        return None
+    m = _DEADLINE_NOYEAR_RE.search(question)
+    if m is None:
+        return None
+    mo, d = m.groups()
+    try:
+        return pd.Timestamp(
+            year=int(fallback_year), month=_MONTHS[mo.lower()], day=int(d), tz="UTC"
+        )
+    except (ValueError, KeyError):
+        return None
 
 
 def fetch_price_history(
@@ -370,6 +433,23 @@ def enrich_trades(
     meta["resolution_ts"] = pd.to_datetime(
         meta["resolution_ts"], utc=True, errors="coerce"
     )
+    # deadline_ts — the market's *advertised* deadline as stated in the
+    # question (e.g. "by February 27, 2026"). Polymarket's Gamma `endDate`
+    # field is stale or a batch-placeholder for many of the Iran strike
+    # markets (34 / 74 carry end_date = 2026-01-31), so time-to-settlement
+    # features use this parsed deadline instead. Fallback to end_date when
+    # the question cannot be parsed. Known at market creation, so strictly
+    # causal.
+    fallback_year = meta["end_date"].dt.year.where(meta["end_date"].notna()).astype(
+        "Int64"
+    )
+    meta["deadline_ts"] = [
+        parse_deadline_from_question(q, fy if pd.notna(fy) else None)
+        for q, fy in zip(meta["question"], fallback_year)
+    ]
+    meta["deadline_ts"] = pd.to_datetime(
+        meta["deadline_ts"], utc=True, errors="coerce"
+    ).fillna(meta["end_date"])
     df = trades.merge(meta, on="condition_id", how="left")
 
     eff_end = df["resolution_ts"].fillna(df["end_date"])
@@ -548,6 +628,69 @@ def _rolling_count_by_group(
     return out.fillna(0).astype("int64")
 
 
+def _causal_whale_flag(
+    df: pd.DataFrame, wallet_col: str, tv: pd.Series, quantile: float
+) -> pd.Series:
+    """Expanding-p95 whale flag, strictly causal.
+
+    At each trade i in market m at time t, let S_{m,t} be the multiset of
+    per-wallet running USD volumes in m, using only trades with timestamp
+    strictly less than t (one entry per wallet that has traded in m so far).
+    The threshold τ_{m,t} is the `quantile`-th percentile of S_{m,t} with
+    numpy's default linear interpolation. The flag is 1 iff the current
+    wallet's own running volume (excluding the current trade) is ≥ τ_{m,t}.
+
+    Implementation: per market, walk trades in timestamp order while
+    maintaining a dict of running wallet volumes and a SortedList of those
+    volumes. O(log W) per update. A minimum-sample warm-up of
+    `ceil(1 / (1 - quantile))` wallets is required before any flag can fire
+    so that the top percentile is well-defined (no flag = 1 on a two-wallet
+    market).
+    """
+    from math import ceil
+    from sortedcontainers import SortedList
+
+    min_wallets = max(2, ceil(1.0 / max(1e-9, 1.0 - quantile)))
+    n = len(df)
+    flag = np.zeros(n, dtype=np.int8)
+
+    tv_arr = tv.to_numpy(dtype=np.float64)
+    wallet_arr = df[wallet_col].to_numpy()
+    ts_vals = pd.to_datetime(df["timestamp"], utc=True).astype("int64").to_numpy()
+
+    for cid, gdf in df.groupby("condition_id", sort=False):
+        order = np.argsort(ts_vals[gdf.index.to_numpy()], kind="mergesort")
+        idx_sorted = gdf.index.to_numpy()[order]
+
+        running: dict[str, float] = {}
+        sl = SortedList()
+
+        for pos in range(idx_sorted.shape[0]):
+            i = int(idx_sorted[pos])
+            w = wallet_arr[i]
+            prev = running.get(w, 0.0)
+
+            if len(sl) >= min_wallets:
+                k = quantile * (len(sl) - 1)
+                k_lo = int(np.floor(k))
+                k_hi = int(np.ceil(k))
+                if k_lo == k_hi:
+                    tau = sl[k_lo]
+                else:
+                    frac = k - k_lo
+                    tau = sl[k_lo] * (1.0 - frac) + sl[k_hi] * frac
+                if prev >= tau:
+                    flag[i] = 1
+
+            new_val = prev + float(tv_arr[i])
+            if w in running:
+                sl.remove(running[w])
+            sl.add(new_val)
+            running[w] = new_val
+
+    return pd.Series(flag, index=df.index, dtype="int8")
+
+
 def _rolling_sum_by_group(
     df: pd.DataFrame, group_cols: list[str], value_col: str, window: str
 ) -> pd.Series:
@@ -601,20 +744,26 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
     df["log_size"] = np.log1p(size_num.clip(lower=0).fillna(0))
 
     # --- Time features ---
-    df["time_to_settlement_s"] = pd.to_numeric(
-        df["settlement_minus_trade_sec"], errors="coerce"
-    )
+    # time_to_settlement_s and pct_time_elapsed use `deadline_ts`, the
+    # deadline parsed out of the question string ("by February 27, 2026").
+    # `deadline_ts` is authored in the market's own question at creation
+    # time and is therefore provably known at trade time — strictly causal.
+    # Two weaker candidates were explicitly rejected:
+    #   * `resolution_ts` (post-hoc CLOB lock) — leaks future info.
+    #   * `end_date` (Gamma `endDate`) — stale or batched to a placeholder
+    #     (2026-01-31) on 34 / 74 markets, producing negative time-to-
+    #     settlement on ~44 % of rows.
+    # `settlement_minus_trade_sec` keeps `resolution_ts` upstream because
+    # its sole role is the §4 post-resolution filter; it is not a model
+    # feature.
+    deadline = pd.to_datetime(df.get("deadline_ts"), utc=True, errors="coerce")
+    df["time_to_settlement_s"] = (deadline - df["timestamp"]).dt.total_seconds()
     df["log_time_to_settlement"] = np.log1p(
         df["time_to_settlement_s"].clip(lower=0).fillna(0)
     )
 
     market_start = df.groupby("condition_id")["timestamp"].transform("min")
-    eff_end = pd.to_datetime(df.get("resolution_ts"), utc=True, errors="coerce")
-    if "end_date" in df.columns:
-        eff_end = eff_end.fillna(
-            pd.to_datetime(df["end_date"], utc=True, errors="coerce")
-        )
-    life_total = (eff_end - market_start).dt.total_seconds()
+    life_total = (deadline - market_start).dt.total_seconds()
     life_elapsed = (df["timestamp"] - market_start).dt.total_seconds()
     df["pct_time_elapsed"] = (life_elapsed / life_total.where(life_total > 0)).clip(
         0, 1
@@ -679,20 +828,14 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
         & (np.sign(new_pos.fillna(0)) != 0)
     ).astype("int64")
 
-    # Whale flag — cumulative wallet volume in market vs market p95 of final wallet volumes
-    final_vol_wm = tv.groupby([df[wallet_col], df["condition_id"]]).transform("sum")
-    p95_by_market = (
-        tv.groupby([df[wallet_col], df["condition_id"]])
-        .sum()
-        .groupby(level="condition_id")
-        .quantile(WHALE_QUANTILE)
-        .rename("p95")
-    )
-    p95_map = df["condition_id"].map(p95_by_market)
-    cum_vol_wm = tv.groupby([df[wallet_col], df["condition_id"]]).cumsum() - tv
-    df["wallet_is_whale_in_market"] = (cum_vol_wm >= p95_map).astype("int64")
-    # Fallback for markets with no p95 (shouldn't happen, but safe):
-    df.loc[p95_map.isna(), "wallet_is_whale_in_market"] = 0
+    # Whale flag — strictly causal expanding-p95 threshold per market. See
+    # `_causal_whale_flag` docstring. The earlier implementation used the p95
+    # of end-of-market wallet totals, which leaked future state (a wallet's
+    # running volume was compared to a threshold computed from all future
+    # trades in the market).
+    df["wallet_is_whale_in_market"] = _causal_whale_flag(
+        df, wallet_col, tv, WHALE_QUANTILE
+    ).astype("int64")
 
     # --- Wallet-in-market depth ---
     # Prior trade count in THIS market (cumulative, strictly prior).
