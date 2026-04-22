@@ -720,11 +720,11 @@ def run(event_ids: Iterable[str] = TARGET_EVENT_IDS) -> None:
         print(f"[trades] wrote {len(trades)} rows -> 02_trades.csv")
 
         enriched = enrich_trades(trades, meta, prices)
-        enriched.to_csv(OUT_DIR / "03_trades_features.csv", index=False)
+        enriched.to_csv(OUT_DIR / "03_consolidated_dataset.csv", index=False)
         n_labeled = int(enriched["bet_correct"].notna().sum())
         n_priced = int(enriched["market_implied_prob"].notna().sum()) if "market_implied_prob" in enriched.columns else 0
         print(
-            f"[enriched] wrote {len(enriched)} rows -> 03_trades_features.csv "
+            f"[enriched] wrote {len(enriched)} rows -> 03_consolidated_dataset.csv "
             f"({n_labeled} labeled, {n_priced} with implied prob)"
         )
 

@@ -48,7 +48,7 @@ Stale realised-dataset numbers in §1 Summary and §4 Data table: the earlier dr
 
 ### 5. Layer-5 feature completions (Bucket 1 — `scripts/09_patch_new_features.py`)
 
-Three per-trade features that map Alex's feature taxonomy onto our dataset without new data collection. Canonical implementations added to `01_polymarket_api.py` so the next full rebuild includes them; a one-shot patcher applies the same logic to `data/03_trades_features.csv` in place to avoid the 20-minute full-pipeline rerun.
+Three per-trade features that map Alex's feature taxonomy onto our dataset without new data collection. Canonical implementations added to `01_polymarket_api.py` so the next full rebuild includes them; a one-shot patcher applies the same logic to `data/03_consolidated_dataset.csv` in place to avoid the 20-minute full-pipeline rerun.
 
 | Feature | Cluster | Non-null / 1.21M | Median | Max | Insertion point |
 |---|---|---|---|---|---|
@@ -62,7 +62,7 @@ All three are strictly point-in-time:
 - `wallet_median_gap_in_market` uses `diff()` on `(wallet, market)` groups, then `expanding().median().shift(1)` so row *k* sees only gaps from pairs fully before *k*.
 - `size_vs_market_avg` = `trade_value_usd / (market_volume_so_far_usd / market_trade_count_so_far)`, both denominators already strictly-prior.
 
-The patcher ran in ~8 min and grew `03_trades_features.csv` from 62 to **65 cols**. Backup at `data/03_trades_features.pre09.csv`.
+The patcher ran in ~8 min and grew `03_consolidated_dataset.csv` from 62 to **65 cols**. Backup at `data/03_consolidated_dataset.pre09.csv`.
 
 Also added a `FEATURE_CLUSTERS` constant in `01_polymarket_api.py` that maps every feature to one of eight groups (`trade_local`, `market_context`, `time`, `wallet_global`, `bet_slicing`, `spread_builder`, `whale_exit`, `interactions`). Future feature-importance plots can import and group by this so the narrative stays readable as count grows.
 
@@ -92,8 +92,8 @@ Both fit the 4-day window if run sequentially. Recommendation deferred to next s
 
 `report/data/` (after the Bucket 1 patch):
 
-- `03_trades_features.csv` — **65 cols**, 1,209,787 rows. Mother dataframe for modelling.
-- `03_trades_features.pre09.csv` — pre-patch backup (62 cols).
+- `03_consolidated_dataset.csv` — **65 cols**, 1,209,787 rows. Consolidated dataset for modelling.
+- `03_consolidated_dataset.pre09.csv` — pre-patch backup (62 cols).
 - `00_hf_trades_cache.parquet` — 50 MB Iran-subset cache.
 - `00_hf_markets_master.parquet` — 116 MB, shared across clusters.
 - Rest unchanged.
@@ -170,3 +170,60 @@ Consideration: elevate the insider-flagger angle from §8 (out-of-scope / Discus
 1. Confirm enrichment landed clean; run `scripts/11_add_layer6.py` → +9 cols → frame at 75 cols. Verify with `describe()` on the 9 new columns and `wallet_enriched` coverage.
 2. Final EDA pass: regenerate any figures that benefit from the two new feature layers; refresh Table 1 / Table 2 numbers only if the post-resolution filter or Layer 6/7 change them materially.
 3. Kick off modelling: run `12_train_mlp.py` on the 75-col frame; land first LogReg + RF + MLP val metrics. Backtest and calibration sweep follow.
+
+---
+
+## Early-morning update (22 Apr, 06:00–09:00)
+
+### Layer 6 enrichment finished ahead of schedule
+
+The enrichment run that was ETA'd at 03:00 local finished closer to 05:30. The tail of the wallet list was dominated by low-activity wallets (small / empty Polygon token-transfer histories), which returned small payloads quickly and bumped the effective rate above the cumulative 2.6 rps average.
+
+- Final initial-pass parquet: 109,080 wallets / 101,571 ok (93.12 %) / 7,509 NOTOK failures (6.88 %).
+
+### Layer 6 integration landed (two passes)
+
+**First pass** surfaced a silent correctness bug. The integrator expected trade timestamps as int64 Unix seconds; the CSV stores them as ISO strings (`"2026-02-02 01:38:14+01"`). The naive fix — `pd.to_datetime(..., utc=True).astype("int64") // 10**9` — silently produced timestamps **1000× too small** because **pandas 3+ stores datetimes at microsecond resolution**, not nanoseconds. Every `searchsorted` on the per-wallet timestamp arrays returned 0, so every numeric Layer 6 feature came out identically zero. Caught by `describe()` — flat-zero summaries are a red flag worth checking.
+
+Fix applied in `scripts/11_add_layer6.py`: force `.astype("datetime64[ns, UTC]")` before casting to int64 so the `// 10**9` is always correct. Worth grepping any future script that does the same idiom on datetimes.
+
+**Second pass** produced sensible feature distributions (median Polygon age 39 days, median nonce 193, heavy-tailed CEX USDC cumulative capped at $10.5 M; see §5.1 `describe()` in the report docx).
+
+### Retry of failed wallets — 93.9 % recovered
+
+User asked for a focused retry of the 7,509 NOTOK wallets. Procedure: backup parquet → `wallet_enrichment.pre-retry.parquet`; filter to ok-only (101,571 rows); re-run `scripts/03_enrich_wallets.py` → resume logic treats the 7,509 missing wallets as todo. Took 37 min at 2.8 rps. Recovery: **7,050 of 7,509 (93.9 %)** — far better than the 30–60 % I initially guessed.
+
+Diagnosis confirmed: most "NOTOK" responses were Etherscan server-side transient throttling, not permanent address rejection. Re-running even immediately after the first pass succeeded for almost all of them.
+
+**Final pipeline state:**
+
+| Layer | Count |
+|---|---|
+| Total wallets | 109,080 |
+| Etherscan-enriched | **108,621 (99.58 %)** |
+| Permanent failures | 459 (0.42 %) — Methodology → Known Limitations |
+
+**Final CSV:** 1,209,787 rows × 82 cols. Trade-level Layer 6 coverage **99.69 %** (1,206,050 / 1,209,787). Residual 3,737 trades carry `wallet_enriched=0` + NaN Layer 6.
+
+### Column-count clarification
+
+Plan and docx previously said "Layer 6 adds 9 columns". The script actually emits **12 columns**: the nine semantic features (`wallet_enriched`, `polygon_age_at_t_days`, `polygon_nonce_at_t`, `n_inbound_at_t`, `n_cex_deposits_at_t`, `cex_usdc_cumulative_at_t`, `days_from_first_usdc_to_t`, `funded_by_cex`, `funded_by_cex_scoped`) plus three log variants (`log_polygon_nonce_at_t`, `log_n_inbound_at_t`, `log_cex_usdc_cum`). Plan, docx, and `MISSING_DATA.md` all updated to say **"12 columns (9 semantic + 3 log variants)"**.
+
+Total column breakdown of the 82-col final frame: 65 base (layers 1–5) + 1 Layer 7 entropy + 4 missingness indicator flags from `11b_add_missingness_flags.py` + 12 Layer 6 columns.
+
+### Files updated this pass
+
+- `scripts/11_add_layer6.py` — datetime-unit fix.
+- `data/03_consolidated_dataset.csv` — regenerated with correct Layer 6 values (82 cols, 99.69 % enriched).
+- `data/wallet_enrichment.parquet` — post-retry (108,621 ok).
+- `data/wallet_enrichment.pre-retry.parquet` — pre-retry backup (kept for audit).
+- `data/03_consolidated_dataset.pre11.csv` — pre-Layer-6 backup (70 cols).
+- `project_plan.md` — row 10, row 10b status → done; "+9 cols" → "+12 cols" in 4 places; §5.6 figures updated to final post-retry numbers; §11 resolved with final coverage stats.
+- `data/MISSING_DATA.md` — §1 + §2 column count updated; observed-shares table now includes `wallet_enriched = 99.69 %`; §6 change log entry added.
+- `ML_final_exam_paper.docx` — already reflects Layer 6 / Layer 7 from last night's pass; no further docx edits needed.
+
+### Tomorrow (22 Apr proper — the day session)
+
+1. Final EDA pass on the 82-col frame: regenerate any figures that benefit from the two new feature layers; refresh Table 1 / Table 2 if post-resolution filtering shifts numbers materially.
+2. Kick off modelling: `scripts/12_train_mlp.py` on the 82-col frame — LogReg + RF + MLP val metrics, then isotonic calibration, then backtest and cutoff-date sweep per §5.2.
+3. Decide the RQ2 (insider-flagger) reframing question before the Results writeup. Recommendation from last night still stands: elevate it from §8 to co-primary.

@@ -1,8 +1,8 @@
 """Add Layer 6 on-chain identity features via bisect on per-wallet timestamp arrays.
 
-Reads data/03_trades_features.csv (mother dataframe, 65 cols) and
+Reads data/03_consolidated_dataset.csv (consolidated dataset, 65 cols) and
 data/wallet_enrichment.parquet (per-wallet scalars + timestamp arrays from
-03_enrich_wallets.py), and emits data/03_trades_features.csv with 9 new
+03_enrich_wallets.py), and emits data/03_consolidated_dataset.csv with 9 new
 Layer 6 columns appended (final width: 74 cols).
 
 Features added (strictly causal — each uses only wallet events with
@@ -20,7 +20,7 @@ timestamp strictly before the trade timestamp):
   - wallet_funded_by_cex            time-invariant flag (1 if wallet ever funded by CEX)
   - wallet_funded_by_cex_scoped     1 iff funded_by_cex AND first_usdc_inbound_ts < trade_ts
 
-A pre-integration backup is written to data/03_trades_features.pre11.csv so
+A pre-integration backup is written to data/03_consolidated_dataset.pre11.csv so
 the patch can be reverted in one file copy if downstream validation flags an
 issue.
 
@@ -38,9 +38,9 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-FEATURES_CSV = ROOT / "data" / "03_trades_features.csv"
+FEATURES_CSV = ROOT / "data" / "03_consolidated_dataset.csv"
 ENRICH_IN = ROOT / "data" / "wallet_enrichment.parquet"
-BACKUP_CSV = ROOT / "data" / "03_trades_features.pre11.csv"
+BACKUP_CSV = ROOT / "data" / "03_consolidated_dataset.pre11.csv"
 
 WALLET_COL = "proxyWallet"
 TIMESTAMP_COL = "timestamp"
@@ -64,7 +64,7 @@ NEW_COLS = [
 def main() -> None:
     t0 = time.time()
 
-    print(f"loading mother dataframe...")
+    print(f"loading consolidated dataset...")
     df = pd.read_csv(FEATURES_CSV)
     print(f"  {len(df):,} rows × {len(df.columns)} cols in {time.time() - t0:.1f}s")
 
@@ -132,7 +132,16 @@ def main() -> None:
     wallet_enriched = np.zeros(n, dtype=np.int8)
 
     wallets = df[WALLET_COL].values
-    timestamps = df[TIMESTAMP_COL].values.astype(np.int64)
+    # CSV stores `timestamp` as ISO string (e.g. "2026-02-02 01:38:14+01").
+    # Enrichment timestamp arrays are Unix seconds (Etherscan V2 `timeStamp`).
+    # Force ns resolution before casting to int64 because pandas 3+ stores
+    # datetimes as microseconds by default, which breaks a naive // 10**9.
+    timestamps = (
+        pd.to_datetime(df[TIMESTAMP_COL], utc=True)
+        .astype("datetime64[ns, UTC]")
+        .astype("int64")
+        // 10**9
+    ).to_numpy()
 
     for i in range(n):
         w = wallets[i]

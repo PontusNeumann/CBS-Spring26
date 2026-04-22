@@ -1,4 +1,4 @@
-"""Patch `data/03_trades_features.csv` with three new features without
+"""Patch `data/03_consolidated_dataset.csv` with three new features without
 triggering a full pipeline rebuild.
 
 Adds (all strictly no-lookahead):
@@ -21,8 +21,8 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-CSV = ROOT / "data" / "03_trades_features.csv"
-BACKUP = ROOT / "data" / "03_trades_features.pre09.csv"
+CSV = ROOT / "data" / "03_consolidated_dataset.csv"
+BACKUP = ROOT / "data" / "03_consolidated_dataset.pre09.csv"
 
 
 def main() -> None:

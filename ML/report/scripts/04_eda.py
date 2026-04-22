@@ -1,6 +1,6 @@
 """EDA for the Iran-markets enriched dataset.
 
-Reads `data/03_trades_features.csv` (the mother dataframe produced by
+Reads `data/03_consolidated_dataset.csv` (the consolidated dataset produced by
 `02_build_dataset.py`) and writes figures plus a numeric summary to
 `outputs/eda/`. All figures follow `report/Design.md` conventions so they drop
 straight into the Word document with no post-processing.
@@ -16,7 +16,7 @@ EDA stages (aligned to lectures 2, 5, 7):
     08  wallet behavioural quadrants
 
 Usage:
-    python scripts/04_eda.py [--csv data/03_trades_features.csv] [--out outputs/eda]
+    python scripts/04_eda.py [--csv data/03_consolidated_dataset.csv] [--out outputs/eda]
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ PRICE_COL = "price"
 TS_COL = "timestamp"
 
 # Numeric features used in distributions / correlation / outlier panels. All
-# strictly present in `03_trades_features.csv`; anything gated on Polygonscan or
+# strictly present in `03_consolidated_dataset.csv`; anything gated on Polygonscan or
 # GDELT is deliberately absent.
 NUM_FEATURES = [
     "log_size",
@@ -578,7 +578,7 @@ def write_summary(df: pd.DataFrame, nulls: pd.Series, out_path: Path) -> None:
 # ---------------------------------------------------------------------------
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default=str(DATA_DIR / "03_trades_features.csv"))
+    ap.add_argument("--csv", default=str(DATA_DIR / "03_consolidated_dataset.csv"))
     ap.add_argument("--out", default=str(OUT_DIR_DEFAULT))
     args = ap.parse_args()
 

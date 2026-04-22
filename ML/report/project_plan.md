@@ -80,8 +80,8 @@ The efficient-market null for Polymarket is that the market-implied price alread
 
 The project has deliberately chosen to re-stream the 38.7 GB HF trades parquet for each additional event cluster rather than download the full file once (~39 GB on disk).
 
-- Each cluster build takes ~60 min network + ~15 min enrichment, producing a cluster-specific `00_hf_trades_cache.parquet` (tens of MB) and `03_trades_features.csv` (hundreds of MB to ~1 GB).
-- After N clusters are built, their `03_trades_features.csv` files are concatenated into a single mother frame on disk. The concatenation must recompute two families of columns because they are cluster-local: (a) the running/prior features (`wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_prior_win_rate`, `market_trade_count_so_far`, `market_volume_so_far_usd`, `market_price_vol_last_1h`, and the `wallet_trades_in_market_last_*min` family), and (b) the `split` column, which is a trade-timestamp quantile inside the cluster and must be reissued globally on the merged frame.
+- Each cluster build takes ~60 min network + ~15 min enrichment, producing a cluster-specific `00_hf_trades_cache.parquet` (tens of MB) and `03_consolidated_dataset.csv` (hundreds of MB to ~1 GB).
+- After N clusters are built, their `03_consolidated_dataset.csv` files are concatenated into a single consolidated dataset on disk. The concatenation must recompute two families of columns because they are cluster-local: (a) the running/prior features (`wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_prior_win_rate`, `market_trade_count_so_far`, `market_volume_so_far_usd`, `market_price_vol_last_1h`, and the `wallet_trades_in_market_last_*min` family), and (b) the `split` column, which is a trade-timestamp quantile inside the cluster and must be reissued globally on the merged dataset.
 - Rationale for repeated streams over a one-time full download: disk is tight, the cluster list is small (Iran now, potentially Maduro / Biden pardons later per §8), and the per-cluster subset parquets are the only permanent cache we need to keep.
 
 ## 5. Method, Mapped to Course Lectures
@@ -136,7 +136,7 @@ Missingness in the feature frame partitions into two classes.
 
 **Structural missingness** is NaN on expanding / running quantities that are mathematically undefined given the prior history available at row time: expanding win-rate on a wallet's first trade, cross-market category entropy before two distinct markets have been observed, directional purity on the first (wallet, market) trade, `size_vs_wallet_avg` on the first trade. The NaN is the truthful value. Filling with a sentinel (zero in particular) would conflate "not yet defined" with a legitimate realised value — for category entropy specifically, zero is a valid realised value meaning a wallet concentrated in exactly one category, so imputing 0 for undefined entropy would erase the distinction.
 
-**Pipeline missingness** is NaN where the underlying quantity exists but could not be observed: all nine Layer 6 on-chain features on rows whose wallet failed Etherscan V2 enrichment, and `pct_time_elapsed` on markets missing both `resolution_ts` and `end_date` metadata. For these, zero would be semantically wrong for most features (a real wallet is never zero days old on Polygon; a real market does resolve); NaN plus the enrichment/pipeline flag is the faithful representation.
+**Pipeline missingness** is NaN where the underlying quantity exists but could not be observed: all twelve Layer 6 on-chain columns (nine semantic features plus three log variants) on rows whose wallet failed Etherscan V2 enrichment, and `pct_time_elapsed` on markets missing both `resolution_ts` and `end_date` metadata. For these, zero would be semantically wrong for most features (a real wallet is never zero days old on Polygon; a real market does resolve); NaN plus the enrichment/pipeline flag is the faithful representation.
 
 The dataset preserves NaN in every affected raw feature and carries one binary indicator column per missingness species: `wallet_has_prior_trades`, `wallet_has_prior_trades_in_market`, `wallet_has_cross_market_history`, `market_timing_known` (added by `scripts/11b_add_missingness_flags.py`), and `wallet_enriched` (added by `scripts/11_add_layer6.py`). Imputation is applied only at the modelling stage and differs by classifier: tree-based models accept NaN natively in sklearn ≥ 1.4 and pass raw columns through; logistic regression and the MLP impute using train-split-only medians followed by standardisation. In all cases the indicator columns are retained as features, so whatever value is imputed for the raw feature the model still sees the "was this missing" signal. Per-column assignments, share statistics, and policy details are recorded in `data/MISSING_DATA.md` and updated there as decisions evolve.
 
@@ -209,12 +209,12 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 | 3 | True resolution-timestamp derivation (`resolution_ts`) and `settlement_minus_trade_sec` | done (19 Apr) | 2 |
 | 4 | Running market and wallet features (market-state, wallet-global) | done (19 Apr) | 2 |
 | 5 | Expanded six-layer feature set — time, log_size, wallet-in-market bursting, directional purity, position-aware, interactions | done (19 Apr, Alex-adoption pass) | 2 |
-| 6 | Trade-timestamp temporal split column in `03_trades_features.csv` | done (19 Apr, Alex-adoption pass) | 5 |
+| 6 | Trade-timestamp temporal split column in `03_consolidated_dataset.csv` | done (19 Apr, Alex-adoption pass) | 5 |
 | 7 | Hybrid HF + API build script (`scripts/02_build_dataset.py`), rewritten 20 Apr to use pyarrow + fsspec chunked row-group reads with retry + reopen (duckdb httpfs hit Snappy decompression errors mid-stream on the 38.7 GB file) | done (20 Apr) | 5 |
-| 8 | Run the hybrid build end-to-end for the Iran cluster (events 114242, 236884, 355299, 357625). Output: `data/03_trades_features.csv`, 1,209,787 rows × 57 cols, 806 MB; 67 HF markets + 7 API markets; no market truncated. HF stream took ~64 min; enrichment ~13 min | done (20 Apr) | 7 |
+| 8 | Run the hybrid build end-to-end for the Iran cluster (events 114242, 236884, 355299, 357625). Output: `data/03_consolidated_dataset.csv`, 1,209,787 rows × 57 cols, 806 MB; 67 HF markets + 7 API markets; no market truncated. HF stream took ~64 min; enrichment ~13 min | done (20 Apr) | 7 |
 | 9 | Post-resolution filter applied (`settlement_minus_trade_sec > 0`) in modelling | open | 3 |
-| 10 | Polygonscan on-chain wallet enrichment (Layer 6 collection, `scripts/03_enrich_wallets.py`) — Etherscan V2 multichain free tier. Restarted 21 Apr evening at 3 keys × 6 workers (18 total) after observing that intermittent Etherscan server-side latency spikes (5–14 s on ~20–30 % of calls) bottleneck throughput below the 2.86 rps/key cap; observed aggregate ~2.6 rps and ~5.8 % non-retryable NOTOK wallet failure rate (vs ~1 % originally estimated) | in progress (21 Apr evening, ~70 % done) | 2 |
-| 10b | Layer 6 integration (`scripts/11_add_layer6.py`) — bisect per-wallet timestamp arrays onto each trade, +9 cols, in-place CSV patch with `.pre11.csv` backup | open | 10 |
+| 10 | Polygonscan on-chain wallet enrichment (Layer 6 collection, `scripts/03_enrich_wallets.py`) — Etherscan V2 multichain free tier, 3 keys × 6 workers (18 total). Initial pass 21 Apr evening reached 109,080 wallets with 6.88 % NOTOK failure rate (Etherscan server-side rejection on specific addresses, non-retryable inside the 5-retry budget). **Retry pass 22 Apr early AM re-attempted the 7,509 failed wallets; 7,050 recovered (93.9 % recovery rate).** Final: 108,621 ok / 459 permanent failures (0.42 %). | done (22 Apr early AM) | 2 |
+| 10b | Layer 6 integration (`scripts/11_add_layer6.py`) — bisect per-wallet timestamp arrays onto each trade. **Emits 12 columns** (nine semantic features: `wallet_polygon_age_at_t_days`, `wallet_polygon_nonce_at_t`, `wallet_n_inbound_at_t`, `wallet_n_cex_deposits_at_t`, `wallet_cex_usdc_cumulative_at_t`, `days_from_first_usdc_to_t`, `wallet_funded_by_cex`, `wallet_funded_by_cex_scoped`, `wallet_enriched`; plus three log variants: `wallet_log_polygon_nonce_at_t`, `wallet_log_n_inbound_at_t`, `wallet_log_cex_usdc_cum`). In-place CSV patch with `.pre11.csv` backup. Pandas-3 datetime-unit gotcha (storage is `[us]` not `[ns]`; cast to `datetime64[ns, UTC]` before `// 10**9`). | done (22 Apr early AM) | 10 |
 | 10c | Cross-market category-entropy feature (`scripts/10_wallet_category_entropy.py`) — stream HF mirror for 109K wallets' full Polymarket history, bucket event slugs into 8 categories, expanding entropy per wallet, +1 col | done (21 Apr evening) | 2 |
 | 10d | Missing-data policy + indicator columns (`scripts/11b_add_missingness_flags.py`, `data/MISSING_DATA.md`) — 4 binary indicators + typology doc; §5.6 policy landed | done (21 Apr evening) | 10c |
 | 11 | GDELT news-timing enrichment | deferred (free API, awaits feature-definition design) | 2 |
@@ -233,10 +233,10 @@ The economic evaluation of the trading rule sits under Results. The informed-tra
 - Position-sizing rule for the home-run strategy: flat larger stake versus Kelly-scaled.
 - Whether to model trade value in USD as a feature (already included via `trade_value_usd` and `log_size`) or additionally as a sample weight during training.
 - Exact quantile boundaries for the trade-timestamp train / validation / test split (default 0.70 / 0.85 / 1.00).
-- *Resolved 21 Apr evening.* Treatment of NaN on running / expanding features (`wallet_prior_win_rate`, `wallet_directional_purity_in_market`, `wallet_spread_ratio`, `wallet_median_gap_in_market`, `size_vs_wallet_avg`, `pct_time_elapsed`, `wallet_market_category_entropy`, and the 9 Layer 6 on-chain features): preserve NaN in the feature frame, attach five binary missingness indicators (`wallet_has_prior_trades`, `wallet_has_prior_trades_in_market`, `wallet_has_cross_market_history`, `market_timing_known`, `wallet_enriched`), defer imputation to the modelling stage per the classifier family. Full policy in §5.6 and `data/MISSING_DATA.md`.
+- *Resolved 21 Apr evening.* Treatment of NaN on running / expanding features (`wallet_prior_win_rate`, `wallet_directional_purity_in_market`, `wallet_spread_ratio`, `wallet_median_gap_in_market`, `size_vs_wallet_avg`, `pct_time_elapsed`, `wallet_market_category_entropy`, and the 12 Layer 6 on-chain columns): preserve NaN in the feature frame, attach five binary missingness indicators (`wallet_has_prior_trades`, `wallet_has_prior_trades_in_market`, `wallet_has_cross_market_history`, `market_timing_known`, `wallet_enriched`), defer imputation to the modelling stage per the classifier family. Full policy in §5.6 and `data/MISSING_DATA.md`.
 - Burst-detection thresholds: number of trades `K` in a rolling window `N` minutes that triggers `wallet_is_burst`. Default `K=3, N=10min`.
 - Whale threshold for `wallet_is_whale_in_market`: default 95th percentile of per-market cumulative wallet volume.
-- *Observed 21 Apr evening.* Layer 6 enrichment wallet failure rate is ~5.8 %, materially above the ~1 % originally estimated. Failures are Etherscan V2 returning `status=0 message='NOTOK'` on specific Polygon addresses, non-retryable. At the wallet level this propagates to ~5–6 % of 1.2 M trades having NaN Layer 6 features; those rows remain usable via the `wallet_enriched=0` indicator per §5.6. To be recorded in Methodology → Known Limitations when the run completes.
+- *Resolved 22 Apr early AM.* Initial Layer 6 pass produced 6.88 % NOTOK wallet failures (vs ~1 % originally estimated). A targeted retry pass on the 7,509 failed wallets recovered 7,050 of them (93.9 % recovery) — consistent with the "intermittent server-side latency" diagnosis rather than permanent address rejection. Final parquet state: 108,621 / 109,080 wallets enriched (99.58 %), 459 permanent failures (0.42 %). Trade-level Layer 6 coverage: 1,206,050 / 1,209,787 rows (99.69 %); residual 3,737 trades carry `wallet_enriched=0` and NaN Layer 6 per §5.6. To be noted in Methodology → Known Limitations as a ~0.4 % non-coverage fraction.
 
 ## 12. Repository Layout
 
@@ -267,8 +267,8 @@ report/
 │   ├── 01_markets_meta.csv                  # 74 resolved Iran markets' metadata.
 │   ├── 01_prices.csv                        # Iran intraday price history.
 │   ├── 02_trades.csv                        # Concatenated Iran trades (HF + API).
-│   ├── 03_trades_features.csv               # Mother dataframe (features + labels + split + missingness flags).
-│   ├── 03_trades_features.pre11.csv         # Single safety backup, kept one step behind current.
+│   ├── 03_consolidated_dataset.csv               # Consolidated dataset (features + labels + split + missingness flags).
+│   ├── 03_consolidated_dataset.pre11.csv         # Single safety backup, kept one step behind current.
 │   ├── MISSING_DATA.md                      # Authoritative policy for NaN handling and indicator columns; cited by §5.6.
 │   ├── wallet_enrichment.parquet            # Layer 6 Etherscan enrichment output; written by 03_enrich_wallets.py.
 │   ├── enrichment_progress.json             # Live status snapshot of 03_enrich_wallets.py.
@@ -291,7 +291,7 @@ report/
 │
 └── scripts/                                 # Data pipeline + modelling code.
     ├── 01_polymarket_api.py                 # Gamma / CLOB / Data API client + feature-enrichment library.
-    ├── 02_build_dataset.py                  # Primary entry point. Hybrid HF + API builder; writes 03_trades_features.csv.
+    ├── 02_build_dataset.py                  # Primary entry point. Hybrid HF + API builder; writes 03_consolidated_dataset.csv.
     ├── 02_build_dataset_legacy.py           # API-only builder, superseded; kept for reference.
     ├── 03_enrich_wallets.py                 # Etherscan V2 on-chain enrichment (Layer 6 collection).
     ├── 03b_enrichment_dashboard.py          # Live HTML progress dashboard for long enrichment runs.
@@ -302,7 +302,7 @@ report/
     ├── 08_docx_incorporate_alex.py          # One-shot: 14 pre-EDA text edits adopting Alex's sharper framing.
     ├── 09_patch_new_features.py             # One-shot Bucket 1 patcher: 3 Layer-5 features in-place.
     ├── 10_wallet_category_entropy.py        # Bucket 2 #4: HF-stream + duckdb bucketed entropy → +1 col.
-    ├── 11_add_layer6.py                     # Bucket 2 #5: bisect-based Layer 6 integrator → +9 cols (NaN-aware).
+    ├── 11_add_layer6.py                     # Bucket 2 #5: bisect-based Layer 6 integrator → +12 cols (NaN-aware).
     ├── 11b_add_missingness_flags.py         # Adds 4 binary missingness indicator columns per §5.6 policy.
     └── 12_train_mlp.py                      # MLP + LogReg + RF baselines + isotonic calibration (scaffolded).
 ```
@@ -310,13 +310,13 @@ report/
 **Reproduction workflow.** From `report/`:
 
 1. **Pipeline build (first run or full rebuild):**
-   - `python scripts/02_build_dataset.py` — streams HF + pulls ceasefire markets via API, writes `data/03_trades_features.csv` at the base feature set with train/val/test labels.
+   - `python scripts/02_build_dataset.py` — streams HF + pulls ceasefire markets via API, writes `data/03_consolidated_dataset.csv` at the base feature set with train/val/test labels.
    - `python scripts/09_patch_new_features.py` — in-place Bucket 1 Layer 5 patch (+3 cols).
 2. **Enrichment + feature expansion (needs `.env` with Etherscan V2 keys):**
    - `python scripts/10_wallet_category_entropy.py` — HF-stream cross-market history → duckdb bucketed entropy → +1 col. Resumable.
    - `python scripts/11b_add_missingness_flags.py` — derives 4 binary missingness indicators from the running/expanding feature columns → +4 cols. Fast (~1 min).
    - `python scripts/03_enrich_wallets.py` — Etherscan V2 tokentx per wallet → `data/wallet_enrichment.parquet`. Resumable via 500-wallet checkpoints.
-   - `python scripts/11_add_layer6.py` — bisect per-trade Layer 6 features → +9 cols; NaN on un-enriched rows per §5.6 policy.
+   - `python scripts/11_add_layer6.py` — bisect per-trade Layer 6 features → +12 cols; NaN on un-enriched rows per §5.6 policy.
 3. **EDA:**
    - `python scripts/04_eda.py` — writes plots and summaries into `outputs/eda/`. Figures then flow from there into the docx.
 4. **Modelling (scaffolded, pending data completion):**

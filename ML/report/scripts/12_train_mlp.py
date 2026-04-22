@@ -44,7 +44,7 @@ import matplotlib.pyplot as plt
 # ---------------------------------------------------------------------------
 
 REPORT_DIR = Path(__file__).resolve().parent.parent
-DATA_CSV = REPORT_DIR / "data" / "03_trades_features.csv"
+DATA_CSV = REPORT_DIR / "data" / "03_consolidated_dataset.csv"
 OUT_DIR = REPORT_DIR / "outputs" / "modelling"
 
 # Columns that are NOT features. Everything else in the frame is treated as a

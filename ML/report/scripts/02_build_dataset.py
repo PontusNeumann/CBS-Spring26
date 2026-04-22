@@ -30,7 +30,7 @@ Pipeline:
      impact: max per-market trade count is ~4.5k).
   5. Normalise schemas, concatenate, write `02_trades.csv`.
   6. Run `01_polymarket_api.enrich_trades` (+ expand_features + split) and
-     write `03_trades_features.csv`.
+     write `03_consolidated_dataset.csv`.
 
 Run from the project root:
     python ML/report/scripts/02_build_dataset.py
@@ -522,12 +522,12 @@ def main():
     trades.to_csv(DATA_DIR / "02_trades.csv", index=False)
     if not api_prices.empty:
         api_prices.to_csv(DATA_DIR / "01_prices.csv", index=False)
-    enriched.to_csv(DATA_DIR / "03_trades_features.csv", index=False)
+    enriched.to_csv(DATA_DIR / "03_consolidated_dataset.csv", index=False)
 
     log(f"DONE. enriched: {len(enriched):,} rows x {len(enriched.columns)} cols", t0)
     log(f"  01_markets_meta.csv     {(DATA_DIR / '01_markets_meta.csv').stat().st_size/1e3:,.0f} KB", t0)
     log(f"  02_trades.csv           {(DATA_DIR / '02_trades.csv').stat().st_size/1e6:,.1f} MB", t0)
-    log(f"  03_trades_features.csv  {(DATA_DIR / '03_trades_features.csv').stat().st_size/1e6:,.1f} MB", t0)
+    log(f"  03_consolidated_dataset.csv  {(DATA_DIR / '03_consolidated_dataset.csv').stat().st_size/1e6:,.1f} MB", t0)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 """Enrich taker wallets with on-chain activity history (causal-ready).
 
-Reads taker wallet list from data/03_trades_features.csv (column
+Reads taker wallet list from data/03_consolidated_dataset.csv (column
 `proxyWallet`), queries Etherscan V2 `account/tokentx` endpoint for each
 wallet's full ERC-20 transfer history on Polygon, and saves a rich per-wallet
 output:
@@ -72,7 +72,7 @@ PER_KEY_INTERVAL = 0.35  # 1/0.35 = 2.86 rps per key, safely under 3 cps cap
 _key_locks = {k: threading.Lock() for k in KEYS}
 _key_next_allowed = {k: 0.0 for k in KEYS}
 
-LABELED_IN = ROOT / "data" / "03_trades_features.csv"
+LABELED_IN = ROOT / "data" / "03_consolidated_dataset.csv"
 WALLET_COL = "proxyWallet"
 OUT_PATH = ROOT / "data" / "wallet_enrichment.parquet"
 STATUS_PATH = ROOT / "data" / "enrichment_progress.json"

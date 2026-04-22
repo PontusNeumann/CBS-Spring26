@@ -1,4 +1,4 @@
-"""Add four binary missingness-indicator columns to the mother CSV.
+"""Add four binary missingness-indicator columns to the consolidated CSV.
 
 Implements the dataset-level policy documented in `data/MISSING_DATA.md`:
 preserve NaN in the raw feature columns, and attach one binary indicator
@@ -31,7 +31,7 @@ Indicators added (all dtype int8, values in {0, 1}):
 `wallet_enriched` (the Layer 6 indicator) is NOT added here — it is added
 by 11_add_layer6.py alongside the Layer 6 feature columns themselves.
 
-A pre-patch backup is written to data/03_trades_features.pre11b.csv so the
+A pre-patch backup is written to data/03_consolidated_dataset.pre11b.csv so the
 patch is reversible in one file copy.
 
 Usage:
@@ -48,8 +48,8 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-FEATURES_CSV = ROOT / "data" / "03_trades_features.csv"
-BACKUP_CSV = ROOT / "data" / "03_trades_features.pre11b.csv"
+FEATURES_CSV = ROOT / "data" / "03_consolidated_dataset.csv"
+BACKUP_CSV = ROOT / "data" / "03_consolidated_dataset.pre11b.csv"
 
 NEW_COLS = [
     "wallet_has_prior_trades",

@@ -21,11 +21,11 @@ Pipeline (4 phases, each resumable and memory-bounded under ~2 GB):
      Peak RSS ~500 MB. Output: `data/00_wallet_entropy.parquet`. Skipped
      on rerun if row count matches the enriched parquet.
 
-  4. duckdb stream-join the entropy parquet into the mother
-     `data/03_trades_features.csv`, writing a new CSV with one new
+  4. duckdb stream-join the entropy parquet into the consolidated
+     `data/03_consolidated_dataset.csv`, writing a new CSV with one new
      column — `wallet_market_category_entropy` (Shannon nats; NaN on first
      cross-market trade). Peak RSS ~2 GB. Backup written to
-     `data/03_trades_features.pre10.csv`.
+     `data/03_consolidated_dataset.pre10.csv`.
 
 Runtime estimate: phase 1 ≈ 1.5–2 h network-bound (skipped on rerun);
 phase 2 ≈ 5 min; phase 3 ≈ 15–25 min (pure-Python loop, I/O-bounded by the
@@ -47,8 +47,8 @@ import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-FEATURES_CSV = ROOT / "data" / "03_trades_features.csv"
-BACKUP_CSV = ROOT / "data" / "03_trades_features.pre10.csv"
+FEATURES_CSV = ROOT / "data" / "03_consolidated_dataset.csv"
+BACKUP_CSV = ROOT / "data" / "03_consolidated_dataset.pre10.csv"
 CROSS_MARKETS_CACHE = ROOT / "data" / "00_hf_wallet_cross_markets.parquet"
 BUCKETS_DIR = ROOT / "data" / "00_hf_wallet_cross_markets_buckets"
 ENTROPY_PARQUET = ROOT / "data" / "00_wallet_entropy.parquet"
@@ -550,7 +550,7 @@ def compute_expanding_entropy_streaming() -> None:
 
 
 def merge_entropy_into_csv_duckdb() -> None:
-    """Stream-join the entropy parquet into the mother CSV via duckdb and
+    """Stream-join the entropy parquet into the consolidated CSV via duckdb and
     write a new CSV. Memory stays under ~2 GB — duckdb streams rows rather
     than loading pandas DataFrames.
     """
@@ -591,7 +591,7 @@ def merge_entropy_into_csv_duckdb() -> None:
     if tmp_out.exists():
         tmp_out.unlink()
 
-    # The mother CSV's `timestamp` is ISO-formatted strings (e.g.
+    # The consolidated CSV's `timestamp` is ISO-formatted strings (e.g.
     # "2025-12-22 16:57:07+00:00") from 02_build_dataset.py, while the
     # entropy parquet's `timestamp` is BIGINT Unix seconds. The CSV is
     # auto-detected as TIMESTAMP; we convert to epoch seconds inside the
@@ -665,7 +665,7 @@ def main() -> None:
     t_total = time.time()
 
     print("phase 1 — cross-market trade history (HF mirror stream)")
-    print("loading mother dataframe join keys...")
+    print("loading consolidated dataset join keys...")
     df_keys = pd.read_csv(
         FEATURES_CSV,
         usecols=[WALLET_COL],
