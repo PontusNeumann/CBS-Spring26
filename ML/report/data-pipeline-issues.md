@@ -37,6 +37,7 @@ Severity legend:
   - `market_vol_1h_log` (absolute rolling volume)
   - `market_vol_24h_log` (same)
   - `market_trade_count_so_far` (absolute trade count)
+  - `size_x_time_to_settlement` (interaction feature that uses raw `time_to_settlement_s` — same leak via back door)
 - **What's wrong:** at any wall-clock timestamp, these features take very different values per sub-market (because markets have different deadlines and volumes). In a 4-market training cohort with 1 YES + 3 NO, the model can learn "high volume + long time_to_settlement → this is Feb 28 (the YES market) → predict bet_correct accordingly." Training signal collapses to market identity.
 - **Impact severity:** **critical shortcut risk.** Without this drop, the MLP can reach near-perfect training loss by memorising which sub-market each trade belongs to. Test generalisation collapses because Apr 18 ceasefire-extended has neither high volume nor long time-to-settlement distribution.
 - **Mitigation applied:** not in the shared pipeline yet. For the Alex-workspace MLP training, add to the training script's `NON_FEATURE_COLS` (or equivalent feature-exclusion mechanism). Bounded / normalised substitutes are retained (`pct_time_elapsed`, `market_buy_share_running`, `market_price_vol_last_1h`).

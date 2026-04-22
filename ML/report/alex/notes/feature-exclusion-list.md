@@ -55,6 +55,12 @@ market_volume_so_far_usd, market_vol_1h_log, market_vol_24h_log,
 market_trade_count_so_far
 ```
 
+**Plus the interaction feature that bleeds market-identity through the back door** (uses raw `time_to_settlement_s`):
+
+```
+size_x_time_to_settlement
+```
+
 Bounded / normalised substitutes are **retained** (safe across markets):
 - `pct_time_elapsed` (0-1, market-normalised)
 - `market_buy_share_running` (0-1)
@@ -84,6 +90,8 @@ NON_FEATURE_COLS = {
     "market_vol_1h_log",
     "market_vol_24h_log",
     "market_trade_count_so_far",
+    # Interaction feature that uses raw time_to_settlement_s (same P0-8 reasoning)
+    "size_x_time_to_settlement",
 }
 ```
 
