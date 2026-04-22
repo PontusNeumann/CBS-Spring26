@@ -35,6 +35,7 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -52,20 +53,45 @@ OUT_DIR = REPORT_DIR / "outputs" / "modelling"
 # entropy column are appended.
 NON_FEATURE_COLS = {
     # Identifiers and raw metadata
-    "proxyWallet", "asset", "transactionHash", "condition_id", "conditionId",
-    "source", "title", "slug_x", "slug_y", "icon", "eventSlug", "outcome",
-    "name", "pseudonym", "bio", "profileImage", "profileImageOptimized",
-    "question", "end_date", "winning_outcome_index", "resolved", "resolution_ts",
+    "proxyWallet",
+    "asset",
+    "transactionHash",
+    "condition_id",
+    "conditionId",
+    "source",
+    "title",
+    "slug_x",
+    "slug_y",
+    "icon",
+    "eventSlug",
+    "outcome",
+    "name",
+    "pseudonym",
+    "bio",
+    "profileImage",
+    "profileImageOptimized",
+    "question",
+    "end_date",
+    "winning_outcome_index",
+    "resolved",
+    "resolution_ts",
+    "outcomes",
+    "is_yes",
     # Raw columns superseded by derived features
-    "size",            # replaced by log_size
-    "price",           # duplicates market_implied_prob
-    "timestamp",       # only used to construct the split column
+    "size",  # replaced by log_size
+    "price",  # duplicates market_implied_prob
+    "timestamp",  # only used to construct the split column
     # Filtering column
     "settlement_minus_trade_sec",
     # Label, benchmark, split
     "bet_correct",
     "market_implied_prob",  # §4: deliberately excluded — benchmark, not input
     "split",
+    # Dropped per data-pipeline-issues.md P0-1 and P0-2:
+    # wallet_is_whale_in_market leaks via end-of-market p95 threshold;
+    # is_position_exit misfires on first-ever SELL (denominator uses current trade size).
+    "wallet_is_whale_in_market",
+    "is_position_exit",
 }
 
 CATEGORICAL_COLS = {"side"}  # string BUY/SELL, encoded to 0/1
@@ -83,7 +109,10 @@ EARLY_STOP_PATIENCE = 5
 # Helpers
 # ---------------------------------------------------------------------------
 
-def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 15) -> float:
+
+def expected_calibration_error(
+    y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 15
+) -> float:
     """Equal-width ECE. y_prob in [0, 1]."""
     bins = np.linspace(0.0, 1.0, n_bins + 1)
     idx = np.digitize(y_prob, bins[1:-1], right=False)
@@ -134,7 +163,9 @@ def encode_categoricals(df: pd.DataFrame, feats: list[str]) -> pd.DataFrame:
     return out
 
 
-def winsorise(df: pd.DataFrame, cols: list[str], bounds: dict | None = None) -> tuple[pd.DataFrame, dict]:
+def winsorise(
+    df: pd.DataFrame, cols: list[str], bounds: dict | None = None
+) -> tuple[pd.DataFrame, dict]:
     """Clip `cols` at their 1st/99th percentile. If `bounds` is given, apply it
     (used to reuse training-set bounds on val/test)."""
     out = df.copy()
@@ -161,13 +192,20 @@ def split_frame(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFr
 # MLP
 # ---------------------------------------------------------------------------
 
+
 class MLP(nn.Module):
     """2-4 hidden layers, SELU, Glorot, dropout, BN — per §5.1."""
 
-    def __init__(self, in_dim: int, hidden_dims: tuple[int, ...] = (256, 128, 64),
-                 dropout: float = 0.3) -> None:
+    def __init__(
+        self,
+        in_dim: int,
+        hidden_dims: tuple[int, ...] = (256, 128, 64),
+        dropout: float = 0.3,
+    ) -> None:
         super().__init__()
-        assert 2 <= len(hidden_dims) <= 4, "project_plan.md §5.1 specifies 2-4 hidden layers"
+        assert 2 <= len(hidden_dims) <= 4, (
+            "project_plan.md §5.1 specifies 2-4 hidden layers"
+        )
         layers: list[nn.Module] = []
         prev = in_dim
         for h in hidden_dims:
@@ -186,19 +224,27 @@ class MLP(nn.Module):
         return self.net(x).squeeze(-1)
 
 
-def train_mlp(X_tr: np.ndarray, y_tr: np.ndarray,
-              X_va: np.ndarray, y_va: np.ndarray,
-              hidden_dims: tuple[int, ...] = (256, 128, 64),
-              dropout: float = 0.3,
-              lr: float = 1e-3) -> tuple[MLP, list[float], list[float]]:
+def train_mlp(
+    X_tr: np.ndarray,
+    y_tr: np.ndarray,
+    X_va: np.ndarray,
+    y_va: np.ndarray,
+    hidden_dims: tuple[int, ...] = (256, 128, 64),
+    dropout: float = 0.3,
+    lr: float = 1e-3,
+) -> tuple[MLP, list[float], list[float]]:
     torch.manual_seed(RANDOM_SEED)
     device = torch.device("cpu")
     model = MLP(X_tr.shape[1], hidden_dims=hidden_dims, dropout=dropout).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=lr)
-    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="min", factor=0.5, patience=2)
+    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        opt, mode="min", factor=0.5, patience=2
+    )
     loss_fn = nn.BCEWithLogitsLoss()
 
-    tr_ds = TensorDataset(torch.from_numpy(X_tr).float(), torch.from_numpy(y_tr).float())
+    tr_ds = TensorDataset(
+        torch.from_numpy(X_tr).float(), torch.from_numpy(y_tr).float()
+    )
     tr_dl = DataLoader(tr_ds, batch_size=BATCH_SIZE, shuffle=True)
     X_va_t = torch.from_numpy(X_va).float().to(device)
     y_va_t = torch.from_numpy(y_va).float().to(device)
@@ -230,7 +276,9 @@ def train_mlp(X_tr: np.ndarray, y_tr: np.ndarray,
 
         if vl < best_val - 1e-4:
             best_val = vl
-            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            best_state = {
+                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
+            }
             since_improve = 0
         else:
             since_improve += 1
@@ -253,6 +301,7 @@ def mlp_predict_proba(model: MLP, X: np.ndarray) -> np.ndarray:
 # Pipeline
 # ---------------------------------------------------------------------------
 
+
 def run() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     for sub in ("logreg", "rf", "mlp"):
@@ -260,10 +309,14 @@ def run() -> None:
 
     print(f"[load] {DATA_CSV}")
     df = load_frame()
-    print(f"[load] post-filter rows: {len(df):,} ({df['split'].value_counts().to_dict()})")
+    print(
+        f"[load] post-filter rows: {len(df):,} ({df['split'].value_counts().to_dict()})"
+    )
 
     features = select_features(df)
-    print(f"[features] {len(features)} features in use (total cols in frame: {df.shape[1]})")
+    print(
+        f"[features] {len(features)} features in use (total cols in frame: {df.shape[1]})"
+    )
 
     tr, va, te = split_frame(df)
     y_tr = tr["bet_correct"].to_numpy().astype(int)
@@ -275,7 +328,9 @@ def run() -> None:
     X_te = encode_categoricals(te, features)
 
     final_feats = X_tr.columns.tolist()
-    (OUT_DIR / "mlp" / "feature_list.json").write_text(json.dumps(final_feats, indent=2))
+    (OUT_DIR / "mlp" / "feature_list.json").write_text(
+        json.dumps(final_feats, indent=2)
+    )
 
     # Winsorise using training bounds
     X_tr, wbounds = winsorise(X_tr, WINSORISE_COLS, bounds=None)
@@ -295,17 +350,28 @@ def run() -> None:
     logreg.fit(X_tr_np, y_tr)
     p_va_lr = logreg.predict_proba(X_va_np)[:, 1]
     p_te_lr = logreg.predict_proba(X_te_np)[:, 1]
-    (OUT_DIR / "logreg" / "metrics.json").write_text(json.dumps({
-        "val": probability_metrics(y_va, p_va_lr),
-        "test": probability_metrics(y_te, p_te_lr),
-    }, indent=2))
-    (OUT_DIR / "logreg" / "feature_list.json").write_text(json.dumps(final_feats, indent=2))
+    (OUT_DIR / "logreg" / "metrics.json").write_text(
+        json.dumps(
+            {
+                "val": probability_metrics(y_va, p_va_lr),
+                "test": probability_metrics(y_te, p_te_lr),
+            },
+            indent=2,
+        )
+    )
+    (OUT_DIR / "logreg" / "feature_list.json").write_text(
+        json.dumps(final_feats, indent=2)
+    )
 
     # ----- Baseline: Random Forest -----
     print("[rf] fitting")
     rf = RandomForestClassifier(
-        n_estimators=400, max_depth=None, min_samples_leaf=20,
-        n_jobs=-1, random_state=RANDOM_SEED, class_weight="balanced",
+        n_estimators=400,
+        max_depth=None,
+        min_samples_leaf=20,
+        n_jobs=-1,
+        random_state=RANDOM_SEED,
+        class_weight="balanced",
     )
     # RF tolerates NaN + unscaled inputs natively; use un-imputed frame for fairness.
     X_tr_rf = X_tr.to_numpy()
@@ -314,16 +380,22 @@ def run() -> None:
     rf.fit(np.nan_to_num(X_tr_rf, nan=0.0), y_tr)
     p_va_rf = rf.predict_proba(np.nan_to_num(X_va_rf, nan=0.0))[:, 1]
     p_te_rf = rf.predict_proba(np.nan_to_num(X_te_rf, nan=0.0))[:, 1]
-    (OUT_DIR / "rf" / "metrics.json").write_text(json.dumps({
-        "val": probability_metrics(y_va, p_va_rf),
-        "test": probability_metrics(y_te, p_te_rf),
-    }, indent=2))
+    (OUT_DIR / "rf" / "metrics.json").write_text(
+        json.dumps(
+            {
+                "val": probability_metrics(y_va, p_va_rf),
+                "test": probability_metrics(y_te, p_te_rf),
+            },
+            indent=2,
+        )
+    )
     (OUT_DIR / "rf" / "feature_list.json").write_text(json.dumps(final_feats, indent=2))
 
     # ----- Primary: MLP -----
     print("[mlp] training")
-    model, train_losses, val_losses = train_mlp(X_tr_np, y_tr.astype(float),
-                                                X_va_np, y_va.astype(float))
+    model, train_losses, val_losses = train_mlp(
+        X_tr_np, y_tr.astype(float), X_va_np, y_va.astype(float)
+    )
     p_va_mlp_raw = mlp_predict_proba(model, X_va_np)
     p_te_mlp_raw = mlp_predict_proba(model, X_te_np)
 

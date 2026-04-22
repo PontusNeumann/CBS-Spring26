@@ -195,21 +195,31 @@ LOCK_UNLOCK_FLOOR = 0.9
 def _first_lock_timestamp(
     series: pd.DataFrame, price_col: str, ts_col: str
 ) -> pd.Timestamp | None:
-    """First timestamp at which `price_col` >= LOCK_THRESHOLD and does not fall
-    back below LOCK_UNLOCK_FLOOR for the remainder of the series. Returns
-    None if no such lock exists.
+    """Earliest timestamp at which `price_col` reaches LOCK_THRESHOLD and the
+    MEDIAN of subsequent prices remains at or above LOCK_UNLOCK_FLOOR.
+
+    Using the median instead of `.any()` tolerates the small fraction of
+    outlier trades (misclicked orders, late limit-order fills) that real
+    Polymarket markets exhibit after effective resolution — while still
+    rejecting false locks where the price spikes to threshold briefly and
+    then trades back down (e.g. an intraday news reaction that later reverses).
+
+    Iterates candidate lock points from earliest to latest and returns the
+    first whose post-lock median holds above the floor. Returns None if no
+    candidate satisfies the median condition.
     """
     if series.empty:
         return None
-    s = series.sort_values(ts_col)
-    locked = s[s[price_col] >= LOCK_THRESHOLD]
-    if locked.empty:
+    s = series.sort_values(ts_col).reset_index(drop=True)
+    hi_mask = s[price_col] >= LOCK_THRESHOLD
+    if not hi_mask.any():
         return None
-    first_ts = locked.iloc[0][ts_col]
-    after = s[s[ts_col] >= first_ts]
-    if (after[price_col] < LOCK_UNLOCK_FLOOR).any():
-        return None
-    return first_ts
+    prices = s[price_col].to_numpy()
+    for idx in np.flatnonzero(hi_mask.to_numpy()):
+        subsequent = prices[idx:]
+        if np.median(subsequent) >= LOCK_UNLOCK_FLOOR:
+            return s.iloc[idx][ts_col]
+    return None
 
 
 def derive_resolution_timestamps(
