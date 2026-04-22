@@ -2,6 +2,12 @@
 
 Alex's personal working space under the ML report directory. Everything here is his own experimentation: modelling scripts, outputs, notes. Kept separate from the shared pipeline scripts (`../scripts/`) so we can iterate quickly without stepping on Pontus's work.
 
+## ⚠️ FRAMEWORK CONSTRAINT — TensorFlow / Keras only
+
+**The CBS MLDP exam requires TensorFlow / Keras for all neural-network code. PyTorch is NOT permitted.** Any MLP, autoencoder, or deep-learning model in `alex/scripts/` must use `tensorflow` + `tf.keras`. sklearn models (LogReg, RF, GBM, etc.) remain fine as baselines.
+
+Note: Pontus's `scripts/12_train_mlp.py` currently uses PyTorch — that script cannot be used for the exam submission as-is.
+
 ## Current focus (2026-04-22)
 
 Building a clean train → val → test MLP pipeline from scratch on the leakage-free cohort parquets. Goal is a defensible answer to RQ1 (does a model trained on the peak-informed-flow strike window generalise to ceasefire markets?) and, if time permits, RQ2 (do the model's largest `|p_hat − market_implied_prob|` gaps concentrate on features documented in the informed-trading literature?).

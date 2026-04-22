@@ -1,0 +1,175 @@
+{
+  "intercept": 0.0017696868300803895,
+  "features": [
+    {
+      "feature": "wallet_log_polygon_nonce_at_t",
+      "coef": 0.1625954575400606,
+      "abs_coef": 0.1625954575400606
+    },
+    {
+      "feature": "wallet_polygon_age_at_t_days",
+      "coef": 0.152950383812452,
+      "abs_coef": 0.152950383812452
+    },
+    {
+      "feature": "wallet_trades_in_market_last_10min",
+      "coef": 0.14677170408459583,
+      "abs_coef": 0.14677170408459583
+    },
+    {
+      "feature": "wallet_log_n_inbound_at_t",
+      "coef": -0.1446978364059827,
+      "abs_coef": 0.1446978364059827
+    },
+    {
+      "feature": "days_from_first_usdc_to_t",
+      "coef": -0.14345314287156485,
+      "abs_coef": 0.14345314287156485
+    },
+    {
+      "feature": "wallet_has_prior_trades_in_market",
+      "coef": -0.10627598809937419,
+      "abs_coef": 0.10627598809937419
+    },
+    {
+      "feature": "wallet_prior_trades_in_market",
+      "coef": 0.08273885814945814,
+      "abs_coef": 0.08273885814945814
+    },
+    {
+      "feature": "wallet_market_category_entropy",
+      "coef": 0.08005580382794862,
+      "abs_coef": 0.08005580382794862
+    },
+    {
+      "feature": "wallet_prior_volume_usd",
+      "coef": -0.0614539794825597,
+      "abs_coef": 0.0614539794825597
+    },
+    {
+      "feature": "trade_value_usd",
+      "coef": -0.06084057525078379,
+      "abs_coef": 0.06084057525078379
+    },
+    {
+      "feature": "pct_time_elapsed",
+      "coef": 0.049192994761603256,
+      "abs_coef": 0.049192994761603256
+    },
+    {
+      "feature": "wallet_median_gap_in_market",
+      "coef": -0.037251407405582,
+      "abs_coef": 0.037251407405582
+    },
+    {
+      "feature": "wallet_trades_in_market_last_1min",
+      "coef": -0.033407581704473166,
+      "abs_coef": 0.033407581704473166
+    },
+    {
+      "feature": "wallet_spread_ratio",
+      "coef": 0.027725812428737798,
+      "abs_coef": 0.027725812428737798
+    },
+    {
+      "feature": "wallet_n_inbound_at_t",
+      "coef": 0.024535828824523855,
+      "abs_coef": 0.024535828824523855
+    },
+    {
+      "feature": "wallet_has_cross_market_history",
+      "coef": 0.02438655592683501,
+      "abs_coef": 0.02438655592683501
+    },
+    {
+      "feature": "wallet_prior_trades",
+      "coef": -0.023116169043998876,
+      "abs_coef": 0.023116169043998876
+    },
+    {
+      "feature": "wallet_trades_in_market_last_60min",
+      "coef": -0.02166038759183597,
+      "abs_coef": 0.02166038759183597
+    },
+    {
+      "feature": "market_price_vol_last_1h",
+      "coef": -0.020800966162589737,
+      "abs_coef": 0.020800966162589737
+    },
+    {
+      "feature": "market_timing_known",
+      "coef": 0.020013658904361215,
+      "abs_coef": 0.020013658904361215
+    },
+    {
+      "feature": "wallet_enriched",
+      "coef": 0.019129666837271537,
+      "abs_coef": 0.019129666837271537
+    },
+    {
+      "feature": "wallet_has_prior_trades",
+      "coef": -0.011993730309675099,
+      "abs_coef": 0.011993730309675099
+    },
+    {
+      "feature": "size_vs_market_avg",
+      "coef": 0.011213330961908559,
+      "abs_coef": 0.011213330961908559
+    },
+    {
+      "feature": "wallet_n_cex_deposits_at_t",
+      "coef": 0.0078006754069997915,
+      "abs_coef": 0.0078006754069997915
+    },
+    {
+      "feature": "wallet_is_burst",
+      "coef": -0.007650942176048206,
+      "abs_coef": 0.007650942176048206
+    },
+    {
+      "feature": "wallet_funded_by_cex",
+      "coef": -0.00749726118181834,
+      "abs_coef": 0.00749726118181834
+    },
+    {
+      "feature": "wallet_funded_by_cex_scoped",
+      "coef": -0.00749726118181834,
+      "abs_coef": 0.00749726118181834
+    },
+    {
+      "feature": "size_vs_wallet_avg",
+      "coef": -0.005969472143577489,
+      "abs_coef": 0.005969472143577489
+    },
+    {
+      "feature": "log_size",
+      "coef": 0.004522940572448305,
+      "abs_coef": 0.004522940572448305
+    },
+    {
+      "feature": "wallet_cex_usdc_cumulative_at_t",
+      "coef": 0.004001235077967771,
+      "abs_coef": 0.004001235077967771
+    },
+    {
+      "feature": "wallet_polygon_nonce_at_t",
+      "coef": 0.0028645021916345373,
+      "abs_coef": 0.0028645021916345373
+    },
+    {
+      "feature": "wallet_log_cex_usdc_cum",
+      "coef": -0.002661856647904222,
+      "abs_coef": 0.002661856647904222
+    },
+    {
+      "feature": "wallet_first_minus_trade_sec",
+      "coef": -0.0014318171494631805,
+      "abs_coef": 0.0014318171494631805
+    },
+    {
+      "feature": "size_vs_market_cumvol_pct",
+      "coef": -0.0005296303949997572,
+      "abs_coef": 0.0005296303949997572
+    }
+  ]
+}
