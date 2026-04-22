@@ -89,7 +89,33 @@ TIER4_OBSOLETE = [
     "split",
 ]
 
-ALL_DROPS = TIER1_LEAK_OR_BUG + TIER2_MARKET_IDENTITY + TIER3_METADATA_BLOAT + TIER4_OBSOLETE
+# P0-11 (direction determinism) + P0-12 (indirect direction-dependent features).
+# `side` and `outcomeIndex` are known at trade time — not "future info" — but
+# their pair deterministically encodes `bet_correct` via
+# `(outcomeIndex == winning_outcome_index) == (side == BUY)`. Because the
+# mapping flips between YES- and NO-resolved markets, a model trained on a
+# mixed cohort learns an averaged association that inverts on a single-
+# resolution test cohort (Alex observed ROC 0.00-0.04 on all-NO ceasefires).
+# The P0-12 features re-open the same channel via signed positions,
+# same-side filters, and outcomeIndex-share aggregates.
+TIER5_DIRECTION_ENCODING = [
+    "side",                                # P0-11
+    "outcomeIndex",                        # P0-11
+    "wallet_position_size_before_trade",   # P0-12 (signed cumulative position)
+    "trade_size_vs_position_pct",          # P0-12 (uses signed position)
+    "wallet_cumvol_same_side_last_10min",  # P0-12 (explicit same-side filter)
+    "wallet_directional_purity_in_market", # P0-12 (outcomeIndex share aggregate)
+    "wallet_has_both_sides_in_market",     # P0-12 (outcomeIndex distribution)
+    "market_buy_share_running",            # P0-12 (running share of BUY)
+]
+
+ALL_DROPS = (
+    TIER1_LEAK_OR_BUG
+    + TIER2_MARKET_IDENTITY
+    + TIER3_METADATA_BLOAT
+    + TIER4_OBSOLETE
+    + TIER5_DIRECTION_ENCODING
+)
 
 
 def main() -> None:
@@ -130,6 +156,7 @@ def main() -> None:
         ("Tier 2 — market-identity", TIER2_MARKET_IDENTITY),
         ("Tier 3 — metadata bloat", TIER3_METADATA_BLOAT),
         ("Tier 4 — obsolete", TIER4_OBSOLETE),
+        ("Tier 5 — direction encoding (P0-11/12)", TIER5_DIRECTION_ENCODING),
     ]:
         hit = [c for c in tier_cols if c in df.columns]
         print(f"  {tier_name} ({len(hit)}):")

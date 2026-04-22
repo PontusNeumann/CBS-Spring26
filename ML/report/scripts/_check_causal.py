@@ -47,26 +47,25 @@ NAN_BOUNDS: dict[str, float] = {
     # Time — derived from deadline_ts
     "pct_time_elapsed": 0.01,
     "market_timing_known": 0.0,
-    # Market context (normalised only — absolute-scale removed by 20_finalize_dataset)
-    "market_buy_share_running": 0.001,
+    # Market context (absolute-scale removed by Tier 2; direction-dependent
+    # market_buy_share_running removed by Tier 5 as P0-12).
     "market_price_vol_last_1h": 0.01,
     # Wallet global
     "wallet_prior_trades": 0.0,
     "wallet_prior_volume_usd": 0.0,
     "wallet_prior_win_rate_causal": 0.50,  # causal replacement; 40% NaN is structural
     "wallet_has_resolved_priors": 0.0,
-    # Wallet-in-market
+    # Wallet-in-market (direction-dependent cols dropped by 20_finalize_dataset
+    # Tier 5: wallet_directional_purity_in_market, wallet_has_both_sides_in_market,
+    # wallet_position_size_before_trade, trade_size_vs_position_pct,
+    # wallet_cumvol_same_side_last_10min)
     "wallet_prior_trades_in_market": 0.0,
-    "wallet_directional_purity_in_market": 0.35,
     "wallet_spread_ratio": 0.35,
     "wallet_median_gap_in_market": 0.65,
-    "wallet_cumvol_same_side_last_10min": 0.0,
     "wallet_trades_in_market_last_1min": 0.0,
     "wallet_trades_in_market_last_10min": 0.0,
     "wallet_trades_in_market_last_60min": 0.0,
     "wallet_is_burst": 0.0,
-    "wallet_position_size_before_trade": 0.0,
-    "trade_size_vs_position_pct": 0.0,
     "wallet_is_whale_in_market": 0.0,
     "wallet_market_category_entropy": 0.15,
     # Interactions / sizing
@@ -166,12 +165,15 @@ def main() -> int:
     c.want(
         bool(
             df.groupby(["proxyWallet", "condition_id"])[
-                "wallet_directional_purity_in_market"
+                "wallet_spread_ratio"
             ]
             .apply(lambda s: s.isna().any())
             .all()
         ),
-        "wallet_directional_purity_in_market is NaN at least once per (wallet, market)",
+        "wallet_spread_ratio is NaN at least once per (wallet, market) "
+        "(first in-market trade has no prior distribution — wallet_directional_"
+        "purity_in_market was dropped by Tier 5; spread_ratio is the remaining "
+        "symmetric diversity proxy)",
     )
     # Whale causality: the wallet cannot be a whale in the market before it
     # trades. Same-second order-fills can produce multiple rows at the min

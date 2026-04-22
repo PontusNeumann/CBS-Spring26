@@ -2,7 +2,7 @@
 
 *As of 22 Apr (late): the leaky / buggy / market-identity columns that used to live in this exclusion list have been **physically dropped** from `data/03_consolidated_dataset.csv` by `scripts/20_finalize_dataset.py`. The pre-drop snapshot at `data/03_consolidated_dataset.pre_dropped_variables.csv` preserves the audit trail. This file now covers only the remaining non-feature columns (IDs, labels, filter, benchmark) that live in the finalised CSV for reproducibility but must not be fed to a model.*
 
-The finalised CSV has **62 columns**. After the exclusions below, **~45 features** remain for modelling.
+The finalised CSV has **54 columns**. After the exclusions below, **~38 features** remain for modelling.
 
 ## Class 1 — Identifiers and raw metadata (still in the CSV)
 
@@ -45,10 +45,11 @@ Kept here as historical record. If any of these reappears in a future rebuild, i
 - **P0-8 market-identity absolute-scale**: `time_to_settlement_s`, `log_time_to_settlement`, `market_volume_so_far_usd`, `market_vol_1h_log`, `market_vol_24h_log`, `market_trade_count_so_far`, `size_x_time_to_settlement` — dropped.
 - **P0-9 `wallet_prior_win_rate` (naive)**: future-info peek; dropped. Replaced by `wallet_prior_win_rate_causal` + `wallet_has_resolved_priors` (both kept in the CSV and both safe to feed).
 - **`wallet_funded_by_cex` (static/unscoped)**: structurally leaky; dropped. `wallet_funded_by_cex_scoped` is retained.
+- **P0-11 direction determinism**: `side`, `outcomeIndex` — dropped. Their pair perfectly determines `bet_correct` within any market and the mapping flips between YES- and NO-resolved markets, producing test-set inversion on single-resolution cohorts.
+- **P0-12 indirect direction-dependent features**: `wallet_position_size_before_trade`, `trade_size_vs_position_pct`, `wallet_cumvol_same_side_last_10min`, `wallet_directional_purity_in_market`, `wallet_has_both_sides_in_market`, `market_buy_share_running` — dropped. Each re-opens the P0-11 channel through signed position, same-side filter, or outcomeIndex-share aggregate.
 
 Bounded / normalised substitutes that replaced the P0-8 drops are in the CSV:
 - `pct_time_elapsed` (0-1, market-normalised)
-- `market_buy_share_running` (0-1)
 - `market_price_vol_last_1h` (price-based, not scale)
 
 ## The full set (copy-paste into your script)

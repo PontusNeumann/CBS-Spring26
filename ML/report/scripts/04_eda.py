@@ -137,6 +137,16 @@ def load_dataset(csv_path: Path) -> pd.DataFrame:
     print(f"loading {csv_path}...")
     df = pd.read_csv(csv_path, low_memory=False)
     print(f"loaded {len(df):,} rows x {len(df.columns)} cols")
+    # The 22-Apr physical-drop pass (scripts/20_finalize_dataset.py) removes
+    # some of the feature columns this EDA script originally plotted. Filter
+    # NUM_FEATURES and DIST_PRIORITY to what's actually present so panels
+    # downstream don't KeyError on missing columns. The pre-drop CSV
+    # (data/03_consolidated_dataset.pre_dropped_variables.csv) still has
+    # everything if the full historical EDA is needed.
+    global NUM_FEATURES, DIST_PRIORITY
+    present = set(df.columns)
+    NUM_FEATURES = [c for c in NUM_FEATURES if c in present]
+    DIST_PRIORITY = [c for c in DIST_PRIORITY if c in present]
     if "question" not in df.columns:
         mkts = pd.read_csv(DATA_DIR / "01_markets_meta.csv",
                            usecols=[MARKET_COL, "question"])
@@ -422,7 +432,16 @@ def panel_event_timing(df: pd.DataFrame, fig_path: Path, txt_path: Path) -> None
     across all resolved markets. Empirical justification for the home-run
     gating rule (`time_to_settlement < 6h`) in §5.2.
     """
-    tts = pd.to_numeric(df["time_to_settlement_s"], errors="coerce")
+    # `time_to_settlement_s` was dropped by 20_finalize_dataset.py as a
+    # market-identity feature. Recompute it on the fly from deadline_ts
+    # (which is in the finalised CSV) for this EDA panel only — we're
+    # illustrating pre-modelling event-timing, not feeding a model.
+    if "time_to_settlement_s" in df.columns:
+        tts = pd.to_numeric(df["time_to_settlement_s"], errors="coerce")
+    else:
+        dl = pd.to_datetime(df["deadline_ts"], utc=True, errors="coerce")
+        ts = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+        tts = (dl - ts).dt.total_seconds()
     tv = pd.to_numeric(df["trade_value_usd"], errors="coerce")
     bc = pd.to_numeric(df[TARGET_COL], errors="coerce")
 

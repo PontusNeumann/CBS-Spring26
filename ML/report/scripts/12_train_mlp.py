@@ -1,18 +1,24 @@
 """
 12_train_mlp.py
-Train and evaluate the primary MLP and the sklearn baselines (logistic regression,
-random forest) for the mispricing project. Scaffold only — safe to run, but the
-intent at this point is a syntax-clean skeleton ready for the full 75-column
-frame once Layer 6 and cross-market entropy land.
 
-Maps to project_plan.md:
-  §5.1  Primary model: MLP (SELU, Glorot, dropout 0.2-0.4, batchnorm, Adam+LR sched, BCE)
-  §5.2  Calibration: isotonic on validation slice, Brier and ECE
-  §5.4  Baselines: logistic regression, random forest (naive market baseline handled in backtest)
-  §5.5  Class imbalance / winsorisation of trade_value_usd and wallet_prior_volume_usd
-  §4    Pre-modelling filter: settlement_minus_trade_sec > 0
-        market_implied_prob excluded from features (it is the benchmark)
-        split column drives train / val / test
+**DEPRECATED — do not run for the submission.** Two superseding constraints:
+
+1. **Framework.** CBS MLDP requires TensorFlow / Keras for all neural-network
+   code. This script is PyTorch (see imports). Alex's workspace at
+   `alex/scripts/` carries the replacement baseline sweep; the TF/Keras MLP
+   lives there (TBD at time of deprecation).
+2. **Data layout.** This script reads `data/03_consolidated_dataset.csv`
+   directly and drives train / val / test via the `split` column. The CSV
+   no longer has `split` — cohort assignment moved to the market-cohort
+   parquets written by `scripts/14_build_experiment_splits.py` at
+   `data/experiments/{train,val,test}.parquet`. Several columns this script
+   references in `NON_FEATURE_COLS` are physically gone from the CSV now
+   (see `scripts/20_finalize_dataset.py`). The `not in set` filter is still
+   safe, but `df['split'].value_counts()` on row 327 raises `KeyError`.
+
+Historical context preserved below as a reference for the intended
+pipeline shape (SELU MLP, isotonic calibration on val, baselines,
+winsorisation of trade_value_usd / wallet_prior_volume_usd).
 """
 
 from __future__ import annotations
@@ -317,6 +323,13 @@ def mlp_predict_proba(model: MLP, X: np.ndarray) -> np.ndarray:
 
 
 def run() -> None:
+    raise SystemExit(
+        "12_train_mlp.py is deprecated — see module docstring. "
+        "Use the TF/Keras pipeline under alex/scripts/ for the exam "
+        "submission, and the market-cohort parquets under "
+        "data/experiments/ as the train/val/test input."
+    )
+    # Unreachable below — preserved for historical context.
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     for sub in ("logreg", "rf", "mlp"):
         (OUT_DIR / sub).mkdir(parents=True, exist_ok=True)

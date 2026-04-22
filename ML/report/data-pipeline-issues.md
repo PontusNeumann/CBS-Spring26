@@ -155,6 +155,97 @@ Already logged as P0-4 since it affects RQ1b defensibility. Also documented in t
 
 ---
 
+## Shipped on 2026-04-22 (late) — upstream fixes + physical drops
+
+The shared pipeline now physically drops the leak / bug / market-identity
+columns in `scripts/20_finalize_dataset.py` rather than relying on a
+training-time exclusion list. The pre-drop snapshot is preserved at
+`data/03_consolidated_dataset.pre_dropped_variables.csv`. Status by issue:
+
+- **P0-1 `wallet_is_whale_in_market` — FIXED upstream.** `_causal_whale_flag`
+  in `01_polymarket_api.py` uses an expanding per-market p95 (sortedcontainers,
+  20-wallet warm-up); `17_fix_leakage.py` patched existing CSVs. 0 first-(wallet,
+  market) trades flagged (was 3,624); non-whales-by-end flag rate 0.004 (was 0.000
+  in the leaky definition). Feature retained.
+- **P0-2 `is_position_exit`, `is_position_flip` — PHYSICALLY DROPPED** by
+  `20_finalize_dataset.py`. Denominator bug not yet fixed upstream; revisit if
+  reinstated.
+- **P0-3 `resolution_ts = NaT` for 3 markets — FIXED.** Robust-median lock detector
+  landed. `16_patch_resolution_ts.py` backfilled existing CSVs. 74 / 74 markets
+  now carry resolution_ts.
+- **P0-4 `market_implied_prob` HF-path contamination — OPEN.** Documented known
+  limitation; RQ1b backtest should restrict to `source == "api"` or fetch CLOB
+  for HF markets (~1 h network).
+- **P0-5 val chronology — FIXED** (cohort builder moved val to Mar 15).
+- **P0-8 market-identity absolute-scale features — PHYSICALLY DROPPED** by
+  `20_finalize_dataset.py` (7 cols: `time_to_settlement_s`,
+  `log_time_to_settlement`, `market_volume_so_far_usd`, `market_vol_1h_log`,
+  `market_vol_24h_log`, `market_trade_count_so_far`, `size_x_time_to_settlement`).
+- **P0-9 `wallet_prior_win_rate` temporal leak — FIXED upstream + original
+  DROPPED.** `_add_running_wallet_features` now emits `wallet_prior_win_rate_causal`
+  (cumulative mean over priors with `resolution_ts < t`) plus
+  `wallet_has_resolved_priors` indicator. Naive leaky version physically dropped
+  from the CSV. Empirical: leaky r = 0.367 vs causal r = 0.236 (leak component
+  +0.131). `19_add_causal_win_rate.py` backfilled existing CSVs.
+- **Data-quality follow-up — end_date placeholder on 34 / 74 markets — FIXED.**
+  Gamma `endDate` is stale / `2026-01-31` for 34 strike markets. New
+  `parse_deadline_from_question` helper extracts the "by Month Day, Year" string
+  from the question and stores `deadline_ts`; all time features now derive from
+  `deadline_ts`. `18_fix_deadline.py` backfilled existing CSVs.
+- **Metadata bloat (13 cols) — PHYSICALLY DROPPED.**
+  `conditionId, title, slug_x, slug_y, icon, eventSlug, outcome, name, pseudonym,
+  bio, profileImage, profileImageOptimized, outcomes`. Strictly cosmetic +
+  disk savings; none were ever features.
+- **`split` column obsolete — PHYSICALLY DROPPED.** Cohort assignment lives
+  exclusively in `data/experiments/{train,val,test}.parquet` now.
+
+## P0 — Still open; found after the physical drop (Alex's diagnostic session)
+
+### P0-11. `(side, outcomeIndex)` deterministically encodes `bet_correct`, mapping flips by market resolution
+
+- **File / line:** the pair appears as features anywhere `side` and `outcomeIndex`
+  are both fed to a model. Still present in the finalised CSV.
+- **What's wrong:** `bet_correct = (outcomeIndex == winning_outcome_index) == (side == "BUY")`. Within any single market, `(side, outcomeIndex)` perfectly
+  determines the label. Crucially, the label mapping *flips* between YES-resolved
+  and NO-resolved markets. A model trained on a mixed cohort learns the average
+  association across resolution types, which then inverts when tested on a
+  single-resolution cohort. Alex observed tree models reaching ROC 0.00-0.04 on
+  the all-NO ceasefire test set driven by this mechanism.
+- **Impact severity:** catastrophic for any model that includes both columns.
+  Not a future-info leak in the classical sense (both values are known at trade
+  time), but a structural generalisation failure that looks like leakage from the
+  model's behaviour.
+- **Mitigation applied:** `alex/scripts/*.py` adds `side` and `outcomeIndex` to
+  `NON_FEATURE_COLS`.
+- **Recommendation (not yet applied to shared CSV):** physically drop `side` and
+  `outcomeIndex` from the finalised CSV via `20_finalize_dataset.py`, OR keep them
+  only as encoding-for-inference metadata and explicitly document "never feature."
+
+### P0-12. Indirect direction-dependent features inherit P0-11
+
+- **Files / lines:** `01_polymarket_api.py:expand_features` — several
+  wallet-in-market features use signed position, same-side filtering, or
+  outcomeIndex-share aggregates.
+- **Columns affected (Alex's list):** `wallet_position_size_before_trade` (signed
+  cumsum of BUY minus SELL); `trade_size_vs_position_pct` (uses signed position);
+  `wallet_cumvol_same_side_last_10min` (same-side filter); `wallet_directional_purity_in_market` and `wallet_has_both_sides_in_market`
+  (outcomeIndex distribution aggregates); `market_buy_share_running` (running
+  share of BUY — per Alex's diagnostic, 0.38 train vs 0.67 test, a 30-point
+  cohort shift that re-opens the P0-11 channel).
+- **What's wrong:** each feature encodes side / outcomeIndex information
+  indirectly. Even with `side` and `outcomeIndex` themselves excluded, these
+  features re-introduce the direction-dependent contamination Alex's P0-11
+  surfaces.
+- **Impact severity:** significant — these were the "safe" features I retained
+  after the 22-Apr physical-drop pass. Alex's diagnostic shows they still carry
+  the inversion risk.
+- **Mitigation applied:** `alex/scripts/*.py` excludes them via NON_FEATURE_COLS.
+- **Recommendation (not yet applied to shared CSV):** extend
+  `20_finalize_dataset.py` to physically drop them, then regenerate cohort
+  parquets.
+
+---
+
 ## Confirmed clean (verified during audit)
 
 - No-lookahead enforcement within each market via `cumsum() - tv`, `cumcount()`, and `rolling(..., closed='left')` is correct throughout `_add_running_market_features`, `_add_running_wallet_features`, and `expand_features`.
