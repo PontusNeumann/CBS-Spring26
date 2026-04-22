@@ -1,0 +1,94 @@
+{
+  "val": [
+    {
+      "question": "Iran x Israel/US conflict ends by March 15?",
+      "n": 13154,
+      "is_yes": 0,
+      "bc_rate": 0.5099589478485632,
+      "p_hat_mean": 0.6349799044490002,
+      "p_hat_std": 0.23591707102828086,
+      "roc_auc": 0.5619190995659366,
+      "pr_auc": 0.5546608375689728,
+      "brier": 0.294874521855031
+    }
+  ],
+  "test": [
+    {
+      "question": "Trump announces US x Iran ceasefire end by April 15, 2026?",
+      "n": 4291,
+      "is_yes": 0,
+      "bc_rate": 0.517594966208343,
+      "p_hat_mean": 0.4770431169963733,
+      "p_hat_std": 0.22403564326748074,
+      "roc_auc": 0.5671098451974673,
+      "pr_auc": 0.5866126460945431,
+      "brier": 0.27724021208581606
+    },
+    {
+      "question": "Trump announces US x Iran ceasefire end by April 18, 2026?",
+      "n": 3732,
+      "is_yes": 0,
+      "bc_rate": 0.48258306538049306,
+      "p_hat_mean": 0.4669246258951479,
+      "p_hat_std": 0.2015536708560946,
+      "roc_auc": 0.5206525461572502,
+      "pr_auc": 0.5053225417651754,
+      "brier": 0.2834805097498174
+    },
+    {
+      "question": "Trump announces US x Iran ceasefire end by April 12, 2026?",
+      "n": 2372,
+      "is_yes": 0,
+      "bc_rate": 0.5590219224283305,
+      "p_hat_mean": 0.4710223581138743,
+      "p_hat_std": 0.2155918620216583,
+      "roc_auc": 0.49404540460102264,
+      "pr_auc": 0.5759238706462868,
+      "brier": 0.3053763559823373
+    },
+    {
+      "question": "Will the US x Iran ceasefire be extended by April 14, 2026?",
+      "n": 1198,
+      "is_yes": 0,
+      "bc_rate": 0.5075125208681135,
+      "p_hat_mean": 0.4867658095594153,
+      "p_hat_std": 0.22509451981622366,
+      "roc_auc": 0.5029953724353255,
+      "pr_auc": 0.532923788446334,
+      "brier": 0.3031590012722766
+    },
+    {
+      "question": "Trump announces US x Iran ceasefire end by April 10, 2026?",
+      "n": 1011,
+      "is_yes": 0,
+      "bc_rate": 0.49752720079129575,
+      "p_hat_mean": 0.5389793635695127,
+      "p_hat_std": 0.22565030603795436,
+      "roc_auc": 0.5353234921181571,
+      "pr_auc": 0.5757006292188535,
+      "brier": 0.3014865303816039
+    },
+    {
+      "question": "Will the US x Iran ceasefire be extended by April 18, 2026?",
+      "n": 692,
+      "is_yes": 0,
+      "bc_rate": 0.5895953757225434,
+      "p_hat_mean": 0.5248954937675546,
+      "p_hat_std": 0.2159191227518022,
+      "roc_auc": 0.49133095139464233,
+      "pr_auc": 0.5968236185895582,
+      "brier": 0.2974075631676657
+    },
+    {
+      "question": "Trump announces US x Iran ceasefire end by April 8, 2026?",
+      "n": 118,
+      "is_yes": 0,
+      "bc_rate": 0.4915254237288136,
+      "p_hat_mean": 0.6829171586738332,
+      "p_hat_std": 0.2241342663761391,
+      "roc_auc": 0.6494252873563219,
+      "pr_auc": 0.6527467343581577,
+      "brier": 0.2951808702949186
+    }
+  ]
+}
