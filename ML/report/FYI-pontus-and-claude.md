@@ -2,6 +2,21 @@
 
 *Short brief so you can get oriented fast without re-deriving everything. Alex + his Claude pushed a lot of pipeline-correctness work on 2026-04-22. Key items below. Longer form in `data-pipeline-issues.md`.*
 
+---
+
+## ⚠️ FRAMEWORK CONSTRAINT — TensorFlow / Keras only (CBS MLDP exam requirement)
+
+**The CBS Machine Learning and Deep Learning course requires TensorFlow / Keras for all neural-network code. PyTorch is NOT permitted.** This is a hard exam-rubric constraint, not a preference.
+
+Current status:
+- `scripts/12_train_mlp.py` uses PyTorch (`import torch`, `torch.nn`, `torch.optim`). **This needs to be rewritten in tf.keras before the report is submitted.**
+- Any new MLP / autoencoder / neural code MUST use `tensorflow`, `tf.keras.layers`, `tf.keras.optimizers`, etc.
+- Isolation Forest, Random Forest, Logistic Regression, HistGradientBoosting etc. (sklearn) are fine — the constraint is only on deep-learning frameworks.
+
+Alex is building his own TensorFlow MLP in `alex/scripts/`. We should either (a) consolidate to one TF implementation, or (b) keep both but explicitly mark `scripts/12_train_mlp.py` as dead code for the exam submission.
+
+---
+
 ## TL;DR — what changed
 
 1. **`is_yes` column added** at trade level (PR #6). Derived from `outcomes[winning_outcome_index] == "Yes"` inside `enrich_trades`. `project_plan.md` §2 previously said "55 YES / 19 NO" — that was flipped; actual is **19 YES / 55 NO**. All 7 ceasefire markets resolved **NO**.

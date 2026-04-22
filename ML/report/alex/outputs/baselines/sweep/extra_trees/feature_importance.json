@@ -1,0 +1,140 @@
+{
+  "features": [
+    {
+      "feature": "market_price_vol_last_1h",
+      "importance": 0.07210764003380273
+    },
+    {
+      "feature": "pct_time_elapsed",
+      "importance": 0.06609048777764126
+    },
+    {
+      "feature": "wallet_prior_volume_usd",
+      "importance": 0.06589096625089148
+    },
+    {
+      "feature": "wallet_market_category_entropy",
+      "importance": 0.06131064867068621
+    },
+    {
+      "feature": "wallet_prior_trades",
+      "importance": 0.057935740242992126
+    },
+    {
+      "feature": "wallet_prior_trades_in_market",
+      "importance": 0.055742020530053935
+    },
+    {
+      "feature": "wallet_log_polygon_nonce_at_t",
+      "importance": 0.0538797681117673
+    },
+    {
+      "feature": "wallet_log_n_inbound_at_t",
+      "importance": 0.053867261084680595
+    },
+    {
+      "feature": "wallet_first_minus_trade_sec",
+      "importance": 0.052518831922626116
+    },
+    {
+      "feature": "wallet_polygon_nonce_at_t",
+      "importance": 0.04807583932440421
+    },
+    {
+      "feature": "days_from_first_usdc_to_t",
+      "importance": 0.044062494246532205
+    },
+    {
+      "feature": "wallet_polygon_age_at_t_days",
+      "importance": 0.04321699021806686
+    },
+    {
+      "feature": "wallet_n_inbound_at_t",
+      "importance": 0.04300989425697748
+    },
+    {
+      "feature": "market_timing_known",
+      "importance": 0.04214505795713428
+    },
+    {
+      "feature": "wallet_spread_ratio",
+      "importance": 0.03506363308227089
+    },
+    {
+      "feature": "log_size",
+      "importance": 0.029905757547115747
+    },
+    {
+      "feature": "wallet_trades_in_market_last_60min",
+      "importance": 0.02758127990429219
+    },
+    {
+      "feature": "wallet_trades_in_market_last_10min",
+      "importance": 0.026917576410317702
+    },
+    {
+      "feature": "wallet_trades_in_market_last_1min",
+      "importance": 0.024412580161714454
+    },
+    {
+      "feature": "trade_value_usd",
+      "importance": 0.017699380898845242
+    },
+    {
+      "feature": "wallet_has_prior_trades_in_market",
+      "importance": 0.015423145419411212
+    },
+    {
+      "feature": "wallet_is_burst",
+      "importance": 0.015050009229164942
+    },
+    {
+      "feature": "size_vs_market_avg",
+      "importance": 0.011696743828641921
+    },
+    {
+      "feature": "wallet_has_cross_market_history",
+      "importance": 0.008098688330287674
+    },
+    {
+      "feature": "wallet_median_gap_in_market",
+      "importance": 0.007460530037226325
+    },
+    {
+      "feature": "size_vs_market_cumvol_pct",
+      "importance": 0.007166562694637135
+    },
+    {
+      "feature": "size_vs_wallet_avg",
+      "importance": 0.005348591252183421
+    },
+    {
+      "feature": "wallet_has_prior_trades",
+      "importance": 0.0033982965529936095
+    },
+    {
+      "feature": "wallet_enriched",
+      "importance": 0.001384103664516863
+    },
+    {
+      "feature": "wallet_log_cex_usdc_cum",
+      "importance": 0.0008514545961247173
+    },
+    {
+      "feature": "wallet_funded_by_cex",
+      "importance": 0.000845952949598071
+    },
+    {
+      "feature": "wallet_funded_by_cex_scoped",
+      "importance": 0.0008444832704163275
+    },
+    {
+      "feature": "wallet_n_cex_deposits_at_t",
+      "importance": 0.0005264068921476429
+    },
+    {
+      "feature": "wallet_cex_usdc_cumulative_at_t",
+      "importance": 0.0004711826498371272
+    }
+  ]
+}

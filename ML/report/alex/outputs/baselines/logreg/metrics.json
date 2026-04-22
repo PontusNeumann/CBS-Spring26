@@ -1,0 +1,82 @@
+{
+  "features": [
+    "side",
+    "outcomeIndex",
+    "wallet_first_minus_trade_sec",
+    "trade_value_usd",
+    "market_price_vol_last_1h",
+    "wallet_prior_trades",
+    "wallet_prior_volume_usd",
+    "log_size",
+    "pct_time_elapsed",
+    "wallet_trades_in_market_last_1min",
+    "wallet_trades_in_market_last_10min",
+    "wallet_trades_in_market_last_60min",
+    "wallet_is_burst",
+    "wallet_directional_purity_in_market",
+    "wallet_has_both_sides_in_market",
+    "wallet_spread_ratio",
+    "wallet_position_size_before_trade",
+    "trade_size_vs_position_pct",
+    "is_position_flip",
+    "wallet_prior_trades_in_market",
+    "wallet_cumvol_same_side_last_10min",
+    "size_vs_wallet_avg",
+    "size_vs_market_cumvol_pct",
+    "market_buy_share_running",
+    "wallet_median_gap_in_market",
+    "size_vs_market_avg",
+    "wallet_market_category_entropy",
+    "wallet_has_prior_trades",
+    "wallet_has_prior_trades_in_market",
+    "wallet_has_cross_market_history",
+    "market_timing_known",
+    "wallet_enriched",
+    "wallet_polygon_age_at_t_days",
+    "wallet_polygon_nonce_at_t",
+    "wallet_log_polygon_nonce_at_t",
+    "wallet_n_inbound_at_t",
+    "wallet_log_n_inbound_at_t",
+    "wallet_n_cex_deposits_at_t",
+    "wallet_cex_usdc_cumulative_at_t",
+    "wallet_log_cex_usdc_cum",
+    "days_from_first_usdc_to_t",
+    "wallet_funded_by_cex",
+    "wallet_funded_by_cex_scoped"
+  ],
+  "n_features": 43,
+  "winsorise_bounds": {
+    "trade_value_usd": [
+      0.014,
+      4915.0
+    ],
+    "wallet_prior_volume_usd": [
+      0.0,
+      1846202.6729260003
+    ]
+  },
+  "train": {
+    "n": 202082,
+    "positive_rate": 0.5178244475015092,
+    "roc_auc": 0.5712383271012073,
+    "pr_auc": 0.5695770130039861,
+    "brier": 0.24595511046405014,
+    "ece_15bin": 0.02852230383543606
+  },
+  "val": {
+    "n": 13154,
+    "positive_rate": 0.5099589478485632,
+    "roc_auc": 0.4997269180537694,
+    "pr_auc": 0.5411651793168853,
+    "brier": 0.2655713501972875,
+    "ece_15bin": 0.12385814797169706
+  },
+  "test": {
+    "n": 13414,
+    "positive_rate": 0.5162516773520203,
+    "roc_auc": 0.6271058214039533,
+    "pr_auc": 0.7248701583155401,
+    "brier": 0.24626056743002425,
+    "ece_15bin": 0.1300603079910781
+  }
+}
