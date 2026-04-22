@@ -45,6 +45,12 @@ Threshold `p95_by_market` is computed from end-of-market wallet totals → futur
 
 Denominator uses current trade size → fresh SELLs always flagged as exits. Drop.
 
+### P0-9 — `wallet_prior_win_rate`
+
+Temporal leak. Computed via `cumsum()` on `bet_correct` of prior trades — but `bet_correct` of a prior trade is only KNOWN once that trade's market has resolved, which may be AFTER the current trade's timestamp. Formula peeks at future outcomes.
+
+Strongest linear correlate with target (+0.226) in training, likely inflated by the leak. Drop until correctly recomputed (per-row filter on `resolution_ts < current_timestamp`).
+
 ### P0-8 — Market-identifying absolute-scale features (v3 drops from PR #5)
 
 These let the model memorise which sub-market each trade belongs to:
@@ -92,6 +98,8 @@ NON_FEATURE_COLS = {
     "market_trade_count_so_far",
     # Interaction feature that uses raw time_to_settlement_s (same P0-8 reasoning)
     "size_x_time_to_settlement",
+    # Temporal leak via bet_correct cumsum on prior trades (P0-9)
+    "wallet_prior_win_rate",
 }
 ```
 
