@@ -27,6 +27,25 @@ Severity legend:
 - **Mitigation applied:** dropped from feature set at training time (added to `NON_FEATURE_COLS`). Kept in parquet.
 - **Upstream fix (recommended):** denominator should be `|pos_before|` only, with a guard returning 0 when `pos_before == 0` (i.e. "fraction of prior position this trade would close"). Re-verify `is_position_flip` logic under the corrected denominator.
 
+### P0-9. `wallet_prior_win_rate` leaks future market-resolution outcomes
+
+- **File / line:** `scripts/01_polymarket_api.py:323-339` (`_add_running_wallet_features`).
+- **What's wrong:** the feature is computed as `cumsum(bet_correct) / cumsum(labeled) - current` per wallet. The code respects chronological ordering of trades, but `bet_correct` of each prior trade is only KNOWN once that trade's market has resolved. A wallet's trade on Jan 15 in a "by-Feb-28" market has `bet_correct` determined by the Feb 28 settlement. If the same wallet trades on Jan 20, `wallet_prior_win_rate` at Jan 20 includes the Jan 15 trade's bet_correct — but that value wasn't observable at Jan 20 (Feb 28 market hasn't resolved). Classic future-info peek via `resolution_ts > current_trade_timestamp`.
+- **Impact severity:** large. The feature has the strongest linear correlation with the target in our training frame (+0.226 Pearson, 2× the next feature). Much of that correlation is likely leak, not genuine wallet-skill signal.
+- **Mitigation applied:** dropped from `NON_FEATURE_COLS` at training time. Column retained in parquet for audit.
+- **Upstream fix (recommended):** recompute with a per-row filter — for each trade at time `t`, only include prior trades where `resolution_ts < t`. Requires a per-wallet iteration (can't be pure `cumsum()` because the "resolved-by-now" set varies per row). O(n × k) naive but can be optimised via sorted-per-wallet iteration.
+
+### P0-10. HF-path rows are per-fill; API-path rows are per-order (granularity asymmetry)
+
+- **Files affected:** `scripts/02_build_dataset.py` (HF stream ingest) and the Polymarket Data API path.
+- **What's wrong:** a single large order that fills against N maker orders produces:
+  - **HF path:** N separate rows in the consolidated CSV (one per on-chain OrderFilled event).
+  - **API path:** 1 row (Polymarket's `/trades` endpoint aggregates per-order).
+- **Evidence:** train (HF-dominant): 202,082 rows / 129,595 unique `transactionHash` = **1.56 rows/tx**. Test (API, ceasefire markets): 13,414 rows / 13,414 tx = **1.00 rows/tx**.
+- **Impact severity:** train / test representation mismatch. Training sees highly correlated per-fill data (same wallet, same prices, same bet_correct across dozens of rows in one tx), effectively over-weighting specific wallet behaviors. Test sees aggregated per-order data. Metrics reported on test don't cleanly compare to train distribution.
+- **Mitigation applied:** none yet. Documented. Viable options: (a) deduplicate HF to one canonical row per tx at ingestion (rebuild features), (b) aggregate HF rows to per-tx summary matching API granularity, or (c) switch API to per-fill too (if possible).
+- **Upstream fix (recommended):** (b) is the cleanest — aggregate HF rows per `(transactionHash, proxyWallet, side, outcomeIndex)` tuple with size-sum / price-VWAP before feature computation. Matches API semantics and preserves the taker-side action as one event.
+
 ### P0-8. Market-identifying absolute-scale features let the MLP memorise markets
 
 - **Context:** Pontus's PR #5 v3 fix dropped 6 features from `train_mlp_reframed.py` because they functioned as implicit market identifiers (absolute-scale features that let the model look up "which market is this" and cheat on bet_correct prediction). The v3 drop was never applied to the current `scripts/12_train_mlp.py` scaffold — those features are still active in the feature set.

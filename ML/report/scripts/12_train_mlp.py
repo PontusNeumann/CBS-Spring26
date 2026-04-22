@@ -102,6 +102,10 @@ NON_FEATURE_COLS = {
     # Interaction feature that bleeds market-identity through the back door
     # (uses raw time_to_settlement_s). Same P0-8 reasoning.
     "size_x_time_to_settlement",
+    # Dropped per P0-9: temporal leak. Computed from bet_correct of prior
+    # TRADES, but those trades' markets may not have resolved at the
+    # current trade's timestamp — the feature peeks at future outcomes.
+    "wallet_prior_win_rate",
 }
 
 CATEGORICAL_COLS = {"side"}  # string BUY/SELL, encoded to 0/1
