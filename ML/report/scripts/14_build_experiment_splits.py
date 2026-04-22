@@ -35,9 +35,24 @@ COHORTS: dict[str, list[str]] = {
         "US strikes Iran by February 28, 2026?",
     ],
     "val": [
-        "US strikes Iran by January 23, 2026?",
+        # Post-training NO market, cross-event-family (event 236884).
+        # Replaces earlier Jan 23 strike NO which was temporally BEFORE training
+        # (violating train→val→test chronology). Mar 15 conflict-end is
+        # post-Feb-28, not strike-family (no arbitrage-leakage channel),
+        # and sized for stable early-stopping signal (~20k post-filter).
+        "Iran x Israel/US conflict ends by March 15?",
     ],
     "test": [
+        # All 7 ceasefire markets (events 355299 + 357625). Cross-event-family
+        # from the strike-market training cohort — no price-arbitrage leakage
+        # channel. All resolve NO; YES hedge is a deferred future addition
+        # (see alex/notes/test-cohort-no-bias.md).
+        "Trump announces US x Iran ceasefire end by April 8, 2026?",
+        "Trump announces US x Iran ceasefire end by April 10, 2026?",
+        "Trump announces US x Iran ceasefire end by April 12, 2026?",
+        "Trump announces US x Iran ceasefire end by April 15, 2026?",
+        "Trump announces US x Iran ceasefire end by April 18, 2026?",
+        "Will the US x Iran ceasefire be extended by April 14, 2026?",
         "Will the US x Iran ceasefire be extended by April 18, 2026?",
     ],
 }

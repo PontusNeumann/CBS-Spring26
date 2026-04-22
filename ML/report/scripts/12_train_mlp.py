@@ -92,6 +92,16 @@ NON_FEATURE_COLS = {
     # is_position_exit misfires on first-ever SELL (denominator uses current trade size).
     "wallet_is_whale_in_market",
     "is_position_exit",
+    # Dropped per P0-8 (market-identifying absolute-scale features, v3 fix from PR #5):
+    "time_to_settlement_s",
+    "log_time_to_settlement",
+    "market_volume_so_far_usd",
+    "market_vol_1h_log",
+    "market_vol_24h_log",
+    "market_trade_count_so_far",
+    # Interaction feature that bleeds market-identity through the back door
+    # (uses raw time_to_settlement_s). Same P0-8 reasoning.
+    "size_x_time_to_settlement",
 }
 
 CATEGORICAL_COLS = {"side"}  # string BUY/SELL, encoded to 0/1
