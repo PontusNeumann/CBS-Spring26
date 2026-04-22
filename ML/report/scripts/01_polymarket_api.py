@@ -384,7 +384,23 @@ def _add_running_market_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _add_running_wallet_features(df: pd.DataFrame, wallet_col: str) -> pd.DataFrame:
-    """Per-wallet cumulative stats, strictly prior to each trade."""
+    """Per-wallet cumulative stats, strictly prior to each trade.
+
+    Emits two variants of the historical win rate:
+
+    * ``wallet_prior_win_rate`` — the naive cumulative mean of prior trades'
+      ``bet_correct``. **Leaky**: a prior trade's ``bet_correct`` is only
+      observable once that trade's market has resolved (``resolution_ts``).
+      For ~83 % of rows in this dataset, at least one prior trade had not
+      resolved by the current trade's timestamp, so the mean at time *t*
+      sums outcomes that were still in the future. Retained for audit only
+      — exclude from the model feature set.
+    * ``wallet_prior_win_rate_causal`` — the cumulative mean restricted to
+      prior trades whose ``resolution_ts`` is strictly less than the current
+      row's timestamp. Provably causal. Also emits
+      ``wallet_has_resolved_priors`` (1 iff ≥1 resolved prior exists at *t*)
+      as the matching structural-missingness indicator (§5.6).
+    """
     df = df.sort_values([wallet_col, "timestamp"], kind="mergesort").reset_index(
         drop=True
     )
@@ -399,6 +415,49 @@ def _add_running_wallet_features(df: pd.DataFrame, wallet_col: str) -> pd.DataFr
     labeled = bc.notna().astype("int64")
     prior_labeled = labeled.groupby(df[wallet_col]).cumsum() - labeled
     df["wallet_prior_win_rate"] = prior_wins / prior_labeled.where(prior_labeled > 0)
+
+    # Causal variant: per-wallet walk, keeping only priors whose market had
+    # resolved by the current timestamp. O(n) with per-wallet arrays.
+    ts_ns = (
+        pd.to_datetime(df["timestamp"], utc=True)
+        .astype("datetime64[ns, UTC]")
+        .astype("int64")
+        .to_numpy()
+    )
+    rts_ns = (
+        pd.to_datetime(df.get("resolution_ts"), utc=True, errors="coerce")
+        .astype("datetime64[ns, UTC]")
+        .astype("int64")
+        .to_numpy()
+    )
+    bc_arr = bc.to_numpy()
+    wallet_arr = df[wallet_col].to_numpy()
+
+    n = len(df)
+    causal_wr = np.full(n, np.nan, dtype=np.float64)
+    has_resolved = np.zeros(n, dtype=np.int8)
+
+    cur_wallet = None
+    hist_rts: list[int] = []
+    hist_bc: list[float] = []
+    for i in range(n):
+        w = wallet_arr[i]
+        if w != cur_wallet:
+            cur_wallet = w
+            hist_rts = []
+            hist_bc = []
+        if hist_rts:
+            rts_np = np.asarray(hist_rts, dtype=np.int64)
+            bc_np = np.asarray(hist_bc, dtype=np.float64)
+            mask = (~np.isnan(bc_np)) & (rts_np < ts_ns[i])
+            if mask.any():
+                causal_wr[i] = float(bc_np[mask].mean())
+                has_resolved[i] = 1
+        hist_rts.append(int(rts_ns[i]))
+        hist_bc.append(float(bc_arr[i]))
+
+    df["wallet_prior_win_rate_causal"] = causal_wr
+    df["wallet_has_resolved_priors"] = has_resolved
     return df
 
 

@@ -44,19 +44,18 @@ CSV = ROOT / "data" / "03_consolidated_dataset.csv"
 # current dataset's observed rates, so minor drift doesn't cause false
 # positives, but order-of-magnitude regressions fail loudly.
 NAN_BOUNDS: dict[str, float] = {
-    "time_to_settlement_s": 0.001,
-    "log_time_to_settlement": 0.001,
+    # Time — derived from deadline_ts
     "pct_time_elapsed": 0.01,
     "market_timing_known": 0.0,
-    "market_trade_count_so_far": 0.0,
-    "market_volume_so_far_usd": 0.0,
-    "market_vol_1h_log": 0.0,
-    "market_vol_24h_log": 0.0,
+    # Market context (normalised only — absolute-scale removed by 20_finalize_dataset)
     "market_buy_share_running": 0.001,
     "market_price_vol_last_1h": 0.01,
+    # Wallet global
     "wallet_prior_trades": 0.0,
     "wallet_prior_volume_usd": 0.0,
-    "wallet_prior_win_rate": 0.35,
+    "wallet_prior_win_rate_causal": 0.50,  # causal replacement; 40% NaN is structural
+    "wallet_has_resolved_priors": 0.0,
+    # Wallet-in-market
     "wallet_prior_trades_in_market": 0.0,
     "wallet_directional_purity_in_market": 0.35,
     "wallet_spread_ratio": 0.35,
@@ -68,21 +67,19 @@ NAN_BOUNDS: dict[str, float] = {
     "wallet_is_burst": 0.0,
     "wallet_position_size_before_trade": 0.0,
     "trade_size_vs_position_pct": 0.0,
-    "is_position_exit": 0.0,
-    "is_position_flip": 0.0,
     "wallet_is_whale_in_market": 0.0,
     "wallet_market_category_entropy": 0.15,
+    # Interactions / sizing
     "size_vs_wallet_avg": 0.35,
-    "size_x_time_to_settlement": 0.001,
     "size_vs_market_cumvol_pct": 0.001,
     "size_vs_market_avg": 0.001,
+    # Layer 6 on-chain identity
     "wallet_enriched": 0.0,
     "wallet_polygon_age_at_t_days": 0.01,
     "wallet_polygon_nonce_at_t": 0.01,
     "wallet_n_inbound_at_t": 0.01,
     "wallet_n_cex_deposits_at_t": 0.01,
     "wallet_cex_usdc_cumulative_at_t": 0.01,
-    "wallet_funded_by_cex": 0.0,
     "wallet_funded_by_cex_scoped": 0.0,
 }
 
@@ -159,23 +156,12 @@ def main() -> int:
     )
     c.want(
         bool(
-            (df.groupby("condition_id")["market_trade_count_so_far"].min() == 0).all()
-        ),
-        "market_trade_count_so_far reaches 0 for every market",
-    )
-    c.want(
-        bool(
-            (df.groupby("condition_id")["market_volume_so_far_usd"].min() == 0).all()
-        ),
-        "market_volume_so_far_usd reaches 0 for every market",
-    )
-    c.want(
-        bool(
-            df.groupby("proxyWallet")["wallet_prior_win_rate"]
+            df.groupby("proxyWallet")["wallet_prior_win_rate_causal"]
             .apply(lambda s: s.isna().any())
             .all()
         ),
-        "wallet_prior_win_rate is NaN at least once per wallet (first-trade)",
+        "wallet_prior_win_rate_causal is NaN at least once per wallet "
+        "(structurally — wallet has no resolved priors before its first trade)",
     )
     c.want(
         bool(
@@ -224,23 +210,12 @@ def main() -> int:
         v = s.to_numpy()
         return np.all(np.diff(v) >= -1e-6) if len(v) > 1 else True
 
-    bad_vol = 0
-    bad_ct = 0
-    for _cid, g in df.groupby("condition_id", sort=False):
-        if not nondec_by_ts(g, "market_volume_so_far_usd"):
-            bad_vol += 1
-        if not nondec_by_ts(g, "market_trade_count_so_far"):
-            bad_ct += 1
-    c.want(
-        bad_vol == 0,
-        f"market_volume_so_far_usd non-decreasing per market when aggregated "
-        f"by timestamp (violations: {bad_vol} / {df['condition_id'].nunique()})",
-    )
-    c.want(
-        bad_ct == 0,
-        f"market_trade_count_so_far non-decreasing per market when aggregated "
-        f"by timestamp (violations: {bad_ct} / {df['condition_id'].nunique()})",
-    )
+    # market_volume_so_far_usd and market_trade_count_so_far were dropped by
+    # 20_finalize_dataset.py as P0-8 market-identity features. Their
+    # monotonicity was previously verified; the underlying cumsum builder is
+    # unchanged in `01_polymarket_api.py`, so the pre-drop snapshot at
+    # `data/03_consolidated_dataset.pre_dropped_variables.csv` remains the
+    # audit record.
 
     # --- C. sign / sentinel checks ---
     wfmt = pd.to_numeric(df["wallet_first_minus_trade_sec"], errors="coerce")
@@ -249,21 +224,12 @@ def main() -> int:
         f"wallet_first_minus_trade_sec ≤ 0 everywhere "
         f"(positives: {int((wfmt > 0).sum())})",
     )
-    ltts = pd.to_numeric(df["log_time_to_settlement"], errors="coerce")
-    c.want(
-        int((ltts < 0).sum()) == 0,
-        f"log_time_to_settlement ≥ 0 everywhere "
-        f"(negatives: {int((ltts < 0).sum())})",
-    )
+    # log_time_to_settlement was dropped by 20_finalize_dataset.py.
 
     # --- D. cross-feature consistency ---
-    fbc = pd.to_numeric(df["wallet_funded_by_cex"], errors="coerce").fillna(0).astype(int)
-    fbcs = pd.to_numeric(df["wallet_funded_by_cex_scoped"], errors="coerce").fillna(0).astype(int)
-    c.want(
-        int((fbcs > fbc).sum()) == 0,
-        f"wallet_funded_by_cex_scoped ≤ wallet_funded_by_cex "
-        f"(violations: {int((fbcs > fbc).sum())})",
-    )
+    # wallet_funded_by_cex (unscoped) was dropped by 20_finalize_dataset.py as
+    # a structurally-leaky lifetime flag; only wallet_funded_by_cex_scoped
+    # remains in the CSV.
     enr = pd.to_numeric(df["wallet_enriched"], errors="coerce").fillna(0).astype(int)
     un = df[enr == 0]
     if len(un) > 0:
@@ -287,16 +253,27 @@ def main() -> int:
         )
 
     # --- F. time-feature sourcing ---
-    if "deadline_ts" in df.columns:
-        dl = pd.to_datetime(df["deadline_ts"], utc=True, errors="coerce")
-        computed = (dl - df["timestamp"]).dt.total_seconds()
-        observed = pd.to_numeric(df["time_to_settlement_s"], errors="coerce")
-        delta = (computed - observed).abs()
-        # allow up to a handful of seconds of float round-trip noise
+    # time_to_settlement_s was dropped by 20_finalize_dataset.py. The causal
+    # derivation deadline_ts − timestamp is preserved and can be recomputed
+    # at modelling time if a scalar time feature is desired; the pre-drop
+    # CSV snapshot contains it as reference.
+
+    # --- G. causal vs leaky win rate signal separation ---
+    # Guard against a future regression where the causal win rate is
+    # recomputed via the leaky formula. The leaky version (pre-drop) had
+    # r ≈ +0.367; the causal version has r ≈ +0.236. We require the
+    # remaining in-CSV version to carry at most the causal magnitude +
+    # a small tolerance, so an accidental leaky overwrite fails loudly.
+    if "wallet_prior_win_rate_causal" in df.columns:
+        tgt = pd.to_numeric(df["bet_correct"], errors="coerce")
+        mask_ok = tgt.notna()
+        r_current = float(
+            df.loc[mask_ok, "wallet_prior_win_rate_causal"].corr(tgt[mask_ok])
+        )
         c.want(
-            float(delta.max()) < 1.0,
-            f"time_to_settlement_s == deadline_ts − timestamp "
-            f"(max abs delta: {float(delta.max()):.3f}s)",
+            r_current < 0.30,
+            f"wallet_prior_win_rate_causal Pearson r with bet_correct "
+            f"= {r_current:.4f} (must stay below 0.30; leaky peak was 0.367)",
         )
 
     return c.report()
