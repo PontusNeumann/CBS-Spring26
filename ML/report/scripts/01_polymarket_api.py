@@ -118,7 +118,9 @@ def parse_markets(event: dict) -> list[MarketRef]:
     return refs
 
 
-def fetch_price_history(token_id: str, interval: str = "all", fidelity: int = 1) -> pd.DataFrame:
+def fetch_price_history(
+    token_id: str, interval: str = "all", fidelity: int = 1
+) -> pd.DataFrame:
     """Time series of the CLOB mid-price for one outcome token.
 
     fidelity is the sampling interval in minutes.
@@ -173,7 +175,11 @@ def fetch_trades(condition_id: str, page_size: int = 500) -> pd.DataFrame:
     if df.empty:
         return df
 
-    dedup_on = [c for c in ("transactionHash", "asset", "side", "size", "price", "timestamp") if c in df.columns]
+    dedup_on = [
+        c
+        for c in ("transactionHash", "asset", "side", "size", "price", "timestamp")
+        if c in df.columns
+    ]
     if dedup_on:
         df = df.drop_duplicates(subset=dedup_on).reset_index(drop=True)
     if "timestamp" in df.columns:
@@ -227,7 +233,11 @@ def derive_resolution_timestamps(
         p_all["timestamp"] = pd.to_datetime(p_all["timestamp"], utc=True)
 
     t_all = pd.DataFrame(columns=["timestamp", "price", "asset"])
-    if trades is not None and not trades.empty and {"asset", "price", "timestamp"}.issubset(trades.columns):
+    if (
+        trades is not None
+        and not trades.empty
+        and {"asset", "price", "timestamp"}.issubset(trades.columns)
+    ):
         t_all = trades[["timestamp", "price", "asset"]].copy()
         t_all["asset"] = t_all["asset"].astype(str)
         t_all["price"] = pd.to_numeric(t_all["price"], errors="coerce")
@@ -258,7 +268,9 @@ def derive_resolution_timestamps(
 
 def _add_running_market_features(df: pd.DataFrame) -> pd.DataFrame:
     """Per-market cumulative and rolling features, strictly prior to each trade."""
-    df = df.sort_values(["condition_id", "timestamp"], kind="mergesort").reset_index(drop=True)
+    df = df.sort_values(["condition_id", "timestamp"], kind="mergesort").reset_index(
+        drop=True
+    )
     g = df.groupby("condition_id", sort=False)
     df["market_trade_count_so_far"] = g.cumcount()
     tv = pd.to_numeric(df["trade_value_usd"], errors="coerce").fillna(0.0)
@@ -272,13 +284,17 @@ def _add_running_market_features(df: pd.DataFrame) -> pd.DataFrame:
         order = gdf["timestamp"].argsort(kind="mergesort")
         idx_sorted = gdf.index.to_numpy()[order.to_numpy()]
         ts_sorted = gdf["timestamp"].to_numpy()[order.to_numpy()]
-        mp_series = pd.Series(mp.loc[idx_sorted].to_numpy(),
-                              index=pd.DatetimeIndex(ts_sorted))
+        mp_series = pd.Series(
+            mp.loc[idx_sorted].to_numpy(), index=pd.DatetimeIndex(ts_sorted)
+        )
         vol.loc[idx_sorted] = mp_series.rolling("1h", closed="left").std().to_numpy()
-        tv_series = pd.Series(tv.loc[idx_sorted].to_numpy(),
-                              index=pd.DatetimeIndex(ts_sorted))
+        tv_series = pd.Series(
+            tv.loc[idx_sorted].to_numpy(), index=pd.DatetimeIndex(ts_sorted)
+        )
         vol_1h.loc[idx_sorted] = tv_series.rolling("1h", closed="left").sum().to_numpy()
-        vol_24h.loc[idx_sorted] = tv_series.rolling("24h", closed="left").sum().to_numpy()
+        vol_24h.loc[idx_sorted] = (
+            tv_series.rolling("24h", closed="left").sum().to_numpy()
+        )
     df["market_price_vol_last_1h"] = vol
     df["market_vol_1h_log"] = np.log1p(vol_1h.fillna(0.0))
     df["market_vol_24h_log"] = np.log1p(vol_24h.fillna(0.0))
@@ -296,7 +312,9 @@ def _add_running_market_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def _add_running_wallet_features(df: pd.DataFrame, wallet_col: str) -> pd.DataFrame:
     """Per-wallet cumulative stats, strictly prior to each trade."""
-    df = df.sort_values([wallet_col, "timestamp"], kind="mergesort").reset_index(drop=True)
+    df = df.sort_values([wallet_col, "timestamp"], kind="mergesort").reset_index(
+        drop=True
+    )
     gw = df.groupby(wallet_col, sort=False)
     df["wallet_prior_trades"] = gw.cumcount()
     tv = pd.to_numeric(df["trade_value_usd"], errors="coerce").fillna(0.0)
@@ -326,21 +344,35 @@ def enrich_trades(
     """
     res_ts = derive_resolution_timestamps(prices, markets, trades)
 
-    meta = markets[
-        ["condition_id", "slug", "question", "end_date", "winning_outcome_index", "resolved"]
-    ].copy()
+    meta_cols = [
+        "condition_id",
+        "slug",
+        "question",
+        "end_date",
+        "winning_outcome_index",
+        "resolved",
+    ]
+    if "outcomes" in markets.columns:
+        meta_cols.append("outcomes")
+    meta = markets[meta_cols].copy()
     meta["end_date"] = pd.to_datetime(meta["end_date"], utc=True, errors="coerce")
     meta["resolution_ts"] = meta["condition_id"].astype(str).map(res_ts)
-    meta["resolution_ts"] = pd.to_datetime(meta["resolution_ts"], utc=True, errors="coerce")
+    meta["resolution_ts"] = pd.to_datetime(
+        meta["resolution_ts"], utc=True, errors="coerce"
+    )
     df = trades.merge(meta, on="condition_id", how="left")
 
     eff_end = df["resolution_ts"].fillna(df["end_date"])
     df["settlement_minus_trade_sec"] = (eff_end - df["timestamp"]).dt.total_seconds()
 
-    wallet_col = next((c for c in ("proxyWallet", "user", "maker", "taker") if c in df.columns), None)
+    wallet_col = next(
+        (c for c in ("proxyWallet", "user", "maker", "taker") if c in df.columns), None
+    )
     if wallet_col is not None:
         first_seen = df.groupby(wallet_col)["timestamp"].transform("min")
-        df["wallet_first_minus_trade_sec"] = (first_seen - df["timestamp"]).dt.total_seconds()
+        df["wallet_first_minus_trade_sec"] = (
+            first_seen - df["timestamp"]
+        ).dt.total_seconds()
     else:
         df["wallet_first_minus_trade_sec"] = pd.NA
 
@@ -359,6 +391,24 @@ def enrich_trades(
         df["bet_correct"] = (outcome_won == side_buy).astype("Int64").mask(win.isna())
     else:
         df["bet_correct"] = pd.NA
+
+    # `is_yes` — per-market YES/NO label derived from the outcomes array.
+    # Polymarket markets store outcome order per-market (["Yes","No"] or ["No","Yes"]),
+    # so a global outcomeIndex→YES/NO mapping doesn't exist. We resolve it here:
+    # label of the winning outcome token == "Yes" ⇒ is_yes=1, else 0.
+    if "outcomes" in df.columns:
+        outs = df["outcomes"].fillna("").astype(str).str.split(";")
+        win_idx = pd.to_numeric(df["winning_outcome_index"], errors="coerce")
+        is_yes = []
+        for o, w in zip(outs, win_idx):
+            if pd.isna(w) or int(w) >= len(o):
+                is_yes.append(pd.NA)
+            else:
+                label = str(o[int(w)]).strip().lower()
+                is_yes.append(1 if label in {"yes", "true"} else 0)
+        df["is_yes"] = pd.array(is_yes, dtype="Int64")
+    else:
+        df["is_yes"] = pd.NA
 
     if not prices.empty and "asset" in df.columns:
         pm = prices[["timestamp", "price", "token_id"]].rename(
@@ -384,8 +434,14 @@ def enrich_trades(
     else:
         df["market_implied_prob"] = pd.NA
 
-    trade_price = pd.to_numeric(df.get("price"), errors="coerce") if "price" in df.columns else pd.Series(pd.NA, index=df.index)
-    df["market_implied_prob"] = pd.to_numeric(df["market_implied_prob"], errors="coerce").fillna(trade_price)
+    trade_price = (
+        pd.to_numeric(df.get("price"), errors="coerce")
+        if "price" in df.columns
+        else pd.Series(pd.NA, index=df.index)
+    )
+    df["market_implied_prob"] = pd.to_numeric(
+        df["market_implied_prob"], errors="coerce"
+    ).fillna(trade_price)
 
     df = _add_running_market_features(df)
     if wallet_col is not None:
@@ -408,7 +464,10 @@ SPLIT_QUANTILES = (0.70, 0.85)
 # plot stays readable as the feature count grows.
 FEATURE_CLUSTERS: dict[str, list[str]] = {
     "trade_local": [
-        "log_size", "side", "outcomeIndex", "trade_value_usd",
+        "log_size",
+        "side",
+        "outcomeIndex",
+        "trade_value_usd",
     ],
     "market_context": [
         "market_trade_count_so_far",
@@ -419,11 +478,15 @@ FEATURE_CLUSTERS: dict[str, list[str]] = {
         "market_buy_share_running",
     ],
     "time": [
-        "time_to_settlement_s", "log_time_to_settlement", "pct_time_elapsed",
+        "time_to_settlement_s",
+        "log_time_to_settlement",
+        "pct_time_elapsed",
     ],
     "wallet_global": [
-        "wallet_prior_trades", "wallet_prior_volume_usd",
-        "wallet_prior_win_rate", "wallet_first_minus_trade_sec",
+        "wallet_prior_trades",
+        "wallet_prior_volume_usd",
+        "wallet_prior_win_rate",
+        "wallet_first_minus_trade_sec",
     ],
     "bet_slicing": [
         "wallet_trades_in_market_last_1min",
@@ -490,8 +553,9 @@ def _rolling_sum_by_group(
         order = gdf["timestamp"].argsort(kind="mergesort").to_numpy()
         idx_sorted = gdf.index.to_numpy()[order]
         ts_sorted = gdf["timestamp"].to_numpy()[order]
-        s = pd.Series(vals.loc[idx_sorted].to_numpy(),
-                      index=pd.DatetimeIndex(ts_sorted))
+        s = pd.Series(
+            vals.loc[idx_sorted].to_numpy(), index=pd.DatetimeIndex(ts_sorted)
+        )
         rolled = s.rolling(window, closed="left").sum()
         out.loc[idx_sorted] = rolled.to_numpy()
     return out.fillna(0.0)
@@ -527,16 +591,24 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
     df["log_size"] = np.log1p(size_num.clip(lower=0).fillna(0))
 
     # --- Time features ---
-    df["time_to_settlement_s"] = pd.to_numeric(df["settlement_minus_trade_sec"], errors="coerce")
-    df["log_time_to_settlement"] = np.log1p(df["time_to_settlement_s"].clip(lower=0).fillna(0))
+    df["time_to_settlement_s"] = pd.to_numeric(
+        df["settlement_minus_trade_sec"], errors="coerce"
+    )
+    df["log_time_to_settlement"] = np.log1p(
+        df["time_to_settlement_s"].clip(lower=0).fillna(0)
+    )
 
     market_start = df.groupby("condition_id")["timestamp"].transform("min")
     eff_end = pd.to_datetime(df.get("resolution_ts"), utc=True, errors="coerce")
     if "end_date" in df.columns:
-        eff_end = eff_end.fillna(pd.to_datetime(df["end_date"], utc=True, errors="coerce"))
+        eff_end = eff_end.fillna(
+            pd.to_datetime(df["end_date"], utc=True, errors="coerce")
+        )
     life_total = (eff_end - market_start).dt.total_seconds()
     life_elapsed = (df["timestamp"] - market_start).dt.total_seconds()
-    df["pct_time_elapsed"] = (life_elapsed / life_total.where(life_total > 0)).clip(0, 1)
+    df["pct_time_elapsed"] = (life_elapsed / life_total.where(life_total > 0)).clip(
+        0, 1
+    )
 
     # --- Wallet-in-market bursting ---
     for label, window in [("1min", "60s"), ("10min", "600s"), ("60min", "3600s")]:
@@ -550,12 +622,12 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
     # Median gap between consecutive trades within (wallet, market), over all
     # pairs strictly before t. Expanding median over .diff() gaps, shifted by 1
     # within group so row k uses only gaps from pairs fully before k.
-    gaps_sec = (df.groupby([wallet_col, "condition_id"])["timestamp"]
-                  .diff().dt.total_seconds())
-    df["wallet_median_gap_in_market"] = (
-        gaps_sec.groupby([df[wallet_col], df["condition_id"]])
-                .transform(lambda s: s.expanding().median().shift(1))
+    gaps_sec = (
+        df.groupby([wallet_col, "condition_id"])["timestamp"].diff().dt.total_seconds()
     )
+    df["wallet_median_gap_in_market"] = gaps_sec.groupby(
+        [df[wallet_col], df["condition_id"]]
+    ).transform(lambda s: s.expanding().median().shift(1))
 
     # --- Wallet-in-market directional purity ---
     oi = pd.to_numeric(df["outcomeIndex"], errors="coerce")
@@ -600,7 +672,8 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
     # Whale flag — cumulative wallet volume in market vs market p95 of final wallet volumes
     final_vol_wm = tv.groupby([df[wallet_col], df["condition_id"]]).transform("sum")
     p95_by_market = (
-        tv.groupby([df[wallet_col], df["condition_id"]]).sum()
+        tv.groupby([df[wallet_col], df["condition_id"]])
+        .sum()
         .groupby(level="condition_id")
         .quantile(WHALE_QUANTILE)
         .rename("p95")
@@ -620,7 +693,10 @@ def expand_features(df: pd.DataFrame, wallet_col: str = "proxyWallet") -> pd.Dat
 
     # Same-side rolling USD volume in the last 10 minutes.
     df["wallet_cumvol_same_side_last_10min"] = _rolling_sum_by_group(
-        df, [wallet_col, "condition_id", "outcomeIndex"], "trade_value_usd", "600s",
+        df,
+        [wallet_col, "condition_id", "outcomeIndex"],
+        "trade_value_usd",
+        "600s",
     )
 
     # --- Interactions ---
@@ -690,7 +766,9 @@ def run(event_ids: Iterable[str] = TARGET_EVENT_IDS) -> None:
     )
     meta.to_csv(OUT_DIR / "01_markets_meta.csv", index=False)
     n_resolved = int(meta["resolved"].sum())
-    print(f"[meta] wrote {len(meta)} rows -> 01_markets_meta.csv ({n_resolved} resolved)")
+    print(
+        f"[meta] wrote {len(meta)} rows -> 01_markets_meta.csv ({n_resolved} resolved)"
+    )
 
     price_frames: list[pd.DataFrame] = []
     trade_frames: list[pd.DataFrame] = []
@@ -722,7 +800,11 @@ def run(event_ids: Iterable[str] = TARGET_EVENT_IDS) -> None:
         enriched = enrich_trades(trades, meta, prices)
         enriched.to_csv(OUT_DIR / "03_consolidated_dataset.csv", index=False)
         n_labeled = int(enriched["bet_correct"].notna().sum())
-        n_priced = int(enriched["market_implied_prob"].notna().sum()) if "market_implied_prob" in enriched.columns else 0
+        n_priced = (
+            int(enriched["market_implied_prob"].notna().sum())
+            if "market_implied_prob" in enriched.columns
+            else 0
+        )
         print(
             f"[enriched] wrote {len(enriched)} rows -> 03_consolidated_dataset.csv "
             f"({n_labeled} labeled, {n_priced} with implied prob)"
