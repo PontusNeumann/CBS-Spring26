@@ -27,6 +27,21 @@ Severity legend:
 - **Mitigation applied:** dropped from feature set at training time (added to `NON_FEATURE_COLS`). Kept in parquet.
 - **Upstream fix (recommended):** denominator should be `|pos_before|` only, with a guard returning 0 when `pos_before == 0` (i.e. "fraction of prior position this trade would close"). Re-verify `is_position_flip` logic under the corrected denominator.
 
+### P0-8. Market-identifying absolute-scale features let the MLP memorise markets
+
+- **Context:** Pontus's PR #5 v3 fix dropped 6 features from `train_mlp_reframed.py` because they functioned as implicit market identifiers (absolute-scale features that let the model look up "which market is this" and cheat on bet_correct prediction). The v3 drop was never applied to the current `scripts/12_train_mlp.py` scaffold — those features are still active in the feature set.
+- **Features to drop:**
+  - `time_to_settlement_s` (scales with market deadline distance)
+  - `log_time_to_settlement` (same, log variant)
+  - `market_volume_so_far_usd` (absolute USD volume — Feb 28 ≈ 10× Feb 25)
+  - `market_vol_1h_log` (absolute rolling volume)
+  - `market_vol_24h_log` (same)
+  - `market_trade_count_so_far` (absolute trade count)
+- **What's wrong:** at any wall-clock timestamp, these features take very different values per sub-market (because markets have different deadlines and volumes). In a 4-market training cohort with 1 YES + 3 NO, the model can learn "high volume + long time_to_settlement → this is Feb 28 (the YES market) → predict bet_correct accordingly." Training signal collapses to market identity.
+- **Impact severity:** **critical shortcut risk.** Without this drop, the MLP can reach near-perfect training loss by memorising which sub-market each trade belongs to. Test generalisation collapses because Apr 18 ceasefire-extended has neither high volume nor long time-to-settlement distribution.
+- **Mitigation applied:** not in the shared pipeline yet. For the Alex-workspace MLP training, add to the training script's `NON_FEATURE_COLS` (or equivalent feature-exclusion mechanism). Bounded / normalised substitutes are retained (`pct_time_elapsed`, `market_buy_share_running`, `market_price_vol_last_1h`).
+- **Upstream fix (recommended):** apply the same drops to `scripts/12_train_mlp.py` for the shared pipeline, or carry forward the v3 feature-pruning logic from the archived `train_mlp_reframed.py`.
+
 ### P0-3. `resolution_ts = NaT` for 3 markets, breaking the settlement filter
 
 - **File / line:** `scripts/01_polymarket_api.py:195-212` (`_first_lock_timestamp`) — strict `.any() < LOCK_UNLOCK_FLOOR` rejected valid locks that had outlier trades after settlement.
