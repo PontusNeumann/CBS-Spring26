@@ -7,8 +7,51 @@
 **Document purpose:** Pontus's modelling direction. Builds on `foundation.md` (shared RQ, data, features, missing-data policy, EDA, evaluation). This file starts as a copy of the modelling sections from the pre-split project plan; Pontus edits it to reflect his chosen model family, hyper-parameter choices, and trading-rule tuning. Section numbers preserve the original `project_plan.md` numbering so cross-references to the foundation and to `alex_adventure.md` stay aligned.
 
 **Companion documents:**
-- `foundation.md` — shared project foundation. Read first.
+- `foundation.md` — shared project foundation. Read first. §4 lists the final feature set; §11 enumerates the leakage audit resolutions (P0-1, P0-2, P0-8, P0-9, P0-11, P0-12, Leak A/B/C) and the physical-drop finalisation.
 - `alex_adventure.md` — the parallel modelling direction (for cross-reference and eventual comparison).
+- `data-pipeline-issues.md` — canonical issues log.
+- `alex/notes/session-learnings-2026-04-22.md` — Alex's diagnostic session bullets (P0-11 direction determinism, naive-market Simpson's paradox, residual-edge +0.06 partial correlation, tree memorisation via Layer 6).
+
+---
+
+## 0. Hard constraints inherited from the exam brief
+
+- **TensorFlow / Keras only for all neural-network code.** The CBS MLDP exam
+  rubric requires it. PyTorch is not permitted for the MLP or the autoencoder.
+  sklearn baselines (LogReg, RF, GBM, Isolation Forest) are fine.
+- The shared `scripts/12_train_mlp.py` is deprecated — it was PyTorch and read
+  the old `split` column that no longer exists. Treat it as historical.
+
+## 0.1 Data state this adventure builds on
+
+- Consolidated dataset at `data/03_consolidated_dataset.csv` is the **finalised,
+  leakage-free CSV**: 1,209,787 rows × **54 columns** (pre-drop snapshot preserved
+  at `data/03_consolidated_dataset.pre_dropped_variables.csv`). After excluding
+  IDs / labels / filter / benchmark columns, **~36 model features** remain.
+- Feature groups retained (foundation §4): trade-local (`log_size`,
+  `trade_value_usd`), market context normalised (`market_price_vol_last_1h`),
+  time (`pct_time_elapsed` from `deadline_ts`), wallet-global
+  (`wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_first_minus_trade_sec`,
+  `wallet_prior_win_rate_causal`), wallet-in-market behavioural (bursting
+  counts, `wallet_spread_ratio`, `wallet_is_whale_in_market`,
+  `wallet_prior_trades_in_market`, `wallet_median_gap_in_market`), interactions
+  (`size_vs_wallet_avg`, `size_vs_market_cumvol_pct`, `size_vs_market_avg`),
+  Layer 6 on-chain identity (9 features, ends with `wallet_funded_by_cex_scoped`),
+  Layer 7 cross-market entropy (`wallet_market_category_entropy`), six binary
+  missingness indicators.
+- Dropped and never reintroduced as model features: `side`, `outcomeIndex`
+  (P0-11); `wallet_position_size_before_trade`, `trade_size_vs_position_pct`,
+  `wallet_cumvol_same_side_last_10min`, `wallet_directional_purity_in_market`,
+  `wallet_has_both_sides_in_market`, `market_buy_share_running` (P0-12);
+  `is_position_exit`, `is_position_flip` (P0-2); `wallet_is_whale_in_market`
+  is RETAINED but the definition is now causal expanding p95 (P0-1 fixed upstream);
+  `wallet_prior_win_rate` (naive) is replaced by `wallet_prior_win_rate_causal`
+  (P0-9).
+- Cohort parquets at `data/experiments/{train,val,test}.parquet` are
+  pre-filtered via §4 settlement filter and carry the 54-column schema
+  (202,082 / 13,154 / 13,414 rows). Regenerate with
+  `python scripts/14_build_experiment_splits.py`.
+- `_check_causal.py` at 34 / 34 green as of 2026-04-22; run after any rebuild.
 
 ---
 
@@ -16,49 +59,61 @@
 
 ### 5.1 Primary model: MLP for probability estimation (Lectures 8, 9)
 
-- Architecture: fully connected feed-forward network, two to four hidden layers, SELU activations, Glorot initialisation.
-- Regularisation: dropout in [0.2, 0.4] on dense layers (Lecture 9 rule of thumb), batch normalisation after each hidden layer.
-- Loss: binary cross-entropy. Optimiser: Adam with learning-rate scheduling.
-- Input: standardised behavioural and market-state features. `market_implied_prob` is withheld from the feature set so that `p_hat` is an independent probability estimate, directly comparable to the market.
-- Output: predicted probability of settlement in favour of the trade, `p_hat`. The gap `p_hat − market_implied_prob` is the trading signal.
+- **Framework.** `tf.keras` Sequential / Functional API. sklearn pipeline for the preprocessing stages (imputer, winsoriser, scaler). Random seed set at numpy, TensorFlow, and sklearn levels.
+- **Architecture.** Fully connected feed-forward network, two to four hidden layers, SELU activation with LeCun-normal initialisation (the SELU-Glorot variant), batch normalisation after each hidden layer, dropout in [0.2, 0.4] on dense layers. Starting depth [256, 128, 64] with binary cross-entropy output.
+- **Optimiser.** Adam with `ReduceLROnPlateau` on validation BCE; early stopping with patience 8-10 on validation BCE, not ROC (see §5.7 for why).
+- **Input.** 36 standardised features from `data/experiments/train.parquet` (minus `NON_FEATURE_COLS` per §0.1). `market_implied_prob` is withheld so that `p_hat` is independent of the market's own belief and the gap `p_hat − market_implied_prob` is clean signal. Missingness: median impute on train fold only, then standardise; keep all six indicator columns as explicit features so the model can read "was this NaN."
+- **Winsorisation.** `trade_value_usd` and `wallet_prior_volume_usd` winsorised at the 1st / 99th percentile on the training fold only (§5.5 in foundation).
+- **Output.** Predicted probability of settlement in favour of the trade, `p_hat`. The gap `p_hat − market_implied_prob` is the trading signal (§5.2). `p_hat` is calibrated via isotonic regression on the validation fold (§5.2).
+- **Class balance.** `bet_correct` rate is inside 35-65 % → `class_weight='balanced'` only. SMOTE not applied (rate is 0.52 in training).
+- **Group sensitivity.** Because Layer 6 on-chain features can act as near-unique wallet identifiers (trees score 0.86-0.96 train / 0.52 test on raw features per Alex's sweep), evaluate with `GroupKFold(proxyWallet)` wherever within-training CV is reported, and slice test metrics by "wallet seen in training" vs "novel wallet" as a secondary generalisation signal.
 
 ### 5.2 Trading rule — two strategies evaluated side by side
 
-For a candidate trade at market price `P_market`, the per-token edge is `edge = P_model - P_market` (with sign flipped for SELL-side trades).
+For a candidate trade, the per-token edge is `edge = p_hat − market_implied_prob` (sign flipped for SELL-side trades via the side column recovered from the pre-drop snapshot or the cohort parquet — note that `side` and `outcomeIndex` are not model features but they are needed at trading-rule time to resolve edge sign, and both live in `data/experiments/*.parquet` alongside the features).
+
+Time-to-deadline for the home-run gate is computed on the fly at trading-rule time as `(deadline_ts − timestamp)` in seconds. `deadline_ts` is in the CSV; `time_to_settlement_s` is not a model feature (P0-8), but that restriction applies to the model, not to the trading rule.
 
 | Strategy | Gate | Sizing | Primary metric |
 |---|---|---|---|
 | **General +EV** | `edge > 0.02` | flat $100 per trigger | total PnL, Sharpe |
-| **Home-run** (primary for geopolitical markets) | `edge > 0.20` AND `time_to_settlement < 6h` AND `price < 0.30` | larger per trigger | precision@k, PnL concentration |
+| **Home-run** (primary for geopolitical markets) | `edge > 0.20` AND `time_to_deadline < 6h` AND `market_implied_prob < 0.30` | larger per trigger | precision@k, PnL concentration |
 
 The two-strategy design reflects the shape of the underlying phenomenon. The Columbia paper (Mitts and Ofir 2026) documents that informed flow in Iran markets is **bursty and late-concentrated**, not diffuse. A general +EV rule catches the long tail; a home-run rule concentrates capital on the pattern the documented cases fit (short time-to-deadline, low implied probability, large edge). The home-run rule is the primary trading evaluation; the general rule is the robustness check.
 
-**Cutoff-date sweep.** Run the streaming backtest with `N in {14, 7, 3, 1}` days before each deadline and plot PnL vs N. Expected shape: the home-run curve rises sharply as N shrinks, confirming that informed flow concentrates near the deadline.
+**Benchmark caveat (P0-4).** `market_implied_prob` falls back to the trade's own execution price on all 67 HF-path markets because CLOB history was not fetched for them (see foundation §11 known limitation). The residual-edge diagnostic in §5.7 is less affected because it re-projects `p_hat` against the same benchmark, but the absolute PnL on HF-path trades reads a price that is slightly biased by the trade itself. Mitigation: report the headline PnL restricted to `source == "api"` (the 7 ceasefire markets, ~14.6k trades, CLOB mid is real) alongside the full-cohort number.
 
-**Calibration.** After training, isotonic regression on the held-out calibration slice. Report Brier score and ECE. Calibration matters because the edge math only works if `P_model = 0.8` actually means right 80 percent of the time.
+**Cutoff-date sweep.** Run the streaming backtest with `N ∈ {14, 7, 3, 1}` days before each deadline and plot PnL vs N. Expected shape: the home-run curve rises sharply as N shrinks, confirming that informed flow concentrates near the deadline.
 
-**Frozen for test.** Gate thresholds, sizing, and any calibrator parameters are tuned on the validation slice and frozen before touching the test slice.
+**Calibration.** After training, isotonic regression on the validation fold. Report Brier score and 15-bin ECE. Calibration matters because the edge math only works if `p_hat = 0.8` actually means right 80 percent of the time.
+
+**Frozen for test.** Gate thresholds, sizing, and any calibrator parameters are tuned on the validation fold and frozen before touching the test fold.
 
 ### 5.3 Unsupervised arm: autoencoder anomaly detection (Lecture 11)
 
-- Undercomplete stacked autoencoder trained on all trade feature vectors, SELU activations, MSE loss.
-- Anomaly score: per-trade reconstruction error.
-- Purpose: a parallel, unsupervised lens on the data that does not use the correctness target. Cross-check whether trades with the largest `|p_hat − market_implied_prob|` gap also carry high reconstruction error.
+- **Framework.** `tf.keras` Model API (required by §0).
+- **Architecture.** Undercomplete stacked autoencoder, symmetric encoder/decoder, SELU activations, MSE loss. Starting bottleneck 8 → 16 → 36 for a 36-feature input. Trained on all trade feature vectors from the training fold only.
+- **Anomaly score.** Per-trade reconstruction error.
+- **Purpose.** A parallel, unsupervised lens on the data that does not use the correctness target. Cross-check whether trades with the largest `|p_hat − market_implied_prob|` gap also carry high reconstruction error. An overlap significantly above the random-overlap null is the secondary evidence that the gap signal is anomalous (not just model variance).
 
 ### 5.4 Baselines (Lectures 4, 5, 6, 7)
 
-- Logistic regression on the same features, producing a baseline `p_hat` for the same trading rule.
-- Random forest, producing a baseline `p_hat` and feeding the feature-importance ranking used in Discussion.
-- Isolation Forest as an unsupervised anomaly baseline against the autoencoder.
-- Naive market baseline: trading rule with `p_hat = market_implied_prob`, which by construction produces zero gap and zero signal. This is the efficient-market null.
+All baselines use `sklearn`. All consume the same 36 features, same train / val / test fold assignment, same winsorisation and imputation.
+
+- **Logistic regression (L2).** Linear baseline, produces a baseline `p_hat` for the same trading rule. Coefficients are the feature-importance ranking in §5.7.
+- **Random forest.** Tree baseline. Must use heavy regularisation — Alex observed `RandomForestClassifier()` defaults reaching 0.96 train vs 0.52 test via Layer-6-driven wallet memorisation. Starting point: `n_estimators=400, min_samples_leaf=200, max_features="sqrt"`; tune via `GroupKFold(proxyWallet)`.
+- **Isolation Forest.** Unsupervised anomaly baseline against the autoencoder. Overlap-at-top-decile comparison against a random-overlap null is the Lecture-11 metric.
+- **Naive market.** Trading rule with `p_hat = market_implied_prob`. By construction this produces zero gap and zero signal. **Important:** the aggregate ROC of the naive-market baseline is not 0.5 in this dataset — Alex showed it reaches 0.63 on test via a Simpson's paradox through the `(side × outcomeIndex)` distribution, even though the efficient-market null implies calibration, not ROC 0.5. The honest null comparison is therefore in terms of (a) Brier / ECE against the model, and (b) **residual edge ROC** (`p_hat` residualised against `market_implied_prob`), where the naive baseline goes to 0.5 by construction. Report both; see §5.7.
 
 ### 5.7 Validation strategy
 
-Three layers, all on held-out data:
+Four layers, all on held-out data:
 
-1. **Statistical.** ROC-AUC and calibration of `p_hat` and of the residualised gap against `bet_correct` on the validation and test slices. Brier-score improvement over the market-implied null. (Foundation §6 lists the required metrics.)
-2. **Economic.** Cumulative PnL, Sharpe ratio, hit rate, maximum drawdown, and precision@k of each trading rule on the test slice only, against the baselines in §5.4. Streaming event-replay protocol — at each event, the decision uses only state strictly before the event timestamp.
-3. **Named-case sanity check.** Magamyman (the Columbia paper's primary documented Iran-strike insider, ~$553K entering at 17 percent implied probability 71 minutes before news) serves as a named validation anchor. Pull the wallet address from the paper appendix or the `pselamy/polymarket-insider-tracker` GitHub repo and check: does the model assign high `p_hat` to his documented trades, do the home-run triggers fire on them, and which feature values does the model find most salient? This is an illustrative anecdote in the Discussion, not a Results target — labelling off a single wallet would introduce selection bias if used for model selection.
+1. **Statistical (probability-level).** ROC-AUC, PR-AUC, Brier, and 15-bin ECE of `p_hat` on val and test folds. Brier improvement over the market-implied null is the efficient-market-null test (calibration, not ROC).
+2. **Residual-edge (gap-level; RQ1b test).** Compute the residual of `edge = p_hat − market_implied_prob` after linearly projecting out `market_implied_prob` on the training fold, and report the residual's ROC-AUC and partial correlation with `bet_correct` on val and test. This is the honest gap-signal test that aggregate ROC comparisons miss (the naive-market baseline scores 0.63 test ROC via Simpson's paradox — see §5.4 and Alex's investigation at `alex/outputs/investigations/naive_market/`). The target to beat is the residual-edge partial correlation of ~+0.06 (~7σ) reported in `alex/outputs/investigations/residual_edge/`.
+3. **Economic (trading-rule level).** Cumulative PnL, Sharpe ratio, hit rate, maximum drawdown, precision@k of each trading rule on the test fold only, against the baselines in §5.4. Streaming event-replay protocol — at each event, the decision uses only state strictly before the event timestamp. PnL reported both on the full test cohort AND restricted to `source == "api"` (unbiased CLOB benchmark, ~14.6k trades — see §5.2 P0-4 caveat).
+4. **Robustness (stability and wallet-generalisation).** (a) Within-training 5-fold `GroupKFold(proxyWallet)` ROC to verify the model is not memorising wallets via Layer 6; (b) test-fold ROC split by "wallet seen in training" vs "novel wallet"; (c) bootstrap 95 % confidence intervals on test metrics at the `proxyWallet` level (not at the trade level) to account for within-wallet correlation in bursts.
+5. **Named-case sanity check.** Magamyman (the Columbia paper's primary documented Iran-strike insider, ~$553K entering at 17 percent implied probability 71 minutes before news) serves as a named validation anchor. Pull the wallet address from the paper appendix or the `pselamy/polymarket-insider-tracker` GitHub repo and check: does the model assign high `p_hat` to his documented trades, do the home-run triggers fire on them, and which feature values does the model find most salient? This is an illustrative anecdote in the Discussion, not a Results target — labelling off a single wallet would introduce selection bias if used for model selection.
 
 ## 10. Deliverables and Next Steps (adventure-scope)
 
@@ -75,9 +130,25 @@ Outputs land under `outputs/modelling/pontus/<model>/` (`metrics.json`, `feature
 
 ## 11. Open Decisions (adventure-scope)
 
-- Exact edge thresholds for the general +EV rule (currently 0.02) and the home-run rule (currently 0.20) — may shift after validation tuning.
-- Position-sizing rule for the home-run strategy: flat larger stake versus Kelly-scaled.
-- Whether to model trade value in USD as a feature (already included via `trade_value_usd` and `log_size`) or additionally as a sample weight during training.
+- **MLP hidden-layer sizes.** Start at [256, 128, 64]; shrink if val BCE
+  plateaus early.
+- **Edge thresholds.** General +EV at 0.02 and home-run at 0.20 are placeholders;
+  tune on the validation fold before freezing for test.
+- **Position-sizing rule for the home-run strategy.** Flat larger stake versus
+  Kelly-scaled. Default: flat. Kelly comparison as robustness.
+- **Trade value weighting.** Model trade value in USD only through
+  `trade_value_usd` and `log_size` features, OR additionally as a sample weight
+  during training. Default: features only.
+- **XAI technique for the Discussion.** Permutation importance on the test fold
+  is the simplest (low compute, no retraining); SHAP on a 10k-trade sample is
+  the richer alternative. Alex's workspace may pick a tree-importance angle —
+  aim for a different technique here so the §12 comparison is informative.
+- **Unsupervised arm emphasis.** Whether the autoencoder drives a secondary
+  Results claim or stays a Discussion-only cross-check. Depends on whether the
+  gap-anomaly overlap materially beats the random-overlap null.
+- **Differentiation from Alex.** Tentative split: Pontus = deeper MLP + SHAP +
+  autoencoder; Alex = shallower MLP + tree importance + Isolation Forest. Revisit
+  before first convergence write-up.
 
 ## 12. Convergence and Comparison
 

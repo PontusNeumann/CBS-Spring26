@@ -6,14 +6,14 @@
 **Subtitle:** *Detecting Probability Asymmetries in Iran Geopolitical Markets with Machine Learning*
 **Document purpose:** The shared foundation for the project — research question, data, features, missing-data policy, EDA, evaluation metrics, ethics, and reproduction workflow. From here the project branches into two parallel modelling directions:
 
-- `alex_adventure.md` — Alex's modelling plan.
-- `pontus_adventure.md` — Pontus's modelling plan.
+- `alex/alex_adventure.md` — Alex's modelling plan.
+- `pontus/pontus_adventure.md` — Pontus's modelling plan.
 
 Both adventures consume the cohorts defined in §4 and are evaluated against the metrics in §6. Results reconverge for the final report (§10 row 19). Section numbers below preserve the original `project_plan.md` numbering; §5.1–§5.4 and §5.7 now live in the adventures.
 
 **Companion documents (read-only supporting material):**
 - `handovers/handover_<date>.md` — per-session handover covering only the most recent work done. Anything that matters long-term is folded back into this foundation or the relevant adventure.
-- `alex_updates_before_incorporation/mldp-project-overview.md` — Alex's narrower 7-sub-market proposal. Superseded by this foundation; kept for history only.
+- `alex/alex_updates_before_incorporation/mldp-project-overview.md` — Alex's narrower 7-sub-market proposal. Superseded by this foundation; kept for history only.
 
 ---
 
@@ -91,7 +91,7 @@ The project has deliberately chosen to re-stream the 38.7 GB HF trades parquet f
 
 ## 5. Method (shared portions)
 
-§5.1 primary model, §5.2 trading rule, §5.3 unsupervised arm, §5.4 baselines, and §5.7 validation strategy have moved to the adventures (`alex_adventure.md`, `pontus_adventure.md`). What stays here is data-level and applies to both.
+§5.1 primary model, §5.2 trading rule, §5.3 unsupervised arm, §5.4 baselines, and §5.7 validation strategy have moved to the adventures (`alex/alex_adventure.md`, `pontus/pontus_adventure.md`). What stays here is data-level and applies to both.
 
 ### 5.5 Class imbalance and data issues (Lecture 7)
 
@@ -212,19 +212,30 @@ Everything lives under `ML/report/`. Current folder layout:
 report/
 ├── ML_final_exam_paper.docx                 # The paper. Updated as the project progresses.
 ├── foundation.md                            # This file. Shared foundation. Read first.
-├── alex_adventure.md                        # Alex's modelling plan (branches from §5).
-├── pontus_adventure.md                      # Pontus's modelling plan (branches from §5).
-├── project_plan.md                          # Pre-split predecessor of the three files above. Kept for diff / history until removed.
+├── project_plan.md                          # Pre-split predecessor of the adventures. Kept for diff / history until removed.
 ├── Design.md                                # Naming and code-style conventions for scripts.
+├── data-pipeline-issues.md                  # Canonical P0/P1/P2 issues log + resolutions.
 ├── .env.example                             # Template for Etherscan V2 keys (copy to .env).
 │
-├── alex_updates_before_incorporation/       # Reference-only: Alex's narrower-scope material.
-│   ├── design-decisions.md                  # Framing, features, baselines — we adopted the pre-EDA parts only.
-│   ├── mldp-project-overview.md             # His 7-sub-market proposal (superseded for our scope).
-│   └── SESSION-HANDOVER.md                  # Alex's end-state handover after the v2/v3 runs.
+├── alex/                                    # Alex's personal workspace.
+│   ├── alex_adventure.md                    # Alex's modelling plan (branches from §5).
+│   ├── README.md                            # Workspace overview.
+│   ├── scripts/                             # Alex's modelling + analysis scripts (data_sanity, baselines, investigations).
+│   ├── outputs/                             # Alex's metrics, plots, investigation artefacts.
+│   ├── notes/                               # Alex's working notes (feature-exclusion-list, session-learnings, sister-market-features, test-cohort-no-bias, new-chat-prompt).
+│   └── alex_updates_before_incorporation/   # Reference-only: Alex's pre-incorporation 7-market proposal.
+│
+├── pontus/                                  # Pontus's personal workspace.
+│   ├── pontus_adventure.md                  # Pontus's modelling plan (branches from §5).
+│   ├── README.md                            # Workspace overview.
+│   ├── scripts/                             # Pontus's modelling scripts (TF/Keras MLP pipeline, autoencoder, backtest).
+│   ├── outputs/                             # Pontus's metrics, plots, run artefacts.
+│   ├── notes/                               # Pontus's working notes (FYI-from-alex orientation, etc.).
+│   └── handovers/                           # Per-session handovers (handover_21_apr.md etc.).
 │
 ├── archive/                                 # Older checkpoints preserved just in case.
-│   └── ML_final_exam_paper.pre08.docx       # Pre-Alex-incorporation snapshot of the paper.
+│   ├── ML_final_exam_paper.pre08.docx       # Pre-Alex-incorporation snapshot of the paper.
+│   └── ML_final_exam_paper.pre10.docx       # Pre-session-22-Apr snapshot.
 │
 ├── assets/                                  # Static image assets used inside the docx.
 │   ├── cbs_paper_image_{1,2,3}.png          # CBS cover/branding images.
@@ -252,9 +263,6 @@ report/
 │   ├── 02_Project_Guidelines_extended.pdf   # Newer instructions — the one we follow.
 │   ├── 03_CBS_GenAI_Guidelines.pdf
 │   └── 04_Sample_Report_Face_Mask_Detection.pdf
-│
-├── handovers/                               # Per-session handovers; newest at top level.
-│   └── handover_21_apr.md                   # Evening 21 Apr: Bucket 2 entropy done, Layer 6 enrichment in flight.
 │
 ├── outputs/                                 # Generated artefacts from scripts.
 │   └── eda/                                 # Figures (01–09), skewness table, top-correlations list, summary.txt.
@@ -300,7 +308,7 @@ report/
 4. **Experiment cohorts (market-cohort split per §4):**
    - `python scripts/14_build_experiment_splits.py` — trusts `is_yes` column from the patched 01 pipeline and slices `data/experiments/{train,val,test_no,test_yes}.parquet` per the §4 market-cohort definition. Output parquets are tiny (~few MB each) and load in <1s.
 5. **Modelling (adventure-scope):**
-   - See `alex_adventure.md` and `pontus_adventure.md` for each direction's training + calibration + backtest workflow. Outputs per-model `metrics.json`, `feature_list.json`, and a loss curve under `outputs/modelling/<adventure>/<model>/`.
+   - See `alex/alex_adventure.md` and `pontus/pontus_adventure.md` for each direction's training + calibration + backtest workflow. Outputs per-model `metrics.json`, `feature_list.json`, and a loss curve under `alex/outputs/` and `pontus/outputs/` respectively.
 6. **Report integration:**
    - `ML_final_exam_paper.docx` consumes figures from `outputs/eda/` (already wired) and will consume modelling outputs from both adventures next.
 
