@@ -1,0 +1,220 @@
+{
+  "intercept": 0.002554008472702825,
+  "features": [
+    {
+      "feature": "wallet_directional_purity_in_market",
+      "coef_std": -0.20310528478900547,
+      "abs_coef_std": 0.20310528478900547
+    },
+    {
+      "feature": "wallet_trades_in_market_last_10min",
+      "coef_std": 0.18756907387623242,
+      "abs_coef_std": 0.18756907387623242
+    },
+    {
+      "feature": "wallet_polygon_age_at_t_days",
+      "coef_std": 0.1664035372890375,
+      "abs_coef_std": 0.1664035372890375
+    },
+    {
+      "feature": "wallet_log_polygon_nonce_at_t",
+      "coef_std": 0.15974001242170563,
+      "abs_coef_std": 0.15974001242170563
+    },
+    {
+      "feature": "days_from_first_usdc_to_t",
+      "coef_std": -0.15404682568696462,
+      "abs_coef_std": 0.15404682568696462
+    },
+    {
+      "feature": "wallet_log_n_inbound_at_t",
+      "coef_std": -0.14604077655314096,
+      "abs_coef_std": 0.14604077655314096
+    },
+    {
+      "feature": "wallet_has_both_sides_in_market",
+      "coef_std": -0.12486654530683725,
+      "abs_coef_std": 0.12486654530683725
+    },
+    {
+      "feature": "outcomeIndex",
+      "coef_std": 0.10260130478588037,
+      "abs_coef_std": 0.10260130478588037
+    },
+    {
+      "feature": "wallet_prior_trades_in_market",
+      "coef_std": 0.09356222495935473,
+      "abs_coef_std": 0.09356222495935473
+    },
+    {
+      "feature": "wallet_market_category_entropy",
+      "coef_std": 0.08372998536895167,
+      "abs_coef_std": 0.08372998536895167
+    },
+    {
+      "feature": "trade_value_usd",
+      "coef_std": -0.07429298611382257,
+      "abs_coef_std": 0.07429298611382257
+    },
+    {
+      "feature": "wallet_spread_ratio",
+      "coef_std": -0.07385774441026315,
+      "abs_coef_std": 0.07385774441026315
+    },
+    {
+      "feature": "side",
+      "coef_std": 0.07252026996934989,
+      "abs_coef_std": 0.07252026996934989
+    },
+    {
+      "feature": "pct_time_elapsed",
+      "coef_std": 0.06262090144022256,
+      "abs_coef_std": 0.06262090144022256
+    },
+    {
+      "feature": "wallet_cumvol_same_side_last_10min",
+      "coef_std": -0.06046872187832974,
+      "abs_coef_std": 0.06046872187832974
+    },
+    {
+      "feature": "wallet_trades_in_market_last_1min",
+      "coef_std": -0.05295684780092623,
+      "abs_coef_std": 0.05295684780092623
+    },
+    {
+      "feature": "wallet_prior_volume_usd",
+      "coef_std": -0.04317041089353839,
+      "abs_coef_std": 0.04317041089353839
+    },
+    {
+      "feature": "wallet_prior_trades",
+      "coef_std": -0.042554284689870825,
+      "abs_coef_std": 0.042554284689870825
+    },
+    {
+      "feature": "wallet_median_gap_in_market",
+      "coef_std": -0.0344595623087403,
+      "abs_coef_std": 0.0344595623087403
+    },
+    {
+      "feature": "wallet_trades_in_market_last_60min",
+      "coef_std": -0.026870295719698248,
+      "abs_coef_std": 0.026870295719698248
+    },
+    {
+      "feature": "wallet_has_cross_market_history",
+      "coef_std": 0.026236652045129465,
+      "abs_coef_std": 0.026236652045129465
+    },
+    {
+      "feature": "market_timing_known",
+      "coef_std": 0.024438196146540865,
+      "abs_coef_std": 0.024438196146540865
+    },
+    {
+      "feature": "market_buy_share_running",
+      "coef_std": -0.023497904435036035,
+      "abs_coef_std": 0.023497904435036035
+    },
+    {
+      "feature": "wallet_n_inbound_at_t",
+      "coef_std": 0.021146017086388323,
+      "abs_coef_std": 0.021146017086388323
+    },
+    {
+      "feature": "wallet_enriched",
+      "coef_std": 0.018634291521230126,
+      "abs_coef_std": 0.018634291521230126
+    },
+    {
+      "feature": "market_price_vol_last_1h",
+      "coef_std": -0.018389824382674523,
+      "abs_coef_std": 0.018389824382674523
+    },
+    {
+      "feature": "wallet_has_prior_trades_in_market",
+      "coef_std": 0.01429296769670937,
+      "abs_coef_std": 0.01429296769670937
+    },
+    {
+      "feature": "wallet_has_prior_trades",
+      "coef_std": -0.01337754180373943,
+      "abs_coef_std": 0.01337754180373943
+    },
+    {
+      "feature": "size_vs_market_avg",
+      "coef_std": 0.01328728354616646,
+      "abs_coef_std": 0.01328728354616646
+    },
+    {
+      "feature": "log_size",
+      "coef_std": 0.009920932941820683,
+      "abs_coef_std": 0.009920932941820683
+    },
+    {
+      "feature": "wallet_is_burst",
+      "coef_std": -0.009303949072994899,
+      "abs_coef_std": 0.009303949072994899
+    },
+    {
+      "feature": "wallet_funded_by_cex",
+      "coef_std": -0.008657992588625684,
+      "abs_coef_std": 0.008657992588625684
+    },
+    {
+      "feature": "wallet_funded_by_cex_scoped",
+      "coef_std": -0.008657992588625684,
+      "abs_coef_std": 0.008657992588625684
+    },
+    {
+      "feature": "wallet_position_size_before_trade",
+      "coef_std": 0.008597724166534204,
+      "abs_coef_std": 0.008597724166534204
+    },
+    {
+      "feature": "is_position_flip",
+      "coef_std": -0.007616752008764863,
+      "abs_coef_std": 0.007616752008764863
+    },
+    {
+      "feature": "wallet_n_cex_deposits_at_t",
+      "coef_std": 0.007235766925934551,
+      "abs_coef_std": 0.007235766925934551
+    },
+    {
+      "feature": "size_vs_wallet_avg",
+      "coef_std": -0.0067353484231909505,
+      "abs_coef_std": 0.0067353484231909505
+    },
+    {
+      "feature": "trade_size_vs_position_pct",
+      "coef_std": -0.004825584490836958,
+      "abs_coef_std": 0.004825584490836958
+    },
+    {
+      "feature": "wallet_cex_usdc_cumulative_at_t",
+      "coef_std": 0.003866833719413661,
+      "abs_coef_std": 0.003866833719413661
+    },
+    {
+      "feature": "size_vs_market_cumvol_pct",
+      "coef_std": -0.0017359295069137848,
+      "abs_coef_std": 0.0017359295069137848
+    },
+    {
+      "feature": "wallet_polygon_nonce_at_t",
+      "coef_std": 0.0005755617497045237,
+      "abs_coef_std": 0.0005755617497045237
+    },
+    {
+      "feature": "wallet_log_cex_usdc_cum",
+      "coef_std": -0.0005162285668171807,
+      "abs_coef_std": 0.0005162285668171807
+    },
+    {
+      "feature": "wallet_first_minus_trade_sec",
+      "coef_std": -0.0005141053017517286,
+      "abs_coef_std": 0.0005141053017517286
+    }
+  ]
+}
