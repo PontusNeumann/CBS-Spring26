@@ -1,0 +1,24 @@
+{
+  "flagged_rows": 2,
+  "p_hat_mean_at_hits": 0.31587302684783936,
+  "p_hat_pct_rank_mean": 0.09894513195169227,
+  "p_hat_pct_rank_min": 0.018450872223050543,
+  "p_hat_pct_rank_max": 0.179439391680334,
+  "bc_rate_at_hits": 1.0,
+  "top5_by_p_hat": [
+    {
+      "proxyWallet": "0x1d16b887703318582321c3c96687f565919ee798",
+      "p_hat": 0.3888888955116272,
+      "bet_correct": 1,
+      "market_implied_prob": 0.135,
+      "_ttd_sec": -10593.0
+    },
+    {
+      "proxyWallet": "0xbaf1a939ac0d561f796a057c40d3f5d46fd05d0a",
+      "p_hat": 0.24285714328289032,
+      "bet_correct": 1,
+      "market_implied_prob": 0.055,
+      "_ttd_sec": 13045.0
+    }
+  ]
+}

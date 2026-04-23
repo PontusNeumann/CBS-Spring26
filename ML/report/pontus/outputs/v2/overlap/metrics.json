@@ -1,0 +1,11 @@
+{
+  "n_test": 13414,
+  "top_frac": 0.1,
+  "k_top": 1342,
+  "random_null_overlap": 134.26002683763232,
+  "overlap_edge_vs_autoencoder": 144,
+  "overlap_edge_vs_isolation_forest": 176,
+  "overlap_autoencoder_vs_isolation_forest": 657,
+  "uplift_edge_vs_autoencoder_x": 1.0725455922494842,
+  "uplift_edge_vs_isolation_forest_x": 1.3108890571938139
+}

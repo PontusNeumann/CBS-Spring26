@@ -1,0 +1,77 @@
+{
+  "train": {
+    "n": 202082,
+    "positive_rate": 0.5178244475015092,
+    "roc_auc": 0.6339343096997351,
+    "pr_auc": 0.6589501758468221,
+    "brier": 0.23345863819122314,
+    "ece_15bin": 0.02101800208450527
+  },
+  "val": {
+    "n": 13154,
+    "positive_rate": 0.5099589478485632,
+    "roc_auc": 0.6040338838080723,
+    "pr_auc": 0.5698647457250827,
+    "brier": 0.2475787252187729,
+    "ece_15bin": 0.04602985770434655
+  },
+  "test": {
+    "n": 13414,
+    "positive_rate": 0.5162516773520203,
+    "roc_auc": 0.5788277968881522,
+    "pr_auc": 0.5907071113304708,
+    "brier": 0.25156107544898987,
+    "ece_15bin": 0.06728479812268584
+  },
+  "per_market_test": [
+    {
+      "market": "Trump announces US x Iran ceasefire end by April 10, 2026?",
+      "n": 1011,
+      "bc_rate": 0.49752720079129575,
+      "p_hat_mean": 0.39030003547668457,
+      "roc_auc": 0.5504257917064541
+    },
+    {
+      "market": "Trump announces US x Iran ceasefire end by April 12, 2026?",
+      "n": 2372,
+      "bc_rate": 0.5590219224283305,
+      "p_hat_mean": 0.42716988921165466,
+      "roc_auc": 0.577488327291499
+    },
+    {
+      "market": "Trump announces US x Iran ceasefire end by April 15, 2026?",
+      "n": 4291,
+      "bc_rate": 0.517594966208343,
+      "p_hat_mean": 0.4671575129032135,
+      "roc_auc": 0.5873663123413531
+    },
+    {
+      "market": "Trump announces US x Iran ceasefire end by April 18, 2026?",
+      "n": 3732,
+      "bc_rate": 0.48258306538049306,
+      "p_hat_mean": 0.4555841088294983,
+      "roc_auc": 0.6019877615606268
+    },
+    {
+      "market": "Trump announces US x Iran ceasefire end by April 8, 2026?",
+      "n": 118,
+      "bc_rate": 0.4915254237288136,
+      "p_hat_mean": 0.435282826423645,
+      "roc_auc": 0.5336206896551724
+    },
+    {
+      "market": "Will the US x Iran ceasefire be extended by April 14, 2026?",
+      "n": 1198,
+      "bc_rate": 0.5075125208681135,
+      "p_hat_mean": 0.4513695538043976,
+      "roc_auc": 0.5409093443354148
+    },
+    {
+      "market": "Will the US x Iran ceasefire be extended by April 18, 2026?",
+      "n": 692,
+      "bc_rate": 0.5895953757225434,
+      "p_hat_mean": 0.46633875370025635,
+      "roc_auc": 0.5540682822424744
+    }
+  ]
+}
