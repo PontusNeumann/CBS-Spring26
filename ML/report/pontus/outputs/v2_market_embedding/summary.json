@@ -1,0 +1,25 @@
+{
+  "runtime_min": 0.95,
+  "feature_count": 36,
+  "n_train_markets": 4,
+  "emb_dim": 4,
+  "epochs_trained": 15,
+  "embedding_l2_norms": {
+    "0x09cbe3e796661a1d820580145488ad2ccb9ad1e720efcd64b448bb77b97007c1": 0.5703542828559875,
+    "0x168959e2c7e997109d9bb7b6dd4c51d8a4f4fb0d8a65eb2b034d29e1240b15e1": 0.751120924949646,
+    "0x3488f31e6449f9803f99a8b5dd232c7ad883637f1c86e6953305a2ef19c77f20": 0.8287370800971985,
+    "0x680efda99a9c43cae7a318972ec3156a6b100b48a43d12478bcbcea85eb58ed7": 0.7270526885986328
+  },
+  "test_roc_mask0_pure_features": 0.5817849034161116,
+  "test_brier_mask0": 0.25207534432411194,
+  "test_ece_mask0": 0.08520746512419891,
+  "residual_edge_partial_corr_test": 0.19761762331367294,
+  "comparison_v2_baseline": {
+    "v2_mlp_test_roc": 0.5787,
+    "v2_stack_no_rf_cal_test_roc": 0.5788,
+    "v2_residualised_mlp_test_roc": 0.5432,
+    "v2_residual_edge_partial_corr": 0.1787,
+    "v2_residualised_residual_edge_partial_corr": 0.3099
+  },
+  "interpretation_hint": "If test_roc_mask0_pure_features >= 0.58, the v2 MLP was feature-driven \u2014 the embedding absorbed market identity cleanly and the honest signal equals the raw headline. If materially lower, the v2 baseline relied on per-market base-rate information and the honest cross-family signal is the mask=0 number, not the 0.58 headline."
+}

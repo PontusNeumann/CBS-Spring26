@@ -1,0 +1,21 @@
+{
+  "n_train": 161665,
+  "n_test_random_holdout": 40417,
+  "logreg": {
+    "roc_auc": 0.57184918921279,
+    "pr_auc": 0.5811960173742385,
+    "brier": 0.2454297137664548
+  },
+  "mlp": {
+    "roc_auc": 0.6832892238152747,
+    "pr_auc": 0.7087946718523599,
+    "brier": 0.22195982933044434
+  },
+  "cross_family_reference_test_roc": {
+    "logreg": 0.5735,
+    "mlp": 0.5787,
+    "stack_no_rf_cal": 0.5788,
+    "note": "From pontus/outputs/v2/modelling \u2014 primary market-cohort test on Apr ceasefires."
+  },
+  "runtime_sec": 197.01632285118103
+}

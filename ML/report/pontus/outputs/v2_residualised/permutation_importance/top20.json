@@ -1,0 +1,122 @@
+[
+  {
+    "feature": "wallet_trades_in_market_last_10min",
+    "mean_drop": 0.019287210329158123,
+    "std_drop": 0.0037330473682553626,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_has_prior_trades_in_market",
+    "mean_drop": 0.011154953467835493,
+    "std_drop": 0.0007827058534772952,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_polygon_nonce_at_t",
+    "mean_drop": 0.004778684288962909,
+    "std_drop": 0.000640012863481894,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_has_prior_trades",
+    "mean_drop": 0.004619694074214342,
+    "std_drop": 0.0007282228276790934,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_prior_trades",
+    "mean_drop": 0.0022253519029057146,
+    "std_drop": 0.00041389287137365754,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "size_vs_market_avg",
+    "mean_drop": 0.0013904884966080334,
+    "std_drop": 0.0005549515675090256,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_log_cex_usdc_cum",
+    "mean_drop": 0.0008804672587512608,
+    "std_drop": 0.0006750672124051783,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_median_gap_in_market",
+    "mean_drop": 0.0008280849240449806,
+    "std_drop": 0.0006666781908700256,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "log_size",
+    "mean_drop": 0.0007802262028788309,
+    "std_drop": 0.00024001293854291575,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_is_whale_in_market",
+    "mean_drop": 0.0007550063635864302,
+    "std_drop": 0.0005074768061445893,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_polygon_age_at_t_days",
+    "mean_drop": 0.0006965254762699491,
+    "std_drop": 0.00015680117748813585,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_log_n_inbound_at_t",
+    "mean_drop": 0.0005364853021413652,
+    "std_drop": 0.0009023484129601492,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_funded_by_cex_scoped",
+    "mean_drop": 0.0005343599438369262,
+    "std_drop": 0.0007384607936510997,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_spread_ratio",
+    "mean_drop": 0.00038058021032867374,
+    "std_drop": 0.00038276565806144087,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_has_cross_market_history",
+    "mean_drop": 0.000358258166417591,
+    "std_drop": 0.000359025087457052,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "market_timing_known",
+    "mean_drop": 0.0,
+    "std_drop": 0.0,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_cex_usdc_cumulative_at_t",
+    "mean_drop": -9.48201201778076e-08,
+    "std_drop": 1.356340748542166e-05,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "size_vs_wallet_avg",
+    "mean_drop": -6.401514457654578e-06,
+    "std_drop": 9.426757210064583e-06,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "days_from_first_usdc_to_t",
+    "mean_drop": -4.461402290587557e-05,
+    "std_drop": 0.0004974593581250827,
+    "baseline_roc": 0.5096735139744506
+  },
+  {
+    "feature": "wallet_has_resolved_priors",
+    "mean_drop": -0.00014554194647851127,
+    "std_drop": 0.0011086554597011958,
+    "baseline_roc": 0.5096735139744506
+  }
+]

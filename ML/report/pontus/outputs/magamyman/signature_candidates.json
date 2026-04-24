@@ -1,0 +1,84 @@
+{
+  "candidates": [
+    {
+      "proxyWallet": "0xEd107a85a4585A381E48C7F7Ca4144909e7Dd2E5",
+      "n_trades": 4,
+      "total_notional": 16428.6956,
+      "mean_mip": 0.125,
+      "first_trade": "2026-02-28 06:36:03+00:00",
+      "last_trade": "2026-02-28 06:37:41+00:00"
+    },
+    {
+      "proxyWallet": "0x86cd93526A4E7ad201Ed3D1C6F2647b61837504c",
+      "n_trades": 1,
+      "total_notional": 5905.4204,
+      "mean_mip": 0.22,
+      "first_trade": "2026-02-28 06:12:17+00:00",
+      "last_trade": "2026-02-28 06:12:17+00:00"
+    },
+    {
+      "proxyWallet": "0xFd8FCDeD3E03bae62EC45A10418Ff055cC64a3b1",
+      "n_trades": 1,
+      "total_notional": 4600.46,
+      "mean_mip": 0.23,
+      "first_trade": "2026-02-28 06:34:23+00:00",
+      "last_trade": "2026-02-28 06:34:23+00:00"
+    },
+    {
+      "proxyWallet": "0x08D6e2B50AD71787367f5A6E2123EF6547499B3e",
+      "n_trades": 1,
+      "total_notional": 2480.9456,
+      "mean_mip": 0.16,
+      "first_trade": "2026-02-28 06:36:47+00:00",
+      "last_trade": "2026-02-28 06:36:47+00:00"
+    },
+    {
+      "proxyWallet": "0xB4923aBC91E1B845A5B4943dD4f995fc1be31DF3",
+      "n_trades": 2,
+      "total_notional": 2329.5636,
+      "mean_mip": 0.12,
+      "first_trade": "2026-02-28 06:37:31+00:00",
+      "last_trade": "2026-02-28 06:40:07+00:00"
+    },
+    {
+      "proxyWallet": "0x754D0d1549E1f0ccf78957DF5E853d855Dd5EE2a",
+      "n_trades": 1,
+      "total_notional": 1758.4884,
+      "mean_mip": 0.12,
+      "first_trade": "2026-02-28 06:38:25+00:00",
+      "last_trade": "2026-02-28 06:38:25+00:00"
+    },
+    {
+      "proxyWallet": "0x83297e27fffC9da63f0551265B770d2Ce9325488",
+      "n_trades": 1,
+      "total_notional": 1593.9520000000002,
+      "mean_mip": 0.2,
+      "first_trade": "2026-02-28 06:34:39+00:00",
+      "last_trade": "2026-02-28 06:34:39+00:00"
+    },
+    {
+      "proxyWallet": "0x92A6294cd55b9c6ccD57EfAfFc365ad943118b84",
+      "n_trades": 1,
+      "total_notional": 1583.4851999999998,
+      "mean_mip": 0.12,
+      "first_trade": "2026-02-28 06:37:59+00:00",
+      "last_trade": "2026-02-28 06:37:59+00:00"
+    },
+    {
+      "proxyWallet": "0xc2Db1bdac4F0b65fFd31fA5499700c604B300Cf3",
+      "n_trades": 1,
+      "total_notional": 1533.554,
+      "mean_mip": 0.2,
+      "first_trade": "2026-02-28 06:16:37+00:00",
+      "last_trade": "2026-02-28 06:16:37+00:00"
+    },
+    {
+      "proxyWallet": "0x5EcdE7348Ea5100Af4360dD7A6E0a3Fb1D420787",
+      "n_trades": 1,
+      "total_notional": 1486.656,
+      "mean_mip": 0.2,
+      "first_trade": "2026-02-28 06:16:43+00:00",
+      "last_trade": "2026-02-28 06:16:43+00:00"
+    }
+  ]
+}

@@ -101,3 +101,28 @@ Caption format in Word: *Table N. Descriptive caption text.*
 ## Numbering
 
 Figures and tables are numbered independently, both starting at 1, in order of appearance. Numbering and cross-references are managed in Word using the built-in caption and reference features so the PDF export renders them correctly.
+
+## Paragraph Spacing and Page Breaks
+
+These rules are enforced programmatically by `scripts/23_docx_spacing_and_breaks.py` — re-run after any manual edit that adds new headings or paragraphs.
+
+**No automatic paragraph spacing.**
+- Every paragraph in the document has `space-before = 0` and `space-after = 0`. This applies to body text, every heading level (Heading 1 through Heading 3), caption paragraphs, and reference-list items.
+- Do not rely on Word's built-in "space before / after heading" formatting. The Word template often injects `spacing before = 18 pt` on Heading 1 / Heading 2 by default; these are explicitly zeroed out.
+
+**Spacing uses explicit blank rows.**
+- Separation between body paragraphs, between a body paragraph and a following heading, between a heading and the following body paragraph, and between placeholder (rubric) paragraphs is produced by inserting a blank paragraph in the `Normal` style with the document's default body font size.
+- The blank-paragraph height is therefore exactly one line of body text. This gives visually consistent vertical rhythm across headings, body, captions, and tables, regardless of which heading style sits above or below.
+- Do not use the Word "empty paragraph with 12 pt spacing" convention to create space. Always an explicit blank `Normal` paragraph.
+
+**Placeholder (rubric) headings are treated the same.**
+- Any placeholder heading that still reads `[ … to be written ]` or similar inherits the same zero-spacing + blank-row rule. This ensures that when the rubric is filled in, the page layout does not shift.
+
+**References and Appendix start on new pages.**
+- The top-level Heading 1 paragraphs `References` and `Appendix` each have `pageBreakBefore` set on their paragraph properties. Word (and PDF export) render them at the top of a fresh page regardless of where the preceding section ends.
+- This applies only to those two top-level headings. Intermediate Heading 1 sections (Introduction, Methodology, Results, Ethical Consideration, Discussion, Conclusion and Future Work) flow inline after the preceding section without a forced break.
+- The Feature Inventory tables (Table A.6 and Table A.7) sit inside the Appendix, not as a standalone section — no page break or subheading precedes them.
+
+## Table captions
+
+All tables in the paper carry a single-line descriptive caption in the format `Table N. Descriptive caption text.` Where a caption needs additional clarification of columns or filter conventions (as on Table A.6), the descriptive text continues on the same line without a paragraph break; the entire caption is one `Normal`-styled paragraph.

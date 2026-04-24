@@ -1,0 +1,69 @@
+{
+  "A_market_identity_audit": {
+    "n_classes": 74,
+    "top1_accuracy": 0.49956939859336874,
+    "top5_accuracy": 0.796074350509545,
+    "baseline_top1_random": 0.013513513513513514,
+    "top1_uplift_x_vs_random": 36.96813549590929,
+    "interpretation": "The 36-feature vector identifies the correct market with 49.96 % top-1 accuracy vs a 1.35 % random baseline (37\u00d7 uplift). Residual market-identity signal survives the Tier 2 physical drops. Cross-family test ROC should therefore be interpreted with this caveat \u2014 part of the signal may be coming from the model recognising 'this looks like a ceasefire' and adjusting its probability estimates accordingly.",
+    "top_importance_features_driving_market_id": [
+      {
+        "feature": "pct_time_elapsed",
+        "importance": 0.190025737290873
+      },
+      {
+        "feature": "market_price_vol_last_1h",
+        "importance": 0.13360675438306385
+      },
+      {
+        "feature": "wallet_first_minus_trade_sec",
+        "importance": 0.07379469927980326
+      },
+      {
+        "feature": "size_vs_market_cumvol_pct",
+        "importance": 0.059712141370885534
+      },
+      {
+        "feature": "wallet_market_category_entropy",
+        "importance": 0.04235631129854267
+      },
+      {
+        "feature": "size_vs_market_avg",
+        "importance": 0.038964076754764765
+      },
+      {
+        "feature": "days_from_first_usdc_to_t",
+        "importance": 0.03737173811522916
+      },
+      {
+        "feature": "wallet_polygon_age_at_t_days",
+        "importance": 0.036277377364498826
+      },
+      {
+        "feature": "trade_value_usd",
+        "importance": 0.03548477764700846
+      },
+      {
+        "feature": "wallet_prior_volume_usd",
+        "importance": 0.035060355529126334
+      }
+    ]
+  },
+  "B_within_strike_random20": {
+    "logreg_roc": 0.57184918921279,
+    "mlp_roc": 0.6832892238152747,
+    "cross_family_reference": {
+      "logreg": 0.5735,
+      "mlp": 0.5787,
+      "stack_no_rf_cal": 0.5788,
+      "note": "From pontus/outputs/v2/modelling \u2014 primary market-cohort test on Apr ceasefires."
+    },
+    "interpretation": "LogReg test ROC is near-identical within-strike (0.572) and cross-family (0.574), confirming the linear component of the signal transfers cleanly. The MLP gains ~0.10 ROC within-strike (0.683) over cross-family (0.579), evidence that the MLP captures non-linear patterns that are partly family-specific and do not fully transfer to the April ceasefires."
+  },
+  "C_wallet_novelty": {
+    "overall_test_roc": 0.578827808015008,
+    "seen_share": 0.0,
+    "interpretation": "Every test wallet (all 4,187 distinct wallets in the April ceasefire cohort) is novel \u2014 none appears in the Feb 25-28 strike training cohort. Cross-family test ROC of 0.579 is therefore a pure novel-wallet generalisation number, not inflated by Layer-6 identity memorisation. This is a strong result for the primary RQ1 claim."
+  },
+  "combined_reading": "Two findings stand in tension. (C) Cross-family test performance IS a clean novel-wallet generalisation \u2014 zero overlap means no Layer-6 memorisation. (A) Feature vector nonetheless identifies markets at 37\u00d7 random, so some of the cross-family signal is 'this feature vector looks ceasefire-like' rather than a pure behavioural pattern. (B) Linear signal transfers cleanly; non-linear MLP gain is partly family-specific. Report the 0.579 test ROC with the explicit caveat that residual market-identity channels remain."
+}

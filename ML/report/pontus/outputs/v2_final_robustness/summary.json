@@ -1,0 +1,11 @@
+{
+  "slippage_home_run_at_3pct": 619226.2769413566,
+  "slippage_home_run_at_5pct": 615829.5859519974,
+  "per_market_temporal": {
+    "n_markets": 74,
+    "mlp_mean_roc": 0.7145201002170858,
+    "mlp_median_roc": 0.741318927900626,
+    "logreg_mean_roc": 0.7004409763533925
+  },
+  "runtime_min": 10.19
+}

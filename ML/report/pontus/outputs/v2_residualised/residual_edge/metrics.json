@@ -1,0 +1,20 @@
+{
+  "slope_a": -1.0316338805278538,
+  "intercept_b": 0.5350359884545234,
+  "train": {
+    "residual_roc": 0.6206946500510706,
+    "partial_corr_bc_vs_residual": 0.22115546970300826,
+    "edge_mean": 0.0026665517455258434,
+    "edge_std": 0.37471405663373264
+  },
+  "val": {
+    "residual_roc": 0.429232252124942,
+    "partial_corr_bc_vs_residual": -0.1054535656883075
+  },
+  "test": {
+    "residual_roc": 0.6952568439898011,
+    "partial_corr_bc_vs_residual": 0.3098702639676268,
+    "edge_mean": -0.06841635324952325,
+    "edge_std": 0.3994282046371185
+  }
+}
