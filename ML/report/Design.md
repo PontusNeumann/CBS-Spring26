@@ -111,9 +111,23 @@ These rules are enforced programmatically by `scripts/23_docx_spacing_and_breaks
 - Do not rely on Word's built-in "space before / after heading" formatting. The Word template often injects `spacing before = 18 pt` on Heading 1 / Heading 2 by default; these are explicitly zeroed out.
 
 **Spacing uses explicit blank rows.**
-- Separation between body paragraphs, between a body paragraph and a following heading, between a heading and the following body paragraph, and between placeholder (rubric) paragraphs is produced by inserting a blank paragraph in the `Normal` style with the document's default body font size.
+- Separation between content elements is produced by inserting a blank paragraph in the `Normal` style with the document's default body font size.
 - The blank-paragraph height is therefore exactly one line of body text. This gives visually consistent vertical rhythm across headings, body, captions, and tables, regardless of which heading style sits above or below.
 - Do not use the Word "empty paragraph with 12 pt spacing" convention to create space. Always an explicit blank `Normal` paragraph.
+
+**Default rule: one blank row between every two content elements** (heading, body paragraph, figure, table, caption).
+
+**Exceptions to the default one-row rule:**
+
+1. **Heading immediately followed by another heading** — no blank row between them. A Heading 1 directly followed by a Heading 2 (e.g., `5. Methodology` → `5.1. Dataset Description`), or a Heading 2 directly followed by a Heading 3, sits flush with no separator paragraph in between.
+2. **Heading immediately followed by body text** — no blank row between them. The first body paragraph of a section starts directly under its heading. The blank-row gap is only required *before the next* body paragraph, heading, figure, or table.
+3. **Table caption ("table rubric") immediately above its table** — no blank row between the caption and the table. The caption paragraph and the table itself are treated as a single block. A blank row still separates the table from whatever follows.
+4. **Figure caption immediately below its figure** — no blank row between the figure and its caption. The figure paragraph and the caption paragraph are treated as a single block. A blank row still separates the caption from whatever follows.
+
+**Keep-together rules (no splits across pages):**
+
+- **Tables**: every row carries `cantSplit`; every paragraph in every non-last row carries `keepNext`; the paragraph immediately before each table carries `keepNext`. The table caption paragraph above the table also carries `keepNext` so the caption never lands on a different page than the table itself.
+- **Figures**: the paragraph containing the figure (drawing) carries `keepNext` so it stays with its caption paragraph below it. The caption itself carries no further `keepNext` unless the next element is logically tied to it.
 
 **Placeholder (rubric) headings are treated the same.**
 - Any placeholder heading that still reads `[ … to be written ]` or similar inherits the same zero-spacing + blank-row rule. This ensures that when the rubric is filled in, the page layout does not shift.
