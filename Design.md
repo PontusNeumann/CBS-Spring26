@@ -2,6 +2,84 @@
 
 Design system for all projects, assignments, and reports in this repository. All figures, tables, and heatmaps follow the conventions below.
 
+## CBS Formal Requirements
+
+Source: CBS Student Hub, *Formal requirements* (studentcbs.sharepoint.com). Apply to all written home assignments including projects, bachelor projects, and master theses.
+
+### Standard page
+
+| Rule | Value |
+|---|---|
+| Characters per page (incl. spaces) | Max **2,275** on average |
+| Top and bottom margin | At least **3 cm** |
+| Left and right margin | At least **2 cm** |
+| Font size (body) | At least **11 pt** |
+| Footnote font | May be smaller, must remain readable |
+| Headlines | Must differ graphically from body text |
+| Page numbers | Required; table of contents must list main section starts |
+
+### What counts toward page and character limits
+
+Counts toward **both** pages and characters:
+
+- Abstract
+- Introduction, delimitation, research question
+- Method section
+- Indications of individualisation in group papers
+- Footnotes and endnotes
+- Conclusion and perspective
+
+Counts toward **pages only** (not characters):
+
+- Table of contents
+
+Counts toward **neither**:
+
+- Front page
+- Bibliography and list of sources
+- Appendices
+
+### Tables, figures, illustrations
+
+- Not included in the character count.
+- Do count as the **page space** they occupy. A figure covering 3/4 of a page consumes 3/4 of a page regardless of its character content.
+- Inserting illustrations does not justify exceeding the page maximum. If a figure does not say more than the text it displaces, move it to an appendix or remove it.
+
+### When a paper is too long
+
+A paper exceeds limits if any of the following hold:
+
+- Page count exceeds the course requirement.
+- Margins or font size violate the rules above.
+- Average characters per page exceeds 2,275 incl. spaces.
+
+### Front page (required fields)
+
+- Title (and subtitle if any)
+- Type of paper (e.g. exam paper for course X)
+- Student name(s) — only on papers with oral defence; omitted on anonymous Digital Exam submissions
+- Student number(s)
+- Programme name
+- Date of submission
+- Supervisor name (if any)
+- Group number (if relevant)
+- Number of characters and number of pages
+- Confidentiality status (if confidential)
+
+### AI use
+
+- Allowed by default in compulsory courses and compulsory courses taken as electives (autumn 2025 onwards).
+- **Not allowed** in written sit-in exams (treated as cheating even if all aids are permitted).
+- **Not allowed** in elective courses until the rules update in 2026.
+- Allowed for bachelor projects and master theses submitted after 1 February 2024.
+- Individual lecturers may impose stricter rules — check the course description.
+- Declare AI use where required.
+
+### Plagiarism
+
+Handle references per CBS Library guidance (Bibliographies and references). Reference resource: stopplagiat.nu.
+
+
 ## Notebook Structure
 
 - All imports go in a single cell at the top of the notebook.
