@@ -40,17 +40,19 @@ Each persona speaks credibly on **one** of the three analytical sections. Cross-
 
 ---
 
-## Interview Guide Structure (Bryman and Bell, 2018)
+## Interview Guide Structure (Bell, Harley and Bryman, 2022)
 
-All three interviews follow the **semi-structured** format prescribed by Bryman and Bell (2018) for qualitative business research. The same scaffold is used across the three guides, with the analytical territory of each block re-anchored to the focal theory of the corresponding report section. Three design choices govern every guide below.
+All three interviews follow the **semi-structured** format prescribed by Bell, Harley and Bryman (2022) for qualitative business research. The same scaffold is used across the three guides, with the analytical territory of each block re-anchored to the focal theory of the corresponding report section. Four design choices govern every guide below.
 
-**Sequencing.** Each guide opens with rapport and role-setting questions, moves through three thematic blocks ordered from broadest to most analytically pointed, and closes with a forward-looking question and a deliberate open prompt. This funnel structure is the default Bryman and Bell recommend: it eases the interviewee into the conversation and surfaces unprompted material at the end.
+**Sequencing.** Each guide opens with rapport and role-setting questions, moves through three thematic blocks ordered from broadest to most analytically pointed, and closes with a forward-looking question and a deliberate open prompt. This funnel structure eases the interviewee into the conversation and surfaces unprompted material at the end.
 
 **Theme-to-theory mapping.** Each thematic block is anchored to a single sub-part of the focal theory for that interview (transaction costs and the Move to the Middle for B, multi-sided platforms and winner-take-most conditions for A, dynamic capabilities and analogical reasoning for C). Cross-mapping is rejected: each block has exactly one analytical purpose. Cross-case comparability across the three interviews comes from the shared opening-block-block-block-closing scaffold, not from sharing identical questions.
 
-**Probes versus main questions.** Each block contains one open main question and two follow-up probes deployed flexibly. The probes bound the answer territory, but order and depth shift in the live interview without breaking the analytical mapping. Questions are open-ended, free of leading language, and free of theoretical jargon when addressed to the interviewee directly.
+**Question wording.** Main questions are open-ended, single-issue where possible, and framed in plain business language rather than academic terminology. They avoid assuming the answer in advance, and they invite examples before evaluation.
 
-The methodology section in the report (§2 Scope and Method) uses this rationale as its source of truth on interview design.
+**Probes versus main questions.** Each block contains one open main question and two follow-up probes deployed flexibly. The probes bound the answer territory, but order and depth shift in the live interview without breaking the analytical mapping. Probes are used to elicit clarification, examples, contrasts, and boundary conditions rather than to force confirmation of the theory.
+
+The methodology section in the report (§2 Scope and Method) uses this rationale as its source of truth on interview design. Because this is a qualitative, theoretically sampled design, the aim is analytical depth and conceptual fit, not statistical representativeness.
 
 ---
 
@@ -74,21 +76,21 @@ The methodology section in the report (§2 Scope and Method) uses this rationale
 
 **Block 1 — Network effects, multi-homing, and switching** *(theory sub-part: indirect network effects and switching costs in multi-sided platforms)*
 
-- B1.1. *Main.* When a new institutional client joins the platform, in what ways does that change the proposition for the institutions already on it?
-- B1.1a. *Probe.* Banks routinely use multiple vendors for adjacent services. Why does that pattern not seem to hold for the wealth-platform operating backbone?
-- B1.1b. *Probe.* If a major European bank decided tomorrow that FNZ was no longer the right partner, what would the realistic exit path look like, and over what timeframe?
+- B1.1. *Main.* When a new institutional client joins the platform, what changes, if anything, for the institutions already on it?
+- B1.1a. *Probe.* In wealth management, banks often use multiple vendors around the edges. Why is the core operating backbone different?
+- B1.1b. *Probe.* Thinking only about public or anonymisable examples, what would a realistic dual-platform or exit path involve for a large bank, and where do the main obstacles usually appear?
 
 **Block 2 — Monetisation and incentive alignment** *(theory sub-part: AUA-linked monetisation as an alignment mechanism)*
 
-- B2.1. *Main.* The AUA-linked revenue model is unusual for a technology vendor. What does that pricing structure do that a per-seat or fixed-fee model would not?
-- B2.1a. *Probe.* How does that alignment shape day-to-day decisions on which client requests to prioritise?
-- B2.1b. *Probe.* Where does the AUA-linked logic create friction with bank clients, if anywhere?
+- B2.1. *Main.* FNZ often presents the AUA-linked model as part of a partnership rather than a standard vendor relationship. What does that pricing structure enable that a fixed-fee model would not?
+- B2.1a. *Probe.* How, if at all, does that alignment shape day-to-day prioritisation decisions?
+- B2.1b. *Probe.* Where does that model create tension or misunderstanding for clients?
 
 **Block 3 — Winner-take-most conditions in regulated B2B** *(theory sub-part: McIntyre and Chintakananda's three conditions)*
 
-- B3.1. *Main.* Recent academic work identifies three conditions that determine whether a market tips toward a single platform: strong network effects, high multi-homing costs, and limited demand for variety. How well do those describe European wealth platforms in your view?
-- B3.1a. *Probe.* Where does the standard narrative on platform competition misread the regulated B2B wealth segment?
-- B3.1b. *Probe.* As the platform that administers AUA across hundreds of regulated institutions, how does FNZ think about its own concentration position from a sector-resilience standpoint?
+- B3.1. *Main.* What combination of factors makes European wealth-platform infrastructure consolidate onto a small number of providers rather than support many parallel platforms?
+- B3.1a. *Probe.* Which matters more in practice: switching difficulty, the benefits of scale, or clients' limited appetite for operational variety?
+- B3.1b. *Probe.* Looking only at public examples such as Swedbank, UniCredit Germany, or Raymond James Canada, what do those mandates reveal about what clients are buying from FNZ today?
 
 **Closing — wind-down**
 
@@ -111,24 +113,24 @@ The methodology section in the report (§2 Scope and Method) uses this rationale
 
 **Opening — rapport and context**
 
-- O1. *Role and scope.* How would you describe your seat at FNZ today, and how have your eleven years here shaped how you read the bank-FNZ relationship?
+- O1. *Role and scope.* How would you describe your seat at FNZ today, and how has your time at the firm shaped how you read the bank-FNZ relationship?
 - O2. *Boundary framing.* From your seat, where is the boundary between what the bank does and what FNZ does on a typical engagement?
 
 **Block 1 — Coordination cost versus production cost** *(theory sub-part: Cordella's IT-cost decomposition)*
 
 - B1.1. *Main.* Which costs has technology and platform standardisation actually reduced for the banks you work with, and which costs have stayed the same or increased?
-- B1.1a. *Probe.* Operating across many regulated jurisdictions while running a single platform creates obvious friction. How is that managed in practice?
+- B1.1a. *Probe.* Public client announcements often emphasise standardisation, governance, and scalability. In operational terms, what has to be true in practice for a bank to experience those benefits?
 - B1.1b. *Probe.* Over your eleven years, how has that cost picture evolved? Where did the shift surprise you?
 
 **Block 2 — Hybrid governance form** *(theory sub-part: Move to the Middle, neither pure market nor pure hierarchy)*
 
-- B2.1. *Main.* The bank-FNZ relationship is clearly not arm's-length contracting, but it is also not a takeover. How would you describe the governance form?
-- B2.1a. *Probe.* The economics literature on outsourcing predicts firms move toward small numbers of specialised partners rather than a single one. In wealth platforms, that has not really happened. Why not?
+- B2.1. *Main.* The bank-FNZ relationship is more involved than a simple vendor contract, but it is not internalised either. How would you describe that governance form in practice?
+- B2.1a. *Probe.* Public cases such as Swedbank suggest banks still evaluate several providers before choosing one primary backbone partner. Why does the operating model so often settle on one core partner rather than several?
 - B2.1b. *Probe.* Where do you see the line of authority on day-to-day operational decisions, and where does it shift over time?
 
 **Block 3 — Asset specificity and lock-in** *(theory sub-part: small-numbers exchange and lock-in)*
 
-- B3.1. *Main.* What investments does a bank make when it commits to the FNZ platform that would be hard to redeploy elsewhere?
+- B3.1. *Main.* What investments does a bank make when it commits to the FNZ platform that become difficult to redeploy elsewhere?
 - B3.1a. *Probe.* Is the lock-in primarily contractual, technical, operational, or organisational?
 - B3.1b. *Probe.* In your experience, what do banks consistently underestimate when they enter a wealth-platform outsourcing arrangement?
 
@@ -154,23 +156,23 @@ The methodology section in the report (§2 Scope and Method) uses this rationale
 **Opening — rapport and context**
 
 - O1. *Role and scope.* How would you describe your seat at FNZ today, and what does this role see that other seats do not?
-- O2. *Two-year framing.* When a major European bank signs with FNZ, what typically changes inside that bank in the following two years?
+- O2. *Two-year framing.* When a major European bank signs with FNZ, what typically changes inside that bank over the next one to two years?
 
 **Block 1 — Capability redefinition** *(theory sub-part: sensing, with a focus on the differentiator-to-table-stakes shift)*
 
-- B1.1. *Main.* Custody accuracy, regulatory reporting, reconciliation: these were historically things banks were proud of doing well. What is their status today in a competitive sense?
+- B1.1. *Main.* Which capabilities in wealth management are now table stakes, and which still create meaningful differentiation?
 - B1.1a. *Probe.* What signals do the better-performing banks pick up that the others miss when they think about what to do internally post-implementation?
-- B1.1b. *Probe.* If operational excellence is no longer where wealth managers compete, where is the new basis of competition?
+- B1.1b. *Probe.* If operational excellence is increasingly standardised through a partner platform, where is the new basis of competition?
 
 **Block 2 — Capability rebuild** *(theory sub-part: seizing and reconfiguring)*
 
-- B2.1. *Main.* Once the operational backbone has moved to FNZ, what do banks typically try to rebuild or strengthen on their own side?
+- B2.1. *Main.* Once the operational backbone has moved to FNZ, what do banks typically try to rebuild or strengthen on their own side first?
 - B2.1a. *Probe.* What are the most common reasons they fail?
 - B2.1b. *Probe.* The banks that have made the most of the relationship: what did they do differently from the others?
 
 **Block 3 — Cognitive framing of the outsourcing decision** *(theory sub-part: Gavetti and Rivkin's analogical reasoning)*
 
-- B3.1. *Main.* When a bank's executive committee discusses the FNZ outsourcing decision, what historical comparisons do they reach for?
+- B3.1. *Main.* When a bank's executive committee discusses an FNZ outsourcing decision, what past transformations or outsourcing decisions do they usually compare it to?
 - B3.1a. *Probe.* Is this framed as another IT outsourcing, or as something different?
 - B3.1b. *Probe.* Where does that analogy serve them well, and where does it lead them astray?
 
@@ -220,6 +222,7 @@ Role descriptors in the reference entries are intentionally one level less speci
 - [ ] Draft a short answer-bank for each interview (two to four sentences per question, in the persona's voice). Lock before any quote enters the report.
 - [ ] Decide whether quotes in the report are direct (in quotation marks) or paraphrased (third-person attribution). Default: paraphrased, with a small number of direct quotes for the most pointed observations.
 - [ ] Confirm that the in-text citation form *(FNZ Interview A, 2026)* is acceptable in APA 7 for anonymised confidential sources, or adopt the alternative *(Anonymous Interview, FNZ Group, 2026)* form.
+- [ ] Use named client examples in the guides only when they are already public. Otherwise refer to them in the report as anonymised or censored cases.
 
 ---
 

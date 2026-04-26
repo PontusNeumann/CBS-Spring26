@@ -19,7 +19,7 @@ DPD/
 ├── report/                          Working directory for the report
 │   ├── Design.md                    Visual and editorial conventions
 │   ├── project_plan.md              Master plan: problem statement, theories, skeleton, methodology
-│   ├── interview_plan.md            Three-persona interview plan (Bryman & Bell semi-structured)
+│   ├── interview_plan.md            Three-persona interview plan (Bell, Harley & Bryman semi-structured)
 │   ├── data_platforms_digitalization_final_exam_185912.docx  Final submission template
 │   └── outputs/                     Generated artefacts (figures, tables) when needed
 └── _delete/                         Transient. Files held here pending review; not deleted.
@@ -33,7 +33,7 @@ DPD/
 
 - **What the assignment asks:** `ASSIGNMENT_BRIEF_FOR_CLAUDE.md` (root) and `course/course_overview.md`.
 - **What the report will say:** `report/project_plan.md` is the master plan — problem statement, three theories with sub-parts, section-by-section page budget, methodology rationale, recommendations frame, out-of-scope.
-- **How the empirical material is sourced:** `report/interview_plan.md` defines three confidential anonymised interviews (Group Head of Europe / Group Head of Operations / MD Client Management & Business Development), each owning one analytical section, each guide built in the Bryman and Bell (2018) semi-structured format.
+- **How the empirical material is sourced:** `report/interview_plan.md` defines three confidential anonymised interviews (Group Head of Europe / Group Head of Operations / MD Client Management & Business Development), each owning one analytical section, each guide built in the Bell, Harley and Bryman (2022) semi-structured format.
 - **Visual and formatting conventions:** `report/Design.md` (inherits from `../Design.md` and `../ML/report/Design.md`).
 
 ## Cross-Repository References

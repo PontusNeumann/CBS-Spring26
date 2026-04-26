@@ -190,14 +190,14 @@ Recommendations must be concrete, justified by the analysis above, and acknowled
 
 ### Method statement (target ~150 words)
 
-The empirical material is drawn from three semi-structured interviews with senior FNZ executives, conducted under company confidentiality terms and anonymised by request. The interview design follows Bryman and Bell (2018). Each guide is structured as an opening block for rapport and role-setting, three thematic blocks each anchored to a single sub-part of the focal theoretical framework, and a closing block with a forward-looking question and an open prompt. The three interviewees were sampled theoretically: each occupies a different vantage on the bank-FNZ relationship and therefore owns one of the three analytical sections (transaction-cost economics for the operational-leadership perspective, multi-sided platform economics for the strategic-leadership perspective, and dynamic capabilities for the commercial and client-delivery perspective). This design produces transcripts that are comparable in scaffolding but distinct in territory, reducing the risk of cross-section conflation while preserving depth on each theoretical lens.
+The empirical material is drawn from three semi-structured interviews with senior FNZ executives, conducted under company confidentiality terms and anonymised by request. The interview design follows Bell, Harley and Bryman (2022). Each guide is structured as an opening block for rapport and role-setting, three thematic blocks each anchored to a single sub-part of the focal theoretical framework, and a closing block with a forward-looking question and an open prompt. Questions are open-ended, neutrally phrased, and designed to elicit concrete examples before interpretation. The three interviewees were sampled theoretically: each occupies a different vantage on the bank-FNZ relationship and therefore owns one of the three analytical sections (transaction-cost economics for the operational-leadership perspective, multi-sided platform economics for the strategic-leadership perspective, and dynamic capabilities for the commercial and client-delivery perspective). This design produces transcripts that are comparable in scaffolding but distinct in territory, reducing the risk of cross-section conflation while preserving depth on each theoretical lens. The aim is analytical depth and theoretical relevance rather than statistical representativeness.
 
 ### What §2 must explicitly state
 
 - The three theories applied and the sub-parts used from each.
 - The frameworks deliberately scoped out (e.g. AI Factory, smart connected products beyond the pointed citation in §3).
 - The empirical strategy (three semi-structured interviews, anonymised, plus public-record corporate evidence).
-- The Bryman and Bell (2018) interview-guide structure as the methodological anchor.
+- The Bell, Harley and Bryman (2022) interview-guide structure as the methodological anchor.
 - The theoretical-sampling rationale for the three roles.
 
 ### Limitations note for §8 conclusion (target one to two sentences)
@@ -206,7 +206,7 @@ The empirical base is small in N, drawn from a single firm, and anonymised at so
 
 ### Citation in §2
 
-Bryman, A., & Bell, E. (2018). *Business research methods* (5th ed.). Oxford University Press.
+Bell, E., Harley, B., & Bryman, A. (2022). *Business research methods* (6th ed.). Oxford University Press.
 
 ---
 
