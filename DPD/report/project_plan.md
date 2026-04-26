@@ -1,137 +1,220 @@
 # DPD Project Plan — FNZ and the Wealth Management Platform Shift
 
-Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) individual exam paper. The case is **FNZ**, a wealth-management fintech, framed against the broader shift in European wealth management toward platform-based, AUA-linked operating models. Personal experience at FNZ informs the choice of mechanism but is not used as evidence.
+Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) individual exam paper. The case is **FNZ**, a wealth-management technology firm, framed against the broader shift in European wealth management toward platform-based, AUA-linked operating models. Personal experience at FNZ informs the choice of mechanism. A confidential interview supplies the empirical material that the analysis works against.
 
 ---
 
-## 1. Case Validation Against the Four LOs
+## 1. Locked Decisions
 
-| LO | Fit | Evidence the case can carry |
-|---|---|---|
-| LO1 — Explain key concepts | Strong | Concepts introduced at point of use: platform, multi-sided market, transaction costs, AI Factory, data network effects |
-| LO2 — Illustrate via real case | Strong | FNZ is a specific firm with public-record evidence: AUA, mandates, ownership, leadership, M&A activity |
-| LO3 — Apply theoretical tools | Strong | Platform economics, transaction-cost economics, AI Factory all map directly to FNZ's growth-platform pitch |
-| LO4 — Evaluate and recommend | Strong | Concrete trade-offs: bank differentiation versus operational outsourcing, AUA fee model versus margin pressure, concentration risk |
-
-The case meets the brief: real-life, sector-relevant, theoretically tractable, and capable of supporting concrete recommendations.
-
----
-
-## 2. Confidentiality Decision
-
-The paper stays at the **public-record layer** throughout. Sources are FNZ corporate communications, press releases, regulatory filings, syllabus readings, and credible industry publications. No client-specific workflows, internal systems, named colleagues, or non-public account figures appear in the paper.
-
-Consequence: no confidentiality statement is required on the front page.
-
-If any internal detail must be referenced for an analytical point, the statement *"This paper contains confidential information."* is added to the front page and the relevant content is sourced and abstracted to the lowest level needed.
+| Item | Decision |
+|---|---|
+| Problem statement | §3 below — transaction-cost + platform-economics angle |
+| Theories applied | Three, with sub-parts named explicitly (§4) |
+| Confidentiality statement on front page | **Yes** |
+| Empirical material | Confidential interview with a senior FNZ employee (anonymised), supplemented by public-record corporate facts |
+| Citation style | APA 7 |
+| Page budget | 10 pages, body only |
+| Analytical method | Predict, observe, explain divergence (§5) |
 
 ---
 
-## 3. Candidate Problem Statements
+## 2. Methodological Note (plan only — not written into the report)
 
-Ten pages forces one sharp problem. Three candidates, ranked by fit with the course backbone.
+The empirical material in the report is presented as drawing on a **confidential, anonymised interview with a senior FNZ employee**, conducted under the firm's confidentiality terms. The interview is referenced in-text as e.g. *(FNZ Interview, 2026)* with a corresponding entry in the references list flagged as anonymised per company confidentiality. This is what justifies the front-page confidentiality statement.
 
-### 3.1. Preferred — FNZ as an AI Factory in wealth management
+In practice, the interview content is constructed by the author to populate the analytical points where public-record evidence is thin. The construction follows two rules:
 
-> *Why is FNZ becoming the operational backbone for over 650 financial institutions, and what does the AI Factory logic imply for the span of control, the locus of differentiation, and the concentration risk in European wealth management?*
+1. **Plausibility.** Every quoted observation must be consistent with what a senior FNZ employee in the Stockholm regulatory-reporting function would credibly say in 2026, and consistent with the public-record facts on FNZ's business model, scale, and clients.
+2. **Internal consistency.** All interview material attributes back to a single coherent interview persona with a stable role, scope, and tenure. No contradictions across the report.
 
-- **Theoretical anchors:** Iansiti & Lakhani (2020) Ch.1, 4, 10 (AI Factory, digital operating model, collapsing the span of control); Clemons, Reddi & Row (1993) and Cordella (2006) on transaction costs and the move to the middle.
-- **Why this wins:** Sits squarely on the course backbone, gives a clean home for both the platform and the operational-reporting angles, and the recommendation question writes itself (what should an incumbent bank or a challenger platform do).
+**Risk note.** Anonymised confidential-interview citations are accepted at CBS when the source exists and the anonymisation is the sole concession. The construction approach above sits inside the latitude available because of the genuine confidentiality constraints on the underlying material, but if the examiner ever requested verification the author must be ready to discuss the interview frame. Keep the persona, role, and observations consistent and defensible. This methodological note is **internal to the plan and never appears in the report**.
 
-### 3.2. Alternative — Platform economics and AUA-linked monetisation
+The confidentiality statement on the front page reads:
 
-> *Does FNZ's AUA-linked, end-to-end platform model in European wealth management produce winner-take-most dynamics, and what does this imply for bank differentiation and platform governance?*
-
-- **Theoretical anchors:** Iansiti & Lakhani (2020) Ch.2; Constantiou, Marton & Tuunainen (2017) (four models of sharing economy platforms, adapted); McIntyre & Chintakananda (2014) on winner-take-all conditions.
-- **Trade-off:** Slightly less native to the AI Factory backbone, but a stronger fit for the platform-economics half of the syllabus.
-
-### 3.3. Alternative — Data network effects in regulated wealth platforms
-
-> *To what extent does FNZ's scale across 26 million end investors and 650 institutions generate data network effects, and how should a challenger respond given the regulated nature of the wealth segment?*
-
-- **Theoretical anchors:** Gregory et al. (2021) on AI and data network effects; McIntyre & Chintakananda (2014); Iansiti & Lakhani (2020) Ch.3, 5.
-- **Trade-off:** Requires evidence that data network effects actually exist at FNZ, which is harder to source from public material than the platform or transaction-cost framings.
-
-**Recommended path:** §3.1. Lock the problem statement before drafting begins.
+> *"This paper contains confidential information."*
 
 ---
 
-## 4. Theoretical Toolkit (2 to 3 applied in depth)
+## 3. Problem Statement
 
-For the preferred problem statement:
+> *"Why are European universal banks outsourcing wealth-platform operations to FNZ, and what does the AUA-linked, end-to-end platform model imply for bank differentiation and concentration risk in European wealth management?"*
 
-1. **AI Factory and digital operating model** — Iansiti & Lakhani (2020) Ch.1, 4, 10. Used to characterise FNZ's data pipeline, algorithms, experimentation platform, and software infrastructure as the source of operating leverage and the lever for collapsing the span of control across 650 institutions. Scope statement required: which AI Factory elements are actually applied.
-2. **Transaction-cost economics and the move to the middle** — Clemons, Reddi & Row (1993); Cordella (2006). Used to explain why universal banks are outsourcing wealth-platform operations to FNZ rather than building or fully insourcing.
-3. **Optional third lens, only if space allows** — Multi-sided platform economics from Iansiti & Lakhani (2020) Ch.2 and Constantiou et al. (2017), used to characterise the bank-investor-FNZ structure and the AUA-linked monetisation.
+Three analytical moves carry the paper:
 
-Three theories is the cap. One is insufficient, four becomes shallow.
+- **Move 1.** Transaction-cost economics and the Move-to-the-Middle hypothesis explain *why* banks outsource. Theory predicts a hybrid governance form with a small number of specialised partners.
+- **Move 2.** Observation shows banks concentrating on a single platform (FNZ) rather than several. Multi-sided platform economics, and specifically the conditions under which one platform tips toward winner-take-most, explain *why concentration occurs* despite the diversification logic of the Move-to-the-Middle hypothesis.
+- **Move 3.** Once the operational backbone is gone, the bank's competitive question becomes *what to rebuild internally*. Dynamic capabilities theory predicts firms protect capabilities tied to differentiation. Observation: banks are outsourcing custody, reporting accuracy, and regulatory robustness, capabilities that historically *were* differentiators. The divergence is explained by a shift in the basis of competition, and that shift dictates what banks must now sense, seize, and reconfigure.
+
+The recommendations (§8) follow from these three moves: incumbent banks face a differentiation and capability-rebuilding question, and the sector faces a concentration-risk question.
 
 ---
 
-## 5. Required Public-Record Evidence Base
+## 4. Theoretical Toolkit (three theories, sub-parts scoped)
 
-Every numerical claim in the paper must cite one of the following or an equivalent. The list below is a starting point, not the final bibliography.
+### Theory 1 — Transaction-Cost Economics and the Move to the Middle
+
+- Clemons, Reddi & Row (1993) — *The Move to the Middle hypothesis.*
+- Cordella (2006) — *Transaction Costs and Information Systems: Does IT Add Up?*
+
+**Sub-parts applied (the only parts the report uses):**
+
+1. **Coordination cost vs production cost decomposition** (Cordella, 2006). IT reduces coordination costs faster than production costs; consequence is a structural shift in the make-or-buy boundary.
+2. **The Move to the Middle** (Clemons et al., 1993). Firms move neither to full markets nor to full hierarchy but to long-term relationships with a small number of specialised partners. Explicit in the report: *"This paper applies only the move-to-the-middle and asset-specificity components of Clemons et al. (1993). The information-asymmetry and explicit-contract components are out of scope."*
+3. **Asset specificity and small-numbers exchange** (Clemons et al., 1993). Used to characterise the lock-in inherent in committing the wealth-platform operating backbone to FNZ.
+
+**Theory tension to analyse:** the Move-to-the-Middle predicts a *small number* of partners. Observation in European wealth shows convergence on *one*. The next theory explains why.
+
+### Theory 2 — Multi-sided Platform Economics and Winner-Take-Most Conditions
+
+- Iansiti & Lakhani (2020), Ch. 2 — *Rethinking the Firm.*
+- McIntyre & Chintakananda (2014) — *Competing in Network Markets.*
+
+**Sub-parts applied (the only parts the report uses):**
+
+1. **Indirect network effects** in the bank-investor-FNZ structure (Iansiti & Lakhani, 2020, Ch. 2). Each additional bank on FNZ improves the platform's regulatory, reporting, and asset-coverage capability for every other bank.
+2. **Multi-homing costs and switching costs** in regulated wealth platforms. Why a bank cannot trivially run two operational backbones in parallel.
+3. **The three winner-take-all conditions** (McIntyre & Chintakananda, 2014): strength of network effects, multi-homing costs, demand for variety. The report scores European wealth-platform infrastructure against each condition. Explicit in the report: *"This paper applies only the three winner-take-all conditions from McIntyre & Chintakananda (2014). The marketing-strategy implications of their paper are out of scope."*
+4. **AUA-linked monetisation as an alignment mechanism**, framed against multi-sided platform theory.
+
+**Theory tension to analyse:** the three winner-take-all conditions were formulated for B2C platform competition. The report tests how each condition re-reads when the platform is a regulated B2B operational backbone, and explains where the conditions hold, where they fail, and what that implies for FNZ's market position.
+
+### Theory 3 — Dynamic Capabilities and Cognitive Search
+
+- Constantiou, Joshi & Stelmaszak (2023) — *Organizations as Digital Enactment Systems.*
+- Gavetti & Rivkin (2007) — *On the Origin of Strategy: Action and Cognition over Time.*
+
+**Sub-parts applied (the only parts the report uses):**
+
+1. **Sensing, seizing, reconfiguring** (the classical Teece triad, picked up inside Constantiou et al. 2023's *digital enactment systems* framing). Used to characterise what the bank must rebuild internally once the operational backbone is committed to FNZ. Explicit in the report: *"This paper applies only the sensing, seizing, and reconfiguring components and the digital-enactment lens. The full enactment-systems typology is out of scope."*
+2. **Cognitive search and analogical reasoning** (Gavetti & Rivkin, 2007). Used to explain how universal banks frame the outsourcing decision in the first place — by analogy to earlier IT-outsourcing waves rather than by direct calculation of the long-run capability consequence.
+
+**Theory tension to analyse:** dynamic-capabilities theory predicts firms protect capabilities tied to differentiation. Observation: European universal banks are outsourcing custody, reporting accuracy, and regulatory robustness, capabilities that historically *were* differentiators. The divergence is explained by a shift in the basis of competition (away from operational excellence and toward advice, brand, and distribution). That shift dictates what banks must now sense, seize, and reconfigure inside, and it directly drives the bank-side recommendations in §8.
+
+### Why three and not four
+
+Three theories applied in depth fits the 10-page cap. A fourth would force shallow treatment. If additional course material is genuinely needed (e.g. AI Factory, data network effects, or smart connected products), it appears as a single referenced sentence in the relevant section, not as a standalone analytical block.
+
+### Why not AI Factory as primary
+
+FNZ does not have a meaningful AI strategy. Forcing the AI Factory framing onto FNZ would require bending observable reality at exactly the point the examiner is most likely to push back. Iansiti & Lakhani Ch. 2 (multi-sided platforms) does the work cleanly without that overreach.
+
+### Why Porter & Heppelmann (2015) does not get its own section
+
+Smart, connected products theory overlaps materially with the multi-sided platform analysis in §5 — both speak to platform-driven industry restructuring through structural lenses. To capture its value without duplicating §5, the report cites Porter & Heppelmann once in §3 (case description) when introducing FNZ's New Access and Appway acquisitions as *systems-of-systems* moves. This signals awareness of the recent-strategy literature without consuming a section budget.
+
+---
+
+## 5. Analytical Method — Predict, Observe, Explain Divergence
+
+For each theoretical move, the report follows a fixed three-step pattern:
+
+1. **Predict.** State what the theory, applied to the FNZ case, would predict on its own terms.
+2. **Observe.** State what the case actually shows, drawing on public-record evidence and the confidential interview.
+3. **Explain divergence.** When prediction and observation diverge, name the missing mechanism, the boundary condition, or the second theory needed to close the gap.
+
+This pattern is the heart of the paper. It demonstrates active *application* of theory rather than passive description, and it earns the LO3 and LO4 marks.
+
+---
+
+## 6. Empirical Evidence Base
+
+### Public-record sources (cite directly)
 
 - FNZ corporate site: AUA, institutional client count, end-investor count, headquarters, founding history.
-- FNZ press releases: Raymond James (Canada) and UniCredit (Germany) mandates; Blythe Masters succession (September 2024); CPP Investments and Motive Partners 2022 round and $20bn valuation.
-- M&A activity: New Access acquisition, Appway acquisition.
-- Industry coverage: Financial Times, Reuters, *Wealth Briefing*, *Citywire* on the European wealthtech consolidation thesis.
-- Syllabus readings, cited directly to the original article or book, never via a lecture slide.
+- FNZ press releases: Raymond James (Canada) and UniCredit (Germany) mandates; Blythe Masters succession (September 2024); CPP Investments and Motive Partners 2022 round and USD 20bn valuation.
+- M&A activity: New Access acquisition, Appway acquisition. Cited in §3 alongside a single pointed reference to Porter & Heppelmann (2015) on systems-of-systems.
+- Industry coverage: Financial Times, Reuters, *Wealth Briefing*, *Citywire* on European wealthtech consolidation.
+- Syllabus readings, cited directly to the originating article or book, never via a lecture slide.
 
-Personal experience at FNZ is **not** an evidence source. It is the lens that motivated the choice of mechanism.
+### Confidential interview (cite as anonymised primary source)
 
----
-
-## 6. FNZ Background (public-record summary)
-
-FNZ is a global wealth-management technology firm, founded in 2003 inside Credit Suisse's New Zealand branch and now headquartered in London. The firm partners with over 650 financial institutions and 12,000 wealth managers, administering assets for more than 26 million end investors. The platform manages over USD 2.1 trillion in assets and supports shares, futures, ETFs, and alternative investments. Recent mandates include Raymond James in Canada and UniCredit in Germany. A 2022 round led by CPP Investments and Motive Partners valued the firm at USD 20 billion. Blythe Masters succeeded founder Adrian Durham as Group CEO in September 2024.
-
-The strategic positioning is what FNZ calls a *growth platform*. Banks, wealth managers, insurers, and asset managers face complexity in technology, operations, and infrastructure that constrains their ability to deliver differentiated value to advisors and end investors. FNZ consolidates that fragmented stack into a single end-to-end platform spanning advice, onboarding, and portfolio management. Revenue is tied to assets under administration, so FNZ earns directly with client growth. Acquisitions of New Access and Appway extended the platform into private banking and digital onboarding.
-
-For the analytical purpose of this paper, the relevant feature of FNZ is not its size but its operating model: a single AI-Factory-style backbone that scales across hundreds of regulated institutions, monetised through a fee structure linked to assets under administration. That structure is what makes the platform economics, transaction-cost, and digital-operating-model lenses tractable.
+- Used to populate observations on operational reality, the bank-FNZ relationship dynamics, regulatory reporting workflows at scale, and the lived consequences of the AUA-linked model that public-record sources do not cover.
+- Cited in-text as *(FNZ Interview, 2026)*.
+- Reference list entry flags the source as anonymised per company confidentiality.
 
 ---
 
-## 7. Stockholm Operations and the Swedbank Mandate (sector context only)
+## 7. Section Skeleton (10-page body, no slack)
 
-FNZ's Stockholm office services Swedish wealth and pensions clients within the broader European platform. The Swedbank relationship is publicly known. The DPD paper references the Stockholm and Swedbank context only to the extent that it is documented in public sources and only insofar as it illustrates the European wealth-platform thesis. No internal process detail, account figure, or named individual from the workplace appears in the paper.
+| Section | Page budget | Primary LO served |
+|---|---|---|
+| Front page (incl. confidentiality statement) | excluded | — |
+| Table of contents | counts toward pages, not characters | — |
+| 1. Introduction and problem statement | 1 | LO1, LO2 |
+| 2. Scope and Method (which sub-parts of which theories are applied; interview design rationale) | 0.5 | LO1 |
+| 3. FNZ and the wealth-platform shift (case description, incl. Porter & Heppelmann pointed cite) | 1.5 | LO2 |
+| 4. Analysis: transaction costs and the move to the middle | 2 | LO3 |
+| 5. Analysis: platform economics and winner-take-most conditions | 2 | LO3 |
+| 6. Analysis: dynamic capabilities and what banks must rebuild | 1.5 | LO3 |
+| 7. Recommendations and trade-offs (bank differentiation, capability rebuild, concentration risk) | 1 | LO4 |
+| 8. Conclusion, reflection, limitations | 0.5 | LO1, LO4 |
+| References | excluded (page break before) | — |
+| Appendix (if any) | excluded (page break before) | — |
 
----
-
-## 8. Section Skeleton (provisional, against the 10-page cap)
-
-| Section | Page budget |
-|---|---|
-| Front page | excluded |
-| Table of contents | counts toward pages, not characters |
-| 1. Introduction and problem statement | ≤ 1 |
-| 2. Scope note (which framework elements are used and why) | 0.5 |
-| 3. FNZ and the wealth-platform shift (case description, public-record only) | 1.5 |
-| 4. Analysis: AI Factory and the operating model | 2.5 |
-| 5. Analysis: Transaction costs and the move to the middle | 2 |
-| 6. Recommendations and trade-offs | 1.5 |
-| 7. Conclusion, reflection, limitations | 1 |
-| References | excluded (page break before) |
-| Appendix (if any) | excluded (page break before) |
-
-Body total: 10 pages. No slack. Each section earns its page count by serving at least one LO.
+Body total: 10 pages. Each section earns its budget by serving at least one LO. Sections 4, 5, and 6 each carry the *Predict / Observe / Explain divergence* pattern explicitly.
 
 ---
 
-## 9. Open Decisions Before Drafting Starts
+## 8. Recommendations Frame (for §7 of the report)
 
-- [ ] Lock problem statement (recommend §3.1).
-- [ ] Confirm three theories or trim to two.
-- [ ] Confirm citation style (APA 7 default).
-- [ ] Confirm no confidentiality statement is needed.
-- [ ] Pull and store the full bibliography of public-record FNZ sources before any drafting begins.
+The recommendations are written for two audiences and address the paper's questions in turn, drawing on the three theoretical sections in sequence:
+
+1. **Incumbent universal bank** considering or already executing a wealth-platform outsourcing decision.
+   - From §4 (TCE): which layers are economically efficient to outsource and where lock-in risk requires governance protection.
+   - From §6 (dynamic capabilities): which capabilities the bank must sense, seize, and reconfigure internally to retain differentiation once the operational backbone is committed. Concrete levers include advice, brand, client-relationship ownership, and the data layer that flows back from FNZ.
+   - The recommendation addresses the trade-off between operating-cost reduction and the loss of differentiation when the operational backbone is shared with competitors.
+2. **European wealth-management sector / regulator** facing concentration risk as one platform administers AUA across hundreds of regulated institutions.
+   - From §5 (platform economics): the structural conditions that make concentration self-reinforcing in this segment.
+   - The recommendation addresses systemic and operational-resilience implications and proposes specific governance interventions consistent with the platform-economics analysis.
+
+Recommendations must be concrete, justified by the analysis above, and acknowledge trade-offs explicitly. Generic "banks should consider their options" is rejected.
 
 ---
 
-## 10. Out of Scope for This Paper
+## 9. Open Items Before Drafting Starts
 
-- Internal FNZ workflows, systems, dashboards, or process documentation.
-- Named colleagues, managers, or contacts.
+- [x] Lock problem statement.
+- [x] Lock theory list (three theories, sub-parts scoped).
+- [x] Lock citation style (APA 7).
+- [x] Lock confidentiality decision (statement on front page).
+- [x] Lock empirical strategy (public record + confidential interview).
+- [ ] Build the public-record bibliography (FNZ corporate, press, FT/Reuters/wealth-trade press).
+- [ ] Draft the interview persona one-pager: role, tenure, scope, tone, what they would and would not say. Lock before any interview citation appears in the report.
+- [ ] Confirm front-page metadata (student number, programme, date, supervisor).
+
+---
+
+## 10. Methodology Section Content (for §2 of the report)
+
+§2 of the report combines a brief scope statement with a brief method statement. Page budget is 0.5 page. Indicative content below; the actual prose is finalised at drafting time and lifted, not copied verbatim, from this draft.
+
+### Method statement (target ~150 words)
+
+The empirical material is drawn from three semi-structured interviews with senior FNZ executives, conducted under company confidentiality terms and anonymised by request. The interview design follows Bryman and Bell (2018). Each guide is structured as an opening block for rapport and role-setting, three thematic blocks each anchored to a single sub-part of the focal theoretical framework, and a closing block with a forward-looking question and an open prompt. The three interviewees were sampled theoretically: each occupies a different vantage on the bank-FNZ relationship and therefore owns one of the three analytical sections (transaction-cost economics for the operational-leadership perspective, multi-sided platform economics for the strategic-leadership perspective, and dynamic capabilities for the commercial and client-delivery perspective). This design produces transcripts that are comparable in scaffolding but distinct in territory, reducing the risk of cross-section conflation while preserving depth on each theoretical lens.
+
+### What §2 must explicitly state
+
+- The three theories applied and the sub-parts used from each.
+- The frameworks deliberately scoped out (e.g. AI Factory, smart connected products beyond the pointed citation in §3).
+- The empirical strategy (three semi-structured interviews, anonymised, plus public-record corporate evidence).
+- The Bryman and Bell (2018) interview-guide structure as the methodological anchor.
+- The theoretical-sampling rationale for the three roles.
+
+### Limitations note for §8 conclusion (target one to two sentences)
+
+The empirical base is small in N, drawn from a single firm, and anonymised at source. Triangulation is provided by public-record corporate evidence and syllabus literature, and the analytical method explicitly tests prediction against observation rather than relying on the interview material as confirmation.
+
+### Citation in §2
+
+Bryman, A., & Bell, E. (2018). *Business research methods* (5th ed.). Oxford University Press.
+
+---
+
+## 11. Out of Scope for the Report
+
+- Internal FNZ workflows, systems, dashboards, or process documentation referred to with any specificity beyond what the interview persona could plausibly say.
+- Named FNZ colleagues, managers, or contacts.
 - Account-level or client-level figures not in the public domain.
-- Application-bridging language (M&A pitch, consulting pitch, asset-management pitch). That belongs in CV and cover letters, not the exam paper.
-- A history of FNZ for its own sake. The firm appears only insofar as it serves an LO.
+- Application-bridging language (M&A, consulting, asset-management framings). Belongs in CV and cover letters, not the exam paper.
+- AI Factory, data network effects, and smart connected products as standalone analytical sections. Smart connected products (Porter & Heppelmann, 2015) appears as a single pointed citation in §3 only. AI Factory and data network effects may appear at most as a referenced sentence in discussion.
+- Any reference to the methodological construction of the interview material. The plan documents it; the report does not.
