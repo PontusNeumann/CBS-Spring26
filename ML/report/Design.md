@@ -2,6 +2,10 @@
 
 Visual conventions for figures and tables in the final exam paper. Figures are generated in Python scripts, saved as PNG to `report/outputs/`, and inserted into the Word document for export to PDF. Tables are produced in Python and either exported as CSV for native Word formatting or reproduced directly in Word using the styling below.
 
+## Language
+
+The report uses **US English spelling** throughout (e.g. *behavior*, *modeling*, *normalization*, *color*, *analyze*). Apply the same convention to all generated text, captions, code comments destined for the report, and any new prose written into the docx.
+
 ## Output Pipeline
 
 - Figures are saved with `fig.savefig(path, dpi=300, bbox_inches="tight")`.
