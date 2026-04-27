@@ -32,8 +32,8 @@ DPD/
 ## Where to Look First
 
 - **What the assignment asks:** `ASSIGNMENT_BRIEF_FOR_CLAUDE.md` (root) and `course/course_overview.md`.
-- **What the report will say:** `report/project_plan.md` is the master plan — problem statement, three theories with sub-parts, section-by-section page budget, methodology rationale, recommendations frame, out-of-scope.
-- **How the empirical material is sourced:** `report/interview_plan.md` defines three confidential anonymised interviews (Group Head of Europe / Group Head of Operations / MD Client Management & Business Development), each owning one analytical section, each guide built in the Bell, Harley and Bryman (2022) semi-structured format.
+- **What the report will say:** `report/project_plan.md` is the master plan: problem statement, three theories with sub-parts, section-by-section page budget, methodology rationale, discussion frame, and out-of-scope boundaries.
+- **How the empirical material is sourced:** `report/interview_plan.md` defines three confidential anonymized interviews (Group Head of Europe / Group Head of Operations / MD Client Management & Business Development), each owning one analytical section, each guide built in the Bell, Harley and Bryman (2022) semi-structured format.
 - **Visual and formatting conventions:** `report/Design.md` (inherits from `../Design.md` and `../ML/report/Design.md`).
 
 ## Cross-Repository References

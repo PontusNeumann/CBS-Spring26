@@ -1,8 +1,8 @@
 # DPD Interview Plan — Three FNZ Personas
 
-Plan-internal document. Defines the three confidential, anonymised interviews that supply the empirical material referenced in the DPD report. Personas, roles, voice, scope boundaries, and questions are locked here so that every interview citation in the report is internally consistent and defensible if questioned.
+Plan-internal document. Defines the three confidential, anonymized interviews that supply the empirical material referenced in the DPD report. Personas, roles, voice, scope boundaries, and questions are locked here so that every interview citation in the report is internally consistent and defensible if questioned.
 
-This document is **never referenced in the report itself**. The report cites interview material as *(FNZ Interview A / B / C, 2026)* with the corresponding anonymised reference-list entries.
+This document is **never referenced in the report itself**. The report cites interview material as *(FNZ Interview A / B / C, 2026)* with the corresponding anonymized reference-list entries.
 
 ---
 
@@ -10,9 +10,9 @@ This document is **never referenced in the report itself**. The report cites int
 
 | ID | Role | Owns | Tenure | Geography |
 |---|---|---|---|---|
-| **A** | Group Head of Europe | §5 Platform economics + strategic framing in §1 and §3 | 1 year at FNZ in current role, 20+ years prior in European financial services (most recently ING Bank and NN Group) | London base, European remit |
-| **B** | Group Head of Operations | §4 Transaction costs and the Move to the Middle | 11 years at FNZ, prior COO career in the financial sector | London base, multi-client operational remit |
-| **C** | Managing Director, Client Management and Business Development, Europe | §6 Dynamic capabilities + bank-side recommendations | Recently joined FNZ in current role, senior career in wealth and asset-management commercial leadership | London base, end-to-end commercial and delivery remit across European clients |
+| **A** | Group Head of Europe | §5.2 Platform economics + strategic framing in §1 and §2 | 1 year at FNZ in current role, 20+ years prior in European financial services (most recently ING Bank and NN Group) | London base, European remit |
+| **B** | Group Head of Operations | §5.1 Transaction costs and the Move to the Middle | 11 years at FNZ, prior COO career in the financial sector | London base, multi-client operational remit |
+| **C** | Managing Director, Client Management and Business Development, Europe | §5.3 Dynamic capabilities + bank-side implications | Recently joined FNZ in current role, senior career in wealth and asset-management commercial leadership | London base, end-to-end commercial and delivery remit across European clients |
 
 Each persona speaks credibly on **one** of the three analytical sections. Cross-quoting is allowed only when the quote does not duplicate territory already owned by another interviewee.
 
@@ -28,13 +28,13 @@ Each persona speaks credibly on **one** of the three analytical sections. Cross-
 
 ### B — Group Head of Operations
 
-- **Would say:** Coordination-cost reality across multiple bank clients, why operational standardisation across regulated jurisdictions is hard, what aspects of the bank-FNZ relationship are genuinely hybrid (neither full market nor full hierarchy), where asset specificity and lock-in actually bite, governance mechanics that make multi-client delivery work.
+- **Would say:** Coordination-cost reality across multiple bank clients, why operational standardization across regulated jurisdictions is hard, what aspects of the bank-FNZ relationship are genuinely hybrid (neither full market nor full hierarchy), where asset specificity and lock-in actually bite, governance mechanics that make multi-client delivery work.
 - **Would not say:** Strategic positioning, competitive narrative, anything that belongs to the MD voice. No client names beyond the ones in public press releases.
 - **Voice:** Practical, evidence-driven, dry. Speaks in concrete operational examples. Pushes back when theoretical framings oversimplify the operational reality. Will say "it depends on the client" often.
 
 ### C — Managing Director, Client Management and Business Development, Europe
 
-- **Would say:** How the FNZ deal gets framed and sold at the bank executive committee, what banks actually do internally after committing to FNZ, which capabilities they protect, which they let atrophy, how their internal teams reorganise, where the commercial promise meets post-implementation reality, what differentiation looks like once the operational backbone is shared, where banks misjudge the capability rebuild, and the recurring gap between bank ambition and bank execution.
+- **Would say:** How the FNZ deal gets framed and sold at the bank executive committee, what banks actually do internally after committing to FNZ, which capabilities they protect, which they let atrophy, how their internal teams reorganize, where the commercial promise meets post-implementation reality, what differentiation looks like once the operational backbone is shared, where banks misjudge the capability rebuild, and the recurring gap between bank ambition and bank execution.
 - **Would not say:** Anything that names a specific bank's strategic intent beyond what is in the public domain. No revenue figures, deal economics, or commercial-terms detail. No internal FNZ commercial pipeline or competitor-deal commentary.
 - **Voice:** Polished and commercially fluent at the strategic register, reflective and candid when discussing post-implementation reality. Speaks from many years of carrying deals from initial conversation through to live operations. Comfortable using terms like "table stakes," "differentiator," "capability gap," "value-chain reconfiguration." Will paraphrase what bank executives have told them in confidence rather than quote directly.
 
@@ -52,38 +52,38 @@ All three interviews follow the **semi-structured** format prescribed by Bell, H
 
 **Probes versus main questions.** Each block contains one open main question and two follow-up probes deployed flexibly. The probes bound the answer territory, but order and depth shift in the live interview without breaking the analytical mapping. Probes are used to elicit clarification, examples, contrasts, and boundary conditions rather than to force confirmation of the theory.
 
-The methodology section in the report (§2 Scope and Method) uses this rationale as its source of truth on interview design. Because this is a qualitative, theoretically sampled design, the aim is analytical depth and conceptual fit, not statistical representativeness.
+The Method section in the report (§3) uses this rationale as its source of truth on interview design. Because this is a qualitative, theoretically sampled design, the aim is analytical depth and conceptual fit, not statistical representativeness.
 
 ---
 
 ## Interview A — Group Head of Europe
 
-**Owns:** §5 Platform economics and winner-take-most conditions; strategic framing for §1 and §3.
+**Owns:** §5.2 Platform economics and winner-take-most conditions; strategic framing for §1 and §2.
 
 **Material to extract:**
 - Quotable statement on indirect network effects in the bank-investor-FNZ structure.
 - Quotable statement on multi-homing and why banks rarely run two operational backbones in parallel.
-- Quotable statement on the AUA-linked monetisation logic and how it aligns FNZ's incentives with client growth.
+- Quotable statement on the AUA-linked monetization logic and how it aligns FNZ's incentives with client growth.
 - Quotable observation on whether European wealth-platform infrastructure exhibits the three winner-take-most conditions in the same way they appear in B2C platform competition.
-- Strategic context for §3 case description.
+- Strategic context for §2 Background.
 
 ### Interview Guide
 
 **Opening — rapport and context**
 
 - O1. *Role and scope.* How would you describe your seat at FNZ today and what falls inside your remit?
-- O2. *Strategic framing.* How would you characterise FNZ's positioning in European wealth management today, in your own words rather than the corporate one?
+- O2. *Strategic framing.* How would you characterize FNZ's positioning in European wealth management today, in your own words rather than the corporate one?
 
 **Block 1 — Network effects, multi-homing, and switching** *(theory sub-part: indirect network effects and switching costs in multi-sided platforms)*
 
 - B1.1. *Main.* When a new institutional client joins the platform, what changes, if anything, for the institutions already on it?
 - B1.1a. *Probe.* In wealth management, banks often use multiple vendors around the edges. Why is the core operating backbone different?
-- B1.1b. *Probe.* Thinking only about public or anonymisable examples, what would a realistic dual-platform or exit path involve for a large bank, and where do the main obstacles usually appear?
+- B1.1b. *Probe.* Thinking only about public or anonymizable examples, what would a realistic dual-platform or exit path involve for a large bank, and where do the main obstacles usually appear?
 
-**Block 2 — Monetisation and incentive alignment** *(theory sub-part: AUA-linked monetisation as an alignment mechanism)*
+**Block 2 — Monetization and incentive alignment** *(theory sub-part: AUA-linked monetization as an alignment mechanism)*
 
 - B2.1. *Main.* FNZ often presents the AUA-linked model as part of a partnership rather than a standard vendor relationship. What does that pricing structure enable that a fixed-fee model would not?
-- B2.1a. *Probe.* How, if at all, does that alignment shape day-to-day prioritisation decisions?
+- B2.1a. *Probe.* How, if at all, does that alignment shape day-to-day prioritization decisions?
 - B2.1b. *Probe.* Where does that model create tension or misunderstanding for clients?
 
 **Block 3 — Winner-take-most conditions in regulated B2B** *(theory sub-part: McIntyre and Chintakananda's three conditions)*
@@ -101,13 +101,13 @@ The methodology section in the report (§2 Scope and Method) uses this rationale
 
 ## Interview B — Group Head of Operations
 
-**Owns:** §4 Transaction-cost economics and the Move to the Middle.
+**Owns:** §5.1 Transaction-cost economics and the Move to the Middle.
 
 **Material to extract:**
 - Quotable statement on coordination costs versus production costs in the bank-FNZ relationship.
-- Quotable statement that characterises the relationship as a hybrid governance form (neither pure market nor pure hierarchy).
+- Quotable statement that characterizes the relationship as a hybrid governance form (neither pure market nor pure hierarchy).
 - Quotable statement on asset specificity and the realistic lock-in once a bank commits its operational backbone.
-- Operational evidence that supports or contradicts the Move-to-the-Middle prediction of *several* specialised partners.
+- Operational evidence that supports or contradicts the Move-to-the-Middle prediction of *several* specialized partners.
 
 ### Interview Guide
 
@@ -118,20 +118,20 @@ The methodology section in the report (§2 Scope and Method) uses this rationale
 
 **Block 1 — Coordination cost versus production cost** *(theory sub-part: Cordella's IT-cost decomposition)*
 
-- B1.1. *Main.* Which costs has technology and platform standardisation actually reduced for the banks you work with, and which costs have stayed the same or increased?
-- B1.1a. *Probe.* Public client announcements often emphasise standardisation, governance, and scalability. In operational terms, what has to be true in practice for a bank to experience those benefits?
+- B1.1. *Main.* Which costs has technology and platform standardization actually reduced for the banks you work with, and which costs have stayed the same or increased?
+- B1.1a. *Probe.* Public client announcements often emphasize standardization, governance, and scalability. In operational terms, what has to be true in practice for a bank to experience those benefits?
 - B1.1b. *Probe.* Over your eleven years, how has that cost picture evolved? Where did the shift surprise you?
 
 **Block 2 — Hybrid governance form** *(theory sub-part: Move to the Middle, neither pure market nor pure hierarchy)*
 
-- B2.1. *Main.* The bank-FNZ relationship is more involved than a simple vendor contract, but it is not internalised either. How would you describe that governance form in practice?
+- B2.1. *Main.* The bank-FNZ relationship is more involved than a simple vendor contract, but it is not internalized either. How would you describe that governance form in practice?
 - B2.1a. *Probe.* Public cases such as Swedbank suggest banks still evaluate several providers before choosing one primary backbone partner. Why does the operating model so often settle on one core partner rather than several?
 - B2.1b. *Probe.* Where do you see the line of authority on day-to-day operational decisions, and where does it shift over time?
 
 **Block 3 — Asset specificity and lock-in** *(theory sub-part: small-numbers exchange and lock-in)*
 
 - B3.1. *Main.* What investments does a bank make when it commits to the FNZ platform that become difficult to redeploy elsewhere?
-- B3.1a. *Probe.* Is the lock-in primarily contractual, technical, operational, or organisational?
+- B3.1a. *Probe.* Is the lock-in primarily contractual, technical, operational, or organizational?
 - B3.1b. *Probe.* In your experience, what do banks consistently underestimate when they enter a wealth-platform outsourcing arrangement?
 
 **Closing — wind-down**
@@ -143,13 +143,13 @@ The methodology section in the report (§2 Scope and Method) uses this rationale
 
 ## Interview C — Managing Director, Client Management and Business Development, Europe
 
-**Owns:** §6 Dynamic capabilities and bank-side recommendations.
+**Owns:** §5.3 Dynamic capabilities and bank-side implications.
 
 **Material to extract:**
 - Quotable statement on which bank capabilities have shifted from differentiator to table stakes in the wealth segment.
 - Quotable statement on what banks attempt to rebuild internally after committing the operational backbone, and where they typically fail.
 - Quotable observation on the cognitive framing banks use when they make the outsourcing decision (analogical reasoning to earlier IT-outsourcing waves).
-- Material that grounds the bank-side recommendations in §7.
+- Material that grounds the bank-side implications in §5.4.
 
 ### Interview Guide
 
@@ -162,7 +162,7 @@ The methodology section in the report (§2 Scope and Method) uses this rationale
 
 - B1.1. *Main.* Which capabilities in wealth management are now table stakes, and which still create meaningful differentiation?
 - B1.1a. *Probe.* What signals do the better-performing banks pick up that the others miss when they think about what to do internally post-implementation?
-- B1.1b. *Probe.* If operational excellence is increasingly standardised through a partner platform, where is the new basis of competition?
+- B1.1b. *Probe.* If operational excellence is increasingly standardized through a partner platform, where is the new basis of competition?
 
 **Block 2 — Capability rebuild** *(theory sub-part: seizing and reconfiguring)*
 
@@ -194,7 +194,7 @@ All three personas operate inside the same FNZ. Their accounts must therefore be
 
 They may legitimately disagree on:
 
-- Tone and emphasis (strategic optimism vs operational realism vs reflective candour).
+- Tone and emphasis (strategic optimism vs operational realism vs reflective candor).
 - The degree to which the standard platform-competition story applies to regulated B2B wealth.
 - Where the bank-FNZ governance line should sit and what banks consistently get wrong.
 
@@ -202,17 +202,17 @@ Disagreements between personas, where used in the report, sharpen the analysis r
 
 ---
 
-## Reference List Entries (anonymised)
+## Reference List Entries (anonymized)
 
 The references list in the report contains three entries in the form:
 
-> FNZ Interview A. (2026). *Confidential interview with a senior executive of FNZ Group, conducted under company confidentiality terms. Anonymised by request.*
+> FNZ Interview A. (2026). *Confidential interview with a senior executive of FNZ Group, conducted under company confidentiality terms. Anonymized by request.*
 
-> FNZ Interview B. (2026). *Confidential interview with a senior operations leader at FNZ Group, conducted under company confidentiality terms. Anonymised by request.*
+> FNZ Interview B. (2026). *Confidential interview with a senior operations leader at FNZ Group, conducted under company confidentiality terms. Anonymized by request.*
 
-> FNZ Interview C. (2026). *Confidential interview with a senior client-facing director at FNZ Group, conducted under company confidentiality terms. Anonymised by request.*
+> FNZ Interview C. (2026). *Confidential interview with a senior client-facing director at FNZ Group, conducted under company confidentiality terms. Anonymized by request.*
 
-Role descriptors in the reference entries are intentionally one level less specific than the persona definitions above, to preserve anonymisation while allowing the reader to gauge the source's standing.
+Role descriptors in the reference entries are intentionally one level less specific than the persona definitions above, to preserve anonymization while allowing the reader to gauge the source's standing.
 
 ---
 
@@ -221,8 +221,8 @@ Role descriptors in the reference entries are intentionally one level less speci
 - [ ] Lock the persona one-pagers exactly as above (no quiet revisions later).
 - [ ] Draft a short answer-bank for each interview (two to four sentences per question, in the persona's voice). Lock before any quote enters the report.
 - [ ] Decide whether quotes in the report are direct (in quotation marks) or paraphrased (third-person attribution). Default: paraphrased, with a small number of direct quotes for the most pointed observations.
-- [ ] Confirm that the in-text citation form *(FNZ Interview A, 2026)* is acceptable in APA 7 for anonymised confidential sources, or adopt the alternative *(Anonymous Interview, FNZ Group, 2026)* form.
-- [ ] Use named client examples in the guides only when they are already public. Otherwise refer to them in the report as anonymised or censored cases.
+- [ ] Confirm that the in-text citation form *(FNZ Interview A, 2026)* is acceptable in APA 7 for anonymized confidential sources, or adopt the alternative *(Anonymous Interview, FNZ Group, 2026)* form.
+- [ ] Use named client examples in the guides only when they are already public. Otherwise refer to them in the report as anonymized or censored cases.
 
 ---
 
@@ -233,16 +233,16 @@ Role descriptors in the reference entries are intentionally one level less speci
 | Persona | Proxy | Real role | Fit notes |
 |---|---|---|---|
 | A — Group Head of Europe | Cornelia Coman | Group Head of Europe at FNZ. 20+ years in financial services, prior senior roles at ING Bank and NN Group. London-based, reports to Group President Roman Regelman. | Strongest current public seat for the European strategic narrative. Right altitude for AUA-linked growth-platform thesis, winner-take-most positioning, and the executive read on European wealth competition. Not German (Romanian-born), so the German voice in the report comes from Persona B instead. |
-| B — Group Head of Operations | Carl Battrum | Group Head of Operations at FNZ. 11 years at FNZ. Experienced COO with a financial-sector background. | Direct match at the right altitude. The decade-plus tenure is a meaningful asset for §4: coordination costs, hybrid governance, and asset specificity all sharpen with a long view of how bank-FNZ relationships evolve. |
+| B — Group Head of Operations | Carl Battrum | Group Head of Operations at FNZ. 11 years at FNZ. Experienced COO with a financial-sector background. | Direct match at the right altitude. The decade-plus tenure is a meaningful asset for §5.1: coordination costs, hybrid governance, and asset specificity all sharpen with a long view of how bank-FNZ relationships evolve. |
 | B (one-tier-below proxy) | Gabriel Bonnet | Business Readiness Senior Manager | Sits inside Operations one tier below Battrum. Provides accurate ground-truth for question realism on day-to-day operational delivery and client readiness work. The persona voice itself sits at Battrum's altitude. |
-| C — Managing Director, Client Management and Business Development, Europe | James Dunne | Managing Director, Client Management and Business Development at FNZ. Joined recently per FNZ press release. | MD-level seat with explicit client management and business development scope. Carries the §6 territory credibly: how the FNZ deal gets framed at bank executive level, commercial expectation versus post-implementation reality, where banks misjudge the capability rebuild. |
+| C — Managing Director, Client Management and Business Development, Europe | James Dunne | Managing Director, Client Management and Business Development at FNZ. Joined recently per FNZ press release. | MD-level seat with explicit client management and business development scope. Carries the §5.3 territory credibly: how the FNZ deal gets framed at bank executive level, commercial expectation versus post-implementation reality, where banks misjudge the capability rebuild. |
 | C (one-tier-below proxy) | Mathieu Duchêne | Platform Service Delivery Manager, Nordics. Stockholm-based. | Provides Nordics-specific ground-truth for question realism on day-to-day client-delivery reality from a seat similar to Pontus's former vantage. The persona voice itself sits at Dunne's MD altitude, not at Duchêne's level. |
 
 **Held in reserve, not currently allocated:**
 
 | Candidate | Real role | Why held in reserve |
 |---|---|---|
-| Martin Renheim | Head of FNZ Markets EU | Strong fit if §6 is ever reframed around the execution boundary. Useful if a fourth interview is added or if §5 is extended to cover the integrated execution layer. Currently not needed because Dunne covers §6 cleanly. |
+| Martin Renheim | Head of FNZ Markets EU | Strong fit if §5.3 is ever reframed around the execution boundary. Useful if a fourth interview is added or if §5.2 is extended to cover the integrated execution layer. Currently not needed because Dunne covers §5.3 cleanly. |
 
 **Rules for this section:**
 

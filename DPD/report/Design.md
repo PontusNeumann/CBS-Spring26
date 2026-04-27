@@ -18,8 +18,43 @@ From `../../Design.md`:
 
 From `../../ML/report/Design.md`:
 
-- Word output pipeline, paragraph-spacing rules, and keep-together rules (zero auto spacing, blank `Normal` paragraphs as separators, `cantSplit` and `keepNext` on tables and figure captions, `pageBreakBefore` on `References` and `Appendix`).
+- Word output pipeline, paragraph-spacing rules, and keep-together rules (zero auto spacing, blank `Normal` paragraphs as separators, `cantSplit` and `keepNext` on tables and figure captions).
 - Caption format in Word: *Figure N. Descriptive caption text.* and *Table N. Descriptive caption text.*
+
+## 1.1. DPD-Specific Word Output Rules — Spacing and Page Breaks
+
+The DPD docx is built from the CBS branded template at `report/backup/KAN-CDSCO2401U_185912_DPD_Spring2026_2026-04-26_pre-content-draft.docx`. The first page of that template (the front page wrapped in a `<w:sdt>` block) carries the CBS logo, the cover image, and the accent-colour background shape. **Those elements are not moved or modified by any build step.** The same applies to the back-page block.
+
+**Paragraph spacing — one row, applied programmatically.**
+
+- Every paragraph in the document has `space-before = 0` and `space-after = 0` set on its `<w:spacing>` element, regardless of the underlying style's defaults.
+- All `w:beforeAutospacing` and `w:afterAutospacing` flags are zeroed out so the explicit zero values actually apply.
+- Vertical separation between content elements is created by inserting a single blank paragraph in the `Normal` style with the document's default body font size. The blank paragraph is one body-text line tall — no more, no less.
+- Default rule: **one blank `Normal` row between every two content elements** (heading, body paragraph, figure, table, caption).
+
+**Exceptions to the one-row rule:**
+
+1. **Heading immediately followed by another heading** (e.g. `5. Discussion` → `5.1. Transaction costs`) — no blank row between them. The lower-level heading sits flush under the higher-level one.
+2. **Heading immediately followed by body text** — no blank row between them. The first body paragraph of a section starts directly under its heading.
+3. **Table caption immediately above its table** — no blank row between the caption and the table. Caption + table form one block.
+4. **Figure caption immediately below its figure** — no blank row between figure and caption. Figure + caption form one block.
+
+**Keep-together rules (no splits across pages):**
+
+- Tables: every row carries `cantSplit`; every paragraph in every non-last row carries `keepNext`; the paragraph immediately before each table (the caption) carries `keepNext` so the caption never lands on a different page than the table.
+- Figures: the paragraph containing the figure carries `keepNext` so it stays with its caption paragraph below.
+
+**Page-break-before — locked sections only.**
+
+Only three top-level paragraphs carry `pageBreakBefore` on their paragraph properties:
+
+1. The **Table of contents** heading (`TOCHeading` style).
+2. The **References** heading (`Reference Heading` style).
+3. The **Appendix** heading (`Heading 1` style).
+
+No body Heading 1 (Introduction, Background, Method, Results, Discussion, Conclusion) carries `pageBreakBefore`. Body sections flow inline so the 10-page budget is not wasted on forced breaks.
+
+The back-page block in the CBS template already carries its own `pageBreakBefore` and is left untouched.
 
 ## 2. DPD-Specific Page Discipline
 
@@ -50,17 +85,18 @@ Open structure, but a workable default:
 
 1. Front page (excluded from page and character counts).
 2. Table of contents (counts toward pages, not characters).
-3. Introduction and problem statement — ≤ 1 page.
-4. Brief scope note — which parts of which frameworks will be used and why.
-5. Integrated analysis — theory and case woven together, covering economic, managerial, and societal dimensions.
-6. Recommendations — concrete, justified, addressing trade-offs.
-7. Conclusion, reflection, and limitations.
-8. References (page break before; counts toward neither pages nor characters).
-9. Appendix, if any (page break before; counts toward neither).
+3. Introduction — research question, purpose, scope, and theory selection, ≤ 1 page.
+4. Background — FNZ and the wealth-platform shift, including public case evidence.
+5. Method — case design, interview logic, and source limitations.
+6. Results — interview extraction tables and core empirical findings.
+7. Discussion — theory-driven interpretation, trade-offs, and solution implications.
+8. Conclusion and limitations.
+9. References (page break before; counts toward neither pages nor characters).
+10. Appendix, if any (page break before; counts toward neither).
 
 ## 5. Writing Conventions
 
-- **Language:** UK English, academic tone, clear and concise.
+- **Language:** US English, academic tone, clear and concise.
 - **Voice:** No first person — avoid *I*, *we*, *our*. Use the passive or recast in third person.
 - **Punctuation:** No em dash and no en dash used as a sentence connector. Use a comma, colon, semicolon, or recast.
 - **Sentence rhythm:** Lead with the answer, then explain. Short sentences with selective descriptive word choices.
@@ -73,7 +109,7 @@ Open structure, but a workable default:
 
 For every theoretical move in the paper, follow this shape:
 
-> "In light of \[theory], the \[mechanism / property] present in \[case] is X. This influences \[specific behaviour or outcome] as Y. The implication for the firm is Z."
+> "In light of \[theory], the \[mechanism / property] present in \[case] is X. This influences \[specific behavior or outcome] as Y. The implication for the firm is Z."
 
 Theories are introduced at the point of use, only as much as needed to apply them. If a framework has multiple components and only some are used, state the scope explicitly:
 
@@ -112,7 +148,7 @@ If used:
 
 - Save figures as PNG at 300 dpi, `bbox_inches="tight"`, white background. File naming: `01_descriptive_name.png`.
 - Insert into Word with the `Figure` caption style; format: *Figure N. Descriptive caption text.*
-- Tables are native Word tables for anything up to roughly ten rows. Grid lines 0.5 pt black, header row bold, no fill, numeric columns centred.
+- Tables are native Word tables for anything up to roughly ten rows. Grid lines 0.5 pt black, header row bold, no fill, numeric columns centered.
 - Captions: *Table N. Descriptive caption text.*
 - Figures and tables are numbered independently, both starting at 1, in order of appearance.
 - A figure or table that does not say more than the prose it displaces is moved to the appendix or removed.
