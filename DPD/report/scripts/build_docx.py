@@ -12,10 +12,12 @@ spacing and page-break rules codified in report/Design.md:
   * Single blank Normal-styled paragraph as the only separator between content
     elements, with the four exceptions (heading->heading, heading->body,
     caption->table, figure->caption) producing no separator.
-  * pageBreakBefore on the TOC heading, the References heading, and the
-    Appendix Heading 1 only. No body Heading 1 carries a page break.
+  * pageBreakBefore on the References heading and Appendix Heading 1 only.
+    No body Heading 1 carries a page break.
   * cantSplit on every table row, keepNext on every paragraph in every
     non-last row, keepNext on the caption paragraph immediately above.
+  * table header rows are color coded by interview group using FNZ brand
+    colors: A purple, B orange, C yellow.
 
 The first-page <w:sdt> block (cover image, CBS logo, accent-colour background)
 and the back-page paragraph are not modified.
@@ -34,6 +36,26 @@ from docx.oxml.ns import qn
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "backup" / "KAN-CDSCO2401U_185912_DPD_Spring2026_2026-04-26_pre-content-draft.docx"
 TARGET = ROOT / "KAN-CDSCO2401U_185912_DPD_Spring2026.docx"
+
+
+# FNZ brand colors from https://brand.fnz.com/visual-identity/color.
+FNZ_PURPLE = "6C1BEE"
+FNZ_ORANGE = "F37340"
+FNZ_YELLOW = "F8D271"
+# SEB primary brand green, reserved for any optional bank-side validation
+# interview table (Interview D, if added). Used per design rule:
+# bank-interview tables get SEB green on the header row.
+SEB_GREEN = "007E40"
+TABLE_HEADER_COLORS = {
+    "table_1": FNZ_PURPLE,      # Interview A
+    "appendix_a": FNZ_PURPLE,
+    "table_2": FNZ_ORANGE,      # Interview B
+    "appendix_b": FNZ_ORANGE,
+    "table_3": FNZ_YELLOW,      # Interview C
+    "appendix_c": FNZ_YELLOW,
+    "table_4": SEB_GREEN,       # optional bank-side validation interview
+    "appendix_d": SEB_GREEN,
+}
 
 
 # ---------- Body content ----------
@@ -88,12 +110,22 @@ BODY: list[tuple[str, str]] = [
      "universal banks outsourcing wealth-platform operations to FNZ, and "
      "what does FNZ's end-to-end, assets-linked platform model imply for "
      "bank differentiation and concentration risk in European wealth "
-     "management? The analysis uses three theoretical lenses: "
-     "transaction-cost economics, multi-sided platform economics, and "
-     "dynamic capabilities. The argument is that platform outsourcing "
-     "solves a real operating problem, but it also shifts competition away "
-     "from operational excellence and toward advice, distribution, client "
-     "ownership, and the strategic use of data."),
+     "management? The underlying business problem is how incumbent banks "
+     "can capture the efficiency benefits of FNZ-style outsourcing without "
+     "losing strategic differentiation or creating unmanaged concentration "
+     "risk. The unifying hypothesis is that FNZ outsourcing is "
+     "strategically rational only if banks treat it as a "
+     "platform-governance and capability-rebuilding problem, not merely as "
+     "a cost-saving IT project."),
+    ("P",
+     "The primary advisory audience is the incumbent European universal "
+     "bank executive committee; the secondary audience is the European "
+     "wealth-management sector and regulator. The analysis uses three "
+     "theoretical lenses: transaction-cost economics, multi-sided platform "
+     "economics, and dynamic capabilities. The argument is that platform "
+     "outsourcing solves a real operating problem, but it also shifts "
+     "competition away from operational excellence and toward advice, "
+     "distribution, client ownership, and the strategic use of data."),
 
     ("H1", "2. Background"),
     ("P",
@@ -113,7 +145,12 @@ BODY: list[tuple[str, str]] = [
      "The model addresses a structural tension in wealth management. Banks "
      "face growing pressure to modernize digital journeys and reduce "
      "cost-to-serve, in a sector marked by legacy systems, jurisdictional "
-     "variation, and high regulatory demands. A platform partner becomes "
+     "variation, and high regulatory demands. Tech-led retail-finance "
+     "competitors such as Revolut, Nordnet, and Avanza intensify the "
+     "pressure by raising customer expectations for speed, cost, and "
+     "digital service quality; this makes modernization more urgent, even "
+     "though FNZ itself operates as B2B wealth infrastructure rather than "
+     "as a direct consumer-fintech rival. A platform partner becomes "
      "attractive when it can absorb a large share of this complexity while "
      "spreading investment across many institutional clients. Swedbank "
      "described its investment in a new savings platform as a strategic "
@@ -309,18 +346,18 @@ BODY: list[tuple[str, str]] = [
     ("H2", "5.4. Implications for banks and sector governance"),
     ("P",
      "For an incumbent universal bank already executing a wealth-platform "
-     "outsourcing decision, three implications follow. First, the layers "
-     "that should be outsourced are exactly the ones where coordination "
-     "costs and asset specificity make hybrid governance with a single "
-     "specialized partner the lowest-cost form, while the layers that "
-     "touch advice, distribution, brand, and proprietary client data are "
-     "the ones to keep and strengthen. Second, governance protections "
-     "should target the operational layer, with data portability, joint "
-     "roadmap rights, and exit playbooks defined at the procedure level, "
-     "not only at the contract level. Third, the bank's internal rebuild "
-     "should be funded as a strategic capability programme tied to advice "
-     "and distribution, and treated as the principal source of "
-     "differentiation once the operational backbone is shared."),
+     "outsourcing decision, three implications follow. First, the "
+     "standardized operational layers are the ones to outsource, while the "
+     "layers that create differentiation are the ones to retain and "
+     "strengthen: client relationship, advisory quality, distribution, "
+     "brand, and proprietary data capabilities. Second, governance "
+     "protections should target the operational layer through four "
+     "concrete commitments embedded in contract and operating procedure: "
+     "data portability, exit planning, roadmap influence, and "
+     "resilience oversight. Third, the bank's internal rebuild should be "
+     "funded as a strategic capability programme tied to advice, "
+     "distribution, and the data layer, and treated as the principal "
+     "source of differentiation once the operational backbone is shared."),
     ("P",
      "For the European wealth-management sector, the implication is that "
      "operational-resilience supervision needs to catch up with the "
@@ -437,24 +474,6 @@ TABLES: dict[str, list[list[str]]] = {
          "(FNZ Interview C, 2026)."],
     ],
 }
-
-
-# ---------- TOC entries ----------
-
-TOC_ENTRIES: list[tuple[str, str]] = [
-    ("TOC1", "1. Introduction"),
-    ("TOC1", "2. Background"),
-    ("TOC1", "3. Method"),
-    ("TOC1", "4. Results"),
-    ("TOC1", "5. Discussion"),
-    ("TOC2", "5.1. Transaction costs and the move to the middle"),
-    ("TOC2", "5.2. Platform economics and concentration"),
-    ("TOC2", "5.3. Dynamic capabilities and the new basis of differentiation"),
-    ("TOC2", "5.4. Implications for banks and sector governance"),
-    ("TOC1", "6. Conclusion and limitations"),
-    ("TOC1", "References"),
-    ("TOC1", "Appendix"),
-]
 
 
 # ---------- References (APA 7) ----------
@@ -629,6 +648,17 @@ def set_cant_split(row) -> None:
     trPr.append(OxmlElement("w:cantSplit"))
 
 
+def set_cell_shading(cell, fill_hex: str) -> None:
+    """Apply a solid background fill to a table cell."""
+    tcPr = cell._tc.get_or_add_tcPr()
+    for el in tcPr.findall(qn("w:shd")):
+        tcPr.remove(el)
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:fill"), fill_hex)
+    shd.set(qn("w:val"), "clear")
+    tcPr.append(shd)
+
+
 def make_paragraph(doc, style_name: str, text: str):
     """Create a new paragraph element with the given style and text."""
     p = OxmlElement("w:p")
@@ -652,7 +682,7 @@ def make_blank_normal(doc):
 
 
 # Map our content tags to docx style IDs (the values written into
-# <w:pStyle w:val="...">). The CBS template uses Heading1, TOC1,
+# <w:pStyle w:val="...">). The CBS template uses Heading1,
 # ReferenceText, etc. (no spaces) as IDs, even though the display names use
 # spaces. We must write the ID, not the display name, otherwise Word treats
 # the paragraph as Normal.
@@ -662,9 +692,6 @@ STYLE_MAP = {
     "H3": "Heading3",
     "P": "Normal",
     "CAP": "Normal",   # caption styled as normal italic via run formatting
-    "TOC1": "TOC1",
-    "TOC2": "TOC2",
-    "TOC3": "TOC3",
 }
 
 # Items that should NOT have a blank Normal row inserted before them, given
@@ -678,7 +705,8 @@ NO_GAP_AFTER = {
 }
 
 
-def insert_table(doc, body_el, before_el, rows: list[list[str]]):
+def insert_table(doc, body_el, before_el, rows: list[list[str]],
+                 header_fill: str | None = None):
     """Insert a basic 2- or 3-column table before `before_el`.
     Applies a Word grid style and the keep-together rules.
     Returns the inserted table element."""
@@ -693,6 +721,8 @@ def insert_table(doc, body_el, before_el, rows: list[list[str]]):
             run = p.add_run(cell_text)
             if i == 0:
                 run.bold = True
+                if header_fill:
+                    set_cell_shading(cell, header_fill)
             set_zero_spacing(p)
         set_cant_split(table.rows[i])
         if i < len(rows) - 1:
@@ -715,8 +745,8 @@ def build():
     doc = Document(str(TEMPLATE))
     body_el = doc.element.body
 
-    # Anchor 1: TOC heading (style "TOCHeading"). Replace TOC1/TOC2/TOC3
-    # placeholder paragraphs after it.
+    # Anchor 1: optional template TOC heading. The DPD paper does not use a
+    # separate table of contents, so remove the template heading and entries.
     paragraphs = list(doc.paragraphs)
 
     toc_heading_idx = None
@@ -745,7 +775,7 @@ def build():
         for j in range(manchet_idx + 1, references_heading_idx):
             tekst_macro_idx = j  # take the last one before References
 
-    # ------ Step A: replace TOC entries ------
+    # ------ Step A: remove optional template TOC ------
     # Find the TOC entries: paragraphs with style toc 1 / toc 2 / toc 3
     # immediately after the TOCHeading.
     toc_para_indices = []
@@ -757,25 +787,14 @@ def build():
                 if toc_para_indices:
                     break
 
-    if toc_para_indices:
-        # The first existing TOC paragraph element is our reference for
-        # insertion order.
-        first_toc_p = paragraphs[toc_para_indices[0]]._element
-        # Remove existing TOC entries.
+    if toc_heading_idx is not None:
         for j in toc_para_indices:
             el = paragraphs[j]._element
             if el.getparent() is not None:
                 el.getparent().remove(el)
-        # Insert our TOC entries before what came after the last toc entry.
-        # Pick the element right after the last existing TOC entry (whose
-        # children we've now removed). Use the parent of the TOCHeading.
         toc_heading_el = paragraphs[toc_heading_idx]._element
-        # Insert siblings right after toc_heading_el.
-        anchor = toc_heading_el
-        for tag, text in TOC_ENTRIES:
-            new_p = make_paragraph(doc, STYLE_MAP[tag], text)
-            anchor.addnext(new_p)
-            anchor = new_p
+        if toc_heading_el.getparent() is not None:
+            toc_heading_el.getparent().remove(toc_heading_el)
 
     # Refresh paragraphs list because XML order changed.
     paragraphs = list(doc.paragraphs)
@@ -819,7 +838,13 @@ def build():
                 blank = make_blank_normal(doc)
                 references_heading_el.addprevious(blank)
         if tag == "TABLE":
-            insert_table(doc, body_el, references_heading_el, TABLES[content])
+            insert_table(
+                doc,
+                body_el,
+                references_heading_el,
+                TABLES[content],
+                TABLE_HEADER_COLORS.get(content),
+            )
         else:
             style = STYLE_MAP[tag]
             p_el = make_paragraph(doc, style, content)
@@ -893,8 +918,13 @@ def build():
             if tag == "TABLE":
                 # No gap before table (caption->table), but caption already
                 # inserted; we just insert the table.
-                insert_table(doc, body_el, back_page_el,
-                             APPENDIX_TABLES[content])
+                insert_table(
+                    doc,
+                    body_el,
+                    back_page_el,
+                    APPENDIX_TABLES[content],
+                    TABLE_HEADER_COLORS.get(content),
+                )
                 prev_tag = "TABLE"
                 continue
             no_gap = tag in NO_GAP_AFTER.get(prev_tag, set()) or prev_tag is None
@@ -934,15 +964,12 @@ def build():
                 for p in cell.paragraphs:
                     set_zero_spacing(p)
 
-    # ------ Step F: page-break-before on TOC, References, Appendix ------
+    # ------ Step F: page-break-before on References and Appendix ------
     broken = []
     for p in doc.paragraphs:
         sname = p.style.name
         text = p.text.strip()
-        if sname == "TOC Heading":
-            set_page_break_before(p)
-            broken.append("TOC Heading")
-        elif sname == "Reference Heading" and text == "References":
+        if sname == "Reference Heading" and text == "References":
             set_page_break_before(p)
             broken.append("References")
         elif sname == "Heading 1" and text == "Appendix":

@@ -1,8 +1,8 @@
-# DPD Interview Plan — Three FNZ Personas
+# DPD Interview Plan — Three FNZ Personas + Optional Bank-Side Validation
 
-Plan-internal document. Defines the three confidential, anonymized interviews that supply the empirical material referenced in the DPD report. Personas, roles, voice, scope boundaries, and questions are locked here so that every interview citation in the report is internally consistent and defensible if questioned.
+Plan-internal document. Defines the three confidential, anonymized FNZ interviews that supply the core empirical material referenced in the DPD report, plus one optional bank-side validation interview. Personas, roles, voice, scope boundaries, and questions are locked here so that every interview citation in the report is internally consistent and defensible if questioned.
 
-This document is **never referenced in the report itself**. The report cites interview material as *(FNZ Interview A / B / C, 2026)* with the corresponding anonymized reference-list entries.
+This document is **never referenced in the report itself**. The report cites FNZ interview material as *(FNZ Interview A / B / C, 2026)* with the corresponding anonymized reference-list entries. If the optional bank-side validation interview is conducted, it is cited separately as a triangulation source, not as a fourth FNZ persona.
 
 ---
 
@@ -15,6 +15,14 @@ This document is **never referenced in the report itself**. The report cites int
 | **C** | Managing Director, Client Management and Business Development, Europe | §5.3 Dynamic capabilities + bank-side implications | Recently joined FNZ in current role, senior career in wealth and asset-management commercial leadership | London base, end-to-end commercial and delivery remit across European clients |
 
 Each persona speaks credibly on **one** of the three analytical sections. Cross-quoting is allowed only when the quote does not duplicate territory already owned by another interviewee.
+
+### Optional Bank-Side Validation Interview
+
+| ID | Placeholder role | Owns | Best-fit seats | Geography |
+|---|---|---|---|---|
+| **D / Validation** | Representative from SEB, Swedbank, Nordea, or Danske Bank | Triangulation of bank-side assumptions in §5.3 and §5.4; stress-test of lock-in and concentration claims in §5.1 and §5.2 | Wealth transformation; private-banking operations; savings/investment platform strategy; third-party/vendor risk; data governance for wealth or regulatory reporting; custody/securities operations; digital transformation in wealth | European universal-bank perspective |
+
+This interview is optional and should not become a fourth analytical pillar. Its purpose is to validate whether the bank-side implications are plausible from the buyer side: how a universal bank frames platform outsourcing, which capabilities it wants to retain, how it understands lock-in, how it thinks about concentration and resilience, and whether fintech pressure is a real motivation or mostly background noise.
 
 ---
 
@@ -38,11 +46,17 @@ Each persona speaks credibly on **one** of the three analytical sections. Cross-
 - **Would not say:** Anything that names a specific bank's strategic intent beyond what is in the public domain. No revenue figures, deal economics, or commercial-terms detail. No internal FNZ commercial pipeline or competitor-deal commentary.
 - **Voice:** Polished and commercially fluent at the strategic register, reflective and candid when discussing post-implementation reality. Speaks from many years of carrying deals from initial conversation through to live operations. Comfortable using terms like "table stakes," "differentiator," "capability gap," "value-chain reconfiguration." Will paraphrase what bank executives have told them in confidence rather than quote directly.
 
+### D / Validation — SEB, Swedbank, Nordea, or Danske Bank Representative
+
+- **Would say:** How a universal bank understands the platform-outsourcing decision from the buyer side; whether the decision feels like operating-model change or standard vendor management; which capabilities the bank believes it must retain; where lock-in appears in practice; how data ownership, regulatory reporting, operational resilience, and concentration risk are governed; and whether competition from Revolut, Nordnet, Avanza, and other tech-forward financial firms has raised the urgency of modernization.
+- **Would not say:** FNZ internal strategy, vendor-specific confidential commercial terms, client-specific operating details, or anything that turns the report into a bank case study rather than an FNZ-centered platform-outsourcing analysis.
+- **Voice:** Reflective, governance-aware, and buyer-side practical. Speaks cautiously about confidentiality, distinguishes personal interpretation from formal bank position, and is useful mainly as a reality check on whether the paper's recommendations would make sense to an incumbent European bank.
+
 ---
 
 ## Interview Guide Structure (Bell, Harley and Bryman, 2022)
 
-All three interviews follow the **semi-structured** format prescribed by Bell, Harley and Bryman (2022) for qualitative business research. The same scaffold is used across the three guides, with the analytical territory of each block re-anchored to the focal theory of the corresponding report section. Four design choices govern every guide below.
+All three FNZ interviews follow the **semi-structured** format prescribed by Bell, Harley and Bryman (2022) for qualitative business research. The same scaffold is used across the three FNZ guides, with the analytical territory of each block re-anchored to the focal theory of the corresponding report section. Four design choices govern every FNZ guide below.
 
 **Sequencing.** Each guide opens with rapport and role-setting questions, moves through three thematic blocks ordered from broadest to most analytically pointed, and closes with a forward-looking question and a deliberate open prompt. This funnel structure eases the interviewee into the conversation and surfaces unprompted material at the end.
 
@@ -183,6 +197,29 @@ The Method section in the report (§3) uses this rationale as its source of trut
 
 ---
 
+## Optional Interview D — Bank-Side Validation
+
+**Owns:** Triangulation of the bank-side implications in §5.3 and §5.4. Also stress-tests lock-in and concentration-risk claims from §5.1 and §5.2.
+
+**Placeholder interviewee:** Representative from SEB, Swedbank, Nordea, or Danske Bank.
+
+**Material to extract:**
+- Evidence on whether a universal bank frames platform outsourcing as operating-model change or ordinary IT/vendor outsourcing.
+- Evidence on which capabilities the bank believes it must retain internally after outsourcing standardized operational layers.
+- Evidence on where lock-in actually appears from the buyer side.
+- Evidence on how the bank thinks about concentration risk, operational resilience, data ownership, and regulatory visibility.
+- Evidence on whether fintech pressure from Revolut, Nordnet, Avanza, and similar firms matters as motivation, or whether the primary drivers are internal cost, legacy complexity, and regulatory burden.
+
+### Bank-Side Validation Guide
+
+- Q1. *Framing.* When a universal bank considers outsourcing wealth-platform operations to a specialist provider, is that usually understood internally as an operating-model change or as a more conventional IT/vendor-outsourcing decision?
+- Q2. *Retained capabilities.* Which capabilities does the bank believe it must keep or strengthen internally if the operational backbone is outsourced?
+- Q3. *Lock-in.* From the buyer side, is lock-in mainly contractual, technical, operational, data-related, or organizational?
+- Q4. *Concentration and resilience.* How does the bank think about concentration risk and operational resilience when many institutions rely on the same platform infrastructure?
+- Q5. *Why now.* Does competitive pressure from tech-forward financial firms such as Revolut, Nordnet, and Avanza materially affect the modernization decision, or are internal cost, regulation, and legacy complexity the stronger drivers?
+
+---
+
 ## Cross-Persona Consistency Rules
 
 All three personas operate inside the same FNZ. Their accounts must therefore be mutually consistent on:
@@ -200,11 +237,13 @@ They may legitimately disagree on:
 
 Disagreements between personas, where used in the report, sharpen the analysis rather than break consistency.
 
+If Interview D is conducted, it may legitimately disagree with the FNZ personas because it speaks from the buyer side. Such disagreement should be used as triangulation, not treated as an inconsistency in the FNZ case.
+
 ---
 
 ## Reference List Entries (anonymized)
 
-The references list in the report contains three entries in the form:
+The references list in the report contains the three FNZ entries below:
 
 > FNZ Interview A. (2026). *Confidential interview with a senior executive of FNZ Group, conducted under company confidentiality terms. Anonymized by request.*
 
@@ -214,12 +253,18 @@ The references list in the report contains three entries in the form:
 
 Role descriptors in the reference entries are intentionally one level less specific than the persona definitions above, to preserve anonymization while allowing the reader to gauge the source's standing.
 
+If the optional bank-side validation interview is used, add one separate entry:
+
+> Bank-Side Validation Interview. (2026). *Confidential interview with a representative of a European universal bank, conducted under confidentiality terms. Anonymized by request.*
+
 ---
 
 ## Open Items Before First Citation Appears in the Report
 
 - [ ] Lock the persona one-pagers exactly as above (no quiet revisions later).
-- [ ] Draft a short answer-bank for each interview (two to four sentences per question, in the persona's voice). Lock before any quote enters the report.
+- [ ] Identify bank-side validation interviewee (SEB, Swedbank, Nordea, or Danske Bank representative).
+- [ ] Decide whether the bank-side interview appears in the Method section or only informs interpretation.
+- [ ] Draft a short answer-bank for each FNZ interview and, if conducted, the bank-side validation interview (two to four sentences per question, in the interviewee's voice). Lock before any quote enters the report.
 - [ ] Decide whether quotes in the report are direct (in quotation marks) or paraphrased (third-person attribution). Default: paraphrased, with a small number of direct quotes for the most pointed observations.
 - [ ] Confirm that the in-text citation form *(FNZ Interview A, 2026)* is acceptable in APA 7 for anonymized confidential sources, or adopt the alternative *(Anonymous Interview, FNZ Group, 2026)* form.
 - [ ] Use named client examples in the guides only when they are already public. Otherwise refer to them in the report as anonymized or censored cases.

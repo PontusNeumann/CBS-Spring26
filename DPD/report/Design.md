@@ -11,7 +11,7 @@ From `../../Design.md`:
 - Max 2,275 characters per page on average, including spaces.
 - Top and bottom margin at least 3 cm; left and right at least 2 cm.
 - Body font at least 11 pt. Headlines graphically distinct from body text.
-- Page numbers required. Table of contents lists main section starts.
+- Page numbers required.
 - Tables, figures, and illustrations occupy page space but do not count toward characters. They do not justify exceeding the page maximum.
 - Front page fields: title, type of paper, student number, programme name, date, supervisor (if any), character and page count, confidentiality status (if applicable).
 - Plagiarism and reference handling per CBS Library guidance.
@@ -21,9 +21,43 @@ From `../../ML/report/Design.md`:
 - Word output pipeline, paragraph-spacing rules, and keep-together rules (zero auto spacing, blank `Normal` paragraphs as separators, `cantSplit` and `keepNext` on tables and figure captions).
 - Caption format in Word: *Figure N. Descriptive caption text.* and *Table N. Descriptive caption text.*
 
-## 1.1. DPD-Specific Word Output Rules — Spacing and Page Breaks
+## 1.1. DPD-Specific Template Rules — Typography, Cover, and Back Page
 
-The DPD docx is built from the CBS branded template at `report/backup/KAN-CDSCO2401U_185912_DPD_Spring2026_2026-04-26_pre-content-draft.docx`. The first page of that template (the front page wrapped in a `<w:sdt>` block) carries the CBS logo, the cover image, and the accent-colour background shape. **Those elements are not moved or modified by any build step.** The same applies to the back-page block.
+The DPD docx is built from the CBS branded template at `report/KAN-CDSCO2401U_185912_DPD_Spring2026.docx`. The first page of that template (the front page wrapped in a `<w:sdt>` block) carries the CBS logo, the cover image, and the accent-colour background shape. **Those elements are not moved or modified by any build step.** The same applies to the back-page block.
+
+**Body text**
+
+- All body paragraphs in the built-in `Normal` style are **11 pt**.
+- The body font follows the CBS template default serif face.
+
+**Headings**
+
+- `Heading 1` stays at the template-defined setting: **CBS NEW, 36 pt, bold, color `#4967AA`**.
+- `Heading 2` stays at the template-defined setting: **CBS NEW, 14 pt, bold, color `#4967AA`**.
+- `Reference Heading` stays at the template-defined setting: **CBS NEW, 36 pt, bold**.
+
+**Template-defined styles excluded from the 11 pt rule**
+
+- Front page styles remain at template sizes:
+  - `Cover - Title`: **42 pt**
+  - `Cover - Subtitle`: **14 pt**
+  - `Cover - Text`: **9 pt / 11 pt**, per template
+- Back page:
+  - `Back - Text`: **CBS Serif, 9 pt**
+- References:
+  - `Reference Text`: **CBS Serif, 9.5 pt**
+
+**Rule of thumb**
+
+- Only paragraphs in the built-in `Normal` style are forced to **11 pt**.
+- Paragraphs using CBS template-specific styles such as `Cover - *`, `Back - Text`, `Reference Text`, and `Reference Heading` keep their template-defined sizes.
+
+**Removed / cleaned up**
+
+- No manual table-of-contents listing is kept on the cover or in front matter.
+- No ISSN line is kept on the back page.
+
+## 1.2. DPD-Specific Word Output Rules — Spacing and Page Breaks
 
 **Paragraph spacing — one row, applied programmatically.**
 
@@ -46,11 +80,10 @@ The DPD docx is built from the CBS branded template at `report/backup/KAN-CDSCO2
 
 **Page-break-before — locked sections only.**
 
-Only three top-level paragraphs carry `pageBreakBefore` on their paragraph properties:
+Only two top-level paragraphs carry `pageBreakBefore` on their paragraph properties:
 
-1. The **Table of contents** heading (`TOCHeading` style).
-2. The **References** heading (`Reference Heading` style).
-3. The **Appendix** heading (`Heading 1` style).
+1. The **References** heading (`Reference Heading` style).
+2. The **Appendix** heading (`Heading 1` style).
 
 No body Heading 1 (Introduction, Background, Method, Results, Discussion, Conclusion) carries `pageBreakBefore`. Body sections flow inline so the 10-page budget is not wasted on forced breaks.
 
@@ -83,16 +116,15 @@ A paragraph that serves none of these four does not belong in the paper.
 
 Open structure, but a workable default:
 
-1. Front page (excluded from page and character counts).
-2. Table of contents (counts toward pages, not characters).
-3. Introduction — research question, purpose, scope, and theory selection, ≤ 1 page.
-4. Background — FNZ and the wealth-platform shift, including public case evidence.
-5. Method — case design, interview logic, and source limitations.
-6. Results — interview extraction tables and core empirical findings.
-7. Discussion — theory-driven interpretation, trade-offs, and solution implications.
-8. Conclusion and limitations.
-9. References (page break before; counts toward neither pages nor characters).
-10. Appendix, if any (page break before; counts toward neither).
+1. Front page, if used by the CBS template.
+2. Introduction — research question, purpose, scope, and theory selection, ≤ 1 page.
+3. Background — FNZ and the wealth-platform shift, including public case evidence.
+4. Method — case design, interview logic, and source limitations.
+5. Results — interview extraction tables and core empirical findings.
+6. Discussion — theory-driven interpretation, trade-offs, and solution implications.
+7. Conclusion and limitations.
+8. References (page break before; outside the 10-page body cap).
+9. Appendix, if any (page break before; outside the 10-page body cap).
 
 ## 5. Writing Conventions
 
@@ -152,6 +184,20 @@ If used:
 - Captions: *Table N. Descriptive caption text.*
 - Figures and tables are numbered independently, both starting at 1, in order of appearance.
 - A figure or table that does not say more than the prose it displaces is moved to the appendix or removed.
+
+**Table header color coding**
+
+- Tables connected to Interview A use FNZ purple on the header row: `#6C1BEE`.
+- Tables connected to Interview B use FNZ orange on the header row: `#F37340`.
+- Tables connected to Interview C use FNZ yellow on the header row: `#F8D271`.
+- The color coding applies only to the top row of each relevant table, including appendix tables.
+
+**Lighter FNZ color variants for later use**
+
+- Light purple: `#9154F2`.
+- Light orange: `#F48052`.
+- Light yellow: `#F9DA8A`.
+- These are available for future accents, softer table headers, or figure elements where the stronger table-header colors are too saturated.
 
 When the rare figure is generated in Python, follow the palette and theme rules from `../../ML/report/Design.md` (rocket_r palette, white background, `clean_ax`, no in-image titles).
 

@@ -12,13 +12,15 @@ The paper addresses the following research question:
 
 **Why are European universal banks outsourcing wealth-platform operations to FNZ, and what does FNZ's end-to-end, assets-linked platform model imply for bank differentiation and concentration risk in European wealth management?**
 
-The purpose is twofold. First, the paper explains why the outsourcing logic is economically attractive to incumbent banks. Second, it evaluates the managerial and sector-level consequences of that choice, including what banks must rebuild internally once a shared operational backbone is in place. The analysis uses three theoretical lenses: transaction-cost economics, multi-sided platform economics, and dynamic capabilities. The argument throughout is that platform outsourcing solves a real operating problem, but it also shifts competition away from operational excellence and toward advice, distribution, client ownership, and the strategic use of data.
+The underlying business problem is how incumbent banks can capture the efficiency benefits of FNZ-style outsourcing without losing strategic differentiation or creating unmanaged concentration risk. The paper's unifying hypothesis is that FNZ outsourcing is strategically rational only if banks treat it as a platform-governance and capability-rebuilding problem, not merely as a cost-saving IT project.
+
+The purpose is twofold. First, the paper explains why the outsourcing logic is economically attractive to incumbent banks. Second, it evaluates the managerial and sector-level consequences of that choice, including what banks must rebuild internally once a shared operational backbone is in place. The primary advisory audience is the incumbent European universal bank executive committee; the secondary audience is the European wealth-management sector and regulator. The analysis uses three theoretical lenses: transaction-cost economics, multi-sided platform economics, and dynamic capabilities. The argument throughout is that platform outsourcing solves a real operating problem, but it also shifts competition away from operational excellence and toward advice, distribution, client ownership, and the strategic use of data.
 
 ## 2. Background
 
 FNZ's position in the industry helps explain why it is analytically useful. The firm presents itself as an end-to-end wealth-management platform rather than a point-solution provider. Its public material emphasizes the consolidation of fragmented systems, the integration of technology with business and investment operations, and the ability to support banks, wealth managers, insurers, and asset managers on a common infrastructure (FNZ, n.d.). In practical terms, this means that the value proposition extends beyond software implementation. The platform becomes the operating backbone through which institutions process advice workflows, onboarding, portfolio administration, custody arrangements, reporting, and other core activities.
 
-This model addresses a structural tension in wealth management. Banks face growing pressure to modernize digital journeys and reduce cost-to-serve, but they do so in a sector marked by legacy systems, jurisdictional variation, and high regulatory demands. A platform partner becomes attractive when it can absorb a large share of this complexity while spreading investment across many institutional clients. Swedbank's public rationale illustrates this logic clearly. The bank described its investment in a new savings platform as part of a strategic effort to improve efficiency, simplify processes, and create a stable, standardized, and scalable foundation, while preserving the bank's direct customer relationship (FNZ, 2021). The same case also highlighted increased regulatory pressure and the benefit of sharing platform costs and technological development across institutions (FNZ, 2021).
+This model addresses a structural tension in wealth management. Banks face growing pressure to modernize digital journeys and reduce cost-to-serve, but they do so in a sector marked by legacy systems, jurisdictional variation, and high regulatory demands. Tech-led retail-finance competitors such as Revolut, Nordnet, and Avanza intensify the pressure by raising customer expectations for speed, cost, and digital service quality; this makes modernization more urgent, even though FNZ itself operates as B2B wealth infrastructure rather than as a direct consumer-fintech rival. A platform partner becomes attractive when it can absorb a large share of this complexity while spreading investment across many institutional clients. Swedbank's public rationale illustrates this logic clearly. The bank described its investment in a new savings platform as part of a strategic effort to improve efficiency, simplify processes, and create a stable, standardized, and scalable foundation, while preserving the bank's direct customer relationship (FNZ, 2021). The same case also highlighted increased regulatory pressure and the benefit of sharing platform costs and technological development across institutions (FNZ, 2021).
 
 Recent mandates suggest that this logic has strengthened rather than weakened. In September 2025, UniCredit selected FNZ to transform its securities-services operations in Germany, explicitly citing standardization, efficiency, and a scalable, cloud-based post-trade platform (FNZ, 2025b). In June 2025, Raymond James Ltd. announced a strategic partnership with FNZ to deliver a next-generation wealth-management platform, framing the decision around end-to-end infrastructure, straight-through processing, and digital capability (FNZ, 2025c). These examples differ in geography and business model, but they point in the same direction: institutions are no longer buying isolated digital tools. They are redesigning the infrastructure on which the wealth proposition rests.
 
@@ -102,7 +104,7 @@ Table 3. Interview C: Managing Director, Client Management and Business Developm
 
 ### 5.4 Implications for banks and sector governance
 
-`[Discussion implications to be written after sections 5.1 to 5.3 are complete. This subsection will specify which layers of the wealth-management value chain should remain internal, what governance protections should accompany outsourcing, which post-outsourcing capabilities require deliberate rebuilding, and how concentration risk should be handled from a sector perspective.]`
+`[Discussion implications to be written after sections 5.1 to 5.3 are complete. This subsection will specify which standardized operational layers can be outsourced, which differentiating layers should remain internal, what governance protections should accompany outsourcing, which post-outsourcing capabilities require deliberate rebuilding, and how concentration risk should be handled from a sector perspective. It should land on the concrete recommendation that banks retain client relationship, advisory quality, distribution, brand, and proprietary data capabilities while requiring portability, exit planning, roadmap influence, and resilience oversight.]`
 
 ## 6. Conclusion and limitations
 
@@ -117,3 +119,160 @@ Table 3. Interview C: Managing Director, Client Management and Business Developm
 ### Appendix A. Extended interview extraction tables
 
 `[Rows not used in the main text can be moved here to save page space while preserving traceability between the interview guides and the analysis.]`
+
+### Appendix B. Interview transcripts
+
+The full transcripts are reproduced below in *Question:* / *Answer:* format. Questions are presented exactly as they were asked. Answers are left empty in this draft and will be filled in once the interview material is locked.
+
+#### Appendix B.1. Interview A — Group Head of Europe
+
+**Opening — rapport and context**
+
+Question: How would you describe your seat at FNZ today and what falls inside your remit?
+Answer:
+
+Question: How would you characterize FNZ's positioning in European wealth management today, in your own words rather than the corporate one?
+Answer:
+
+**Block 1 — Network effects, multi-homing, and switching**
+
+Question: When a new institutional client joins the platform, what changes, if anything, for the institutions already on it?
+Answer:
+
+Question: In wealth management, banks often use multiple vendors around the edges. Why is the core operating backbone different?
+Answer:
+
+Question: Thinking only about public or anonymizable examples, what would a realistic dual-platform or exit path involve for a large bank, and where do the main obstacles usually appear?
+Answer:
+
+**Block 2 — Monetization and incentive alignment**
+
+Question: FNZ often presents the AUA-linked model as part of a partnership rather than a standard vendor relationship. What does that pricing structure enable that a fixed-fee model would not?
+Answer:
+
+Question: How, if at all, does that alignment shape day-to-day prioritization decisions?
+Answer:
+
+Question: Where does that model create tension or misunderstanding for clients?
+Answer:
+
+**Block 3 — Winner-take-most conditions in regulated B2B**
+
+Question: What combination of factors makes European wealth-platform infrastructure consolidate onto a small number of providers rather than support many parallel platforms?
+Answer:
+
+Question: Which matters more in practice: switching difficulty, the benefits of scale, or clients' limited appetite for operational variety?
+Answer:
+
+Question: Looking only at public examples such as Swedbank, UniCredit Germany, or Raymond James Canada, what do those mandates reveal about what clients are buying from FNZ today?
+Answer:
+
+**Closing — wind-down**
+
+Question: If the European wealth-management sector continues on its current trajectory, what does the platform landscape look like in five years?
+Answer:
+
+Question: Is there anything I have not asked about that you think is important for understanding FNZ's position in European wealth?
+Answer:
+
+#### Appendix B.2. Interview B — Group Head of Operations
+
+**Opening — rapport and context**
+
+Question: How would you describe your seat at FNZ today, and how has your time at the firm shaped how you read the bank-FNZ relationship?
+Answer:
+
+Question: From your seat, where is the boundary between what the bank does and what FNZ does on a typical engagement?
+Answer:
+
+**Block 1 — Coordination cost versus production cost**
+
+Question: Which costs has technology and platform standardization actually reduced for the banks you work with, and which costs have stayed the same or increased?
+Answer:
+
+Question: Public client announcements often emphasize standardization, governance, and scalability. In operational terms, what has to be true in practice for a bank to experience those benefits?
+Answer:
+
+Question: Over your eleven years, how has that cost picture evolved? Where did the shift surprise you?
+Answer:
+
+**Block 2 — Hybrid governance form**
+
+Question: The bank-FNZ relationship is more involved than a simple vendor contract, but it is not internalized either. How would you describe that governance form in practice?
+Answer:
+
+Question: Public cases such as Swedbank suggest banks still evaluate several providers before choosing one primary backbone partner. Why does the operating model so often settle on one core partner rather than several?
+Answer:
+
+Question: Where do you see the line of authority on day-to-day operational decisions, and where does it shift over time?
+Answer:
+
+**Block 3 — Asset specificity and lock-in**
+
+Question: What investments does a bank make when it commits to the FNZ platform that become difficult to redeploy elsewhere?
+Answer:
+
+Question: Is the lock-in primarily contractual, technical, operational, or organizational?
+Answer:
+
+Question: In your experience, what do banks consistently underestimate when they enter a wealth-platform outsourcing arrangement?
+Answer:
+
+**Closing — wind-down**
+
+Question: If you were advising a universal bank today on which functions to keep and which to outsource to a platform like FNZ, where would you draw the line?
+Answer:
+
+Question: Is there anything I have not asked about that you think is important for understanding the operational reality of this relationship?
+Answer:
+
+#### Appendix B.3. Interview C — Managing Director, Client Management and Business Development, Europe
+
+**Opening — rapport and context**
+
+Question: How would you describe your seat at FNZ today, and what does this role see that other seats do not?
+Answer:
+
+Question: When a major European bank signs with FNZ, what typically changes inside that bank over the next one to two years?
+Answer:
+
+**Block 1 — Capability redefinition**
+
+Question: Which capabilities in wealth management are now table stakes, and which still create meaningful differentiation?
+Answer:
+
+Question: What signals do the better-performing banks pick up that the others miss when they think about what to do internally post-implementation?
+Answer:
+
+Question: If operational excellence is increasingly standardized through a partner platform, where is the new basis of competition?
+Answer:
+
+**Block 2 — Capability rebuild**
+
+Question: Once the operational backbone has moved to FNZ, what do banks typically try to rebuild or strengthen on their own side first?
+Answer:
+
+Question: What are the most common reasons they fail?
+Answer:
+
+Question: The banks that have made the most of the relationship: what did they do differently from the others?
+Answer:
+
+**Block 3 — Cognitive framing of the outsourcing decision**
+
+Question: When a bank's executive committee discusses an FNZ outsourcing decision, what past transformations or outsourcing decisions do they usually compare it to?
+Answer:
+
+Question: Is this framed as another IT outsourcing, or as something different?
+Answer:
+
+Question: Where does that analogy serve them well, and where does it lead them astray?
+Answer:
+
+**Closing — wind-down**
+
+Question: If you were advising the CEO of a mid-sized European universal bank that has just signed with FNZ, what are the three things they need to fix internally in the first eighteen months?
+Answer:
+
+Question: Is there anything I have not asked about that you think is important for understanding the bank-side reality of the FNZ relationship?
+Answer:

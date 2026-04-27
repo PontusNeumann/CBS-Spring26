@@ -46,4 +46,4 @@ DPD/
 - All report content destined for the docx avoids first person, em dash, and Word's automatic paragraph spacing.
 - Confidentiality statement is on the front page (decision locked in `report/project_plan.md` §1).
 - Citation style is APA 7.
-- Ten-page hard cap on the report body. Front page, table of contents (pages only), references, and appendix do not count toward the character limit.
+- Ten-page hard cap on the report body. References and appendix sit outside the body cap. A separate table of contents is not required for this paper.
