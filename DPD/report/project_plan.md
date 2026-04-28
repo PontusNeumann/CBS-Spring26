@@ -1,6 +1,8 @@
 # DPD Project Plan — FNZ and the Wealth Management Platform Shift
 
-Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) individual exam paper. The case is **FNZ**, a wealth-management technology firm, framed against the broader shift in European wealth management toward platform-based, AUA-linked operating models. Prior FNZ operations experience informs the interpretation of generic mechanisms such as reconciliation, workflow automation, and regulatory-reporting validation, but it is not treated as a separate confidential data set. Three confidential interviews supply the empirical material that the analysis works against.
+Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) individual exam paper. The case is **FNZ**, a wealth-management technology firm, framed against the broader shift in European wealth management toward platform-based, AUA-linked operating models. Prior FNZ operations experience informs the interpretation of generic mechanisms such as reconciliation, workflow automation, and regulatory-reporting validation, but it is not treated as a separate confidential data set.
+
+**Design mode — supervisor-confirmed (Constantiou, 2026-04-28).** The supervisor confirmed that no empirical data of any type is required in the 10-page report. The paper is therefore engineered to reach a top grade on **course literature, syllabus theory, and public-record case material alone**. Three FNZ-side interviews are kept as **placeholders** that may be slotted in if access materializes, but no analytical claim, recommendation, or LO is load-bearing on the interview content. If the interviews land, they add empirical depth; if they do not, the paper still satisfies LO1–LO4 in full and reads as a theory-driven case analysis grounded in research literature.
 
 ---
 
@@ -10,8 +12,8 @@ Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) indiv
 |---|---|
 | Problem statement | §3 below — bank-advisory business-problem framing |
 | Theories applied | Three, with sub-parts named explicitly (§4) |
-| Confidentiality statement on front page | **Yes** |
-| Empirical material | Three confidential interviews with senior FNZ employees (anonymized), supplemented by public-record corporate facts |
+| Confidentiality statement on front page | **No.** Supervisor confirmed no empirical data is required, so no confidentiality flag is needed (Constantiou, 2026-04-28). |
+| Empirical material | **Primary:** course literature (Iansiti & Lakhani 2020 plus syllabus readings) applied to the FNZ case using public-record corporate facts (FNZ press releases, client mandates, regulator publications). **Optional supplement:** up to three anonymized FNZ-side interviews (Strategy / Operations / Client Management) and one bank-side validation interview, slotted in only if access materializes. The paper must reach grade 12 without them. |
 | Reflexive practitioner material | First-person, anonymized reflection may be used sparingly where it clarifies lived operational mechanisms; no client data, colleague names, named internal checks, incidents, screenshots, or non-public operating details |
 | Citation style | APA 7 |
 | Page budget | 10 pages, body only |
@@ -22,18 +24,13 @@ Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) indiv
 
 ## 2. Methodological Note (plan only — not written into the report)
 
-The empirical material in the report is presented as drawing on **three confidential, anonymized interviews with senior FNZ employees**, conducted under the firm's confidentiality terms. The interviews are referenced in-text as *(FNZ Interview A, 2026)*, *(FNZ Interview B, 2026)*, and *(FNZ Interview C, 2026)*, with corresponding entries in the references list flagged as anonymized per company confidentiality. This is what justifies the front-page confidentiality statement.
+The paper is built so the analytical argument stands on **course literature, syllabus theory, and public-record case material alone**. Each subsection of §5 Discussion derives its theoretical claim from a syllabus reading and applies it to FNZ via publicly verifiable evidence (FNZ press releases, client mandates, regulator publications, peer-reviewed sources on financial-services outsourcing and platform economics).
 
-In practice, the interview content is constructed by the author to populate the analytical points where public-record evidence is thin. The construction follows two rules:
+Three FNZ-side interview placeholders (Strategy, Operations, Client Management) and one optional bank-side interview are retained in §4 Results and Appendix B as a **supplementary evidence layer**. If interviews are conducted before submission, observations are slotted into the existing analytical scaffolding to deepen — not redirect — the argument. Each interview placeholder cell in §4 names the specific theoretical claim it would corroborate, so the paper remains coherent whether the cells are filled or stripped before submission.
 
-1. **Plausibility.** Every quoted observation must be consistent with what a senior FNZ employee in the relevant executive or operational seat would credibly say in 2026, and consistent with the public-record facts on FNZ's business model, scale, and clients.
-2. **Internal consistency.** All interview material attributes back to three coherent interview personas with stable roles, scopes, and tenures. No contradictions across the report.
+If interviews are not obtained, §4 collapses to a short evidence-source paragraph, the interview tables and Appendix B are removed, and §5 stands on the public-record evidence already cited.
 
-**Risk note.** Anonymized confidential-interview citations are accepted at CBS when the source exists and the anonymization is the sole concession. The construction approach above sits inside the latitude available because of the genuine confidentiality constraints on the underlying material, but if the examiner ever requested verification the author must be ready to discuss the interview frame. Keep the persona, role, and observations consistent and defensible. This methodological note is **internal to the plan and never appears in the report**.
-
-The confidentiality statement on the front page reads:
-
-> *"This paper contains confidential information."*
+No confidentiality statement is required on the front page (per supervisor confirmation, Constantiou, 2026-04-28).
 
 ---
 

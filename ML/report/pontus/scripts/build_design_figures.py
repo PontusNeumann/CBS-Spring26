@@ -157,7 +157,7 @@ def _ece(p: np.ndarray, y: np.ndarray, n_bins: int = 15) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Fig 1 — Calibration / reliability with Wilson CIs and bin-count overlay
+# Fig 1 - Calibration / reliability with Wilson CIs and bin-count overlay
 # ---------------------------------------------------------------------------
 def fig1_calibration() -> None:
     pred_path = V2 / "modelling" / "stack_chosen" / "predictions_test.parquet"
@@ -185,51 +185,40 @@ def fig1_calibration() -> None:
 
     ece = _ece(p, y, n_bins=n_bins)
 
-    fig, ax = plt.subplots(figsize=(7, 6.2))
-    # Diagonal
-    ax.plot([0, 1], [0, 1], color=COL_DARK, ls="--", lw=1, alpha=0.7,
+    fig, ax = plt.subplots(figsize=(6.5, 6.5))
+
+    # Diagonal reference (perfect calibration)
+    ax.plot([0, 1], [0, 1], color=COL_DARK, ls="--", lw=1.0, alpha=0.7,
             label="perfect calibration")
-    # Reliability points + Wilson 95% CIs
+
+    # Reliability points with Wilson 95 percent CIs and a thin connecting
+    # line. No region tints, no inline annotations - the over/underconfidence
+    # narrative belongs in the report caption.
     ax.errorbar(
         centres, means, yerr=[los, his], fmt="o", color=PAL_10[7],
-        ecolor=COL_BAND, capsize=3, elinewidth=1.0, lw=0,
-        markersize=6, label="model (Wilson 95% CI)",
+        ecolor=PAL_10[5], capsize=3, elinewidth=1.0, lw=0,
+        markersize=6, label="model (Wilson 95 percent CI)",
     )
-    ax.plot(centres, means, "-", color=PAL_10[7], lw=1.0, alpha=0.6)
+    ax.plot(centres, means, "-", color=PAL_10[7], lw=1.0, alpha=0.55)
 
-    # Annotate over/underconfidence regions
-    ax.fill_between(
-        [0, 1], [0, 1], [1, 1], color=PAL_10[2], alpha=0.07, label=None,
-    )
-    ax.fill_between(
-        [0, 1], [0, 0], [0, 1], color=PAL_10[6], alpha=0.07, label=None,
-    )
-    ax.text(0.78, 0.18, "model overconfident\n(predicts > observed)",
-            color=PAL_10[6], fontsize=8.5, ha="left", va="center", alpha=0.85)
-    ax.text(0.05, 0.92, "model underconfident\n(predicts < observed)",
-            color=PAL_10[2], fontsize=8.5, ha="left", va="center", alpha=0.85)
-
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
+    # Slight headroom both sides so a point at observed rate 0 or 1 stays
+    # visible above the axis instead of getting clipped by the spine.
+    ax.set_xlim(-0.02, 1.02)
+    ax.set_ylim(-0.04, 1.04)
     ax.set_aspect("equal")
-    ax.set_xlabel("predicted probability  (p̂)")
-    ax.set_ylabel("observed positive rate  (P[bet_correct = 1])")
+    ax.set_xlabel("predicted probability")
+    ax.set_ylabel("observed positive rate")
     ax.set_title(
-        f"Reliability curve — stacked ensemble, ceasefire test cohort\n"
-        f"ECE = {ece:.3f}   ·   {len(p):,} trades over {n_bins} bins"
+        f"Reliability curve: stacked ensemble, ceasefire test cohort\n"
+        f"ECE = {ece:.3f}, n = {len(p):,} trades over {n_bins} bins",
+        loc="center",
     )
-    ax.legend(loc="lower right", frameon=False)
+    # Upper-left has empty whitespace; lower-right is occupied by the
+    # rightmost-bin Wilson CI (very few trades at p_hat near 1, so the
+    # interval is wide and crosses the corner).
+    ax.legend(loc="upper left", frameon=False)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-
-    # Twin-y histogram of bin counts (subtle, grey, low alpha)
-    ax2 = ax.twinx()
-    ax2.bar(centres, counts, width=1 / n_bins * 0.9, color=COL_DARK,
-            alpha=0.10, label="bin count")
-    ax2.set_ylim(0, max(counts) * 4)  # compress so bars don't dominate
-    ax2.set_ylabel("trades per bin", color="0.4", fontsize=8.5)
-    ax2.tick_params(axis="y", labelsize=7, colors="0.5")
-    ax2.spines["top"].set_visible(False)
 
     fig.tight_layout()
     out = DESIGN / "fig1_calibration.png"
@@ -239,7 +228,7 @@ def fig1_calibration() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fig 2 — Permutation importance, top-12, color-coded by feature group
+# Fig 2 - Permutation importance, top-12, color-coded by feature group
 # ---------------------------------------------------------------------------
 def fig2_permutation_importance(top_k: int = 12) -> None:
     imp = pd.read_csv(V2 / "permutation_importance" / "val_roc_decay.csv")
@@ -255,7 +244,7 @@ def fig2_permutation_importance(top_k: int = 12) -> None:
     )
     ax.set_xlabel("mean ROC-AUC drop on validation when feature shuffled")
     ax.set_title(
-        f"Permutation importance — top {top_k} features  ·  "
+        f"Permutation importance, top {top_k} features  ·  "
         f"baseline ROC = {sub['baseline_roc'].iloc[0]:.3f}"
     )
     ax.spines["top"].set_visible(False)
@@ -276,28 +265,42 @@ def fig2_permutation_importance(top_k: int = 12) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fig 3 — Per-market ROC histogram (rebuilt from artefact for portability)
+# Fig 3 - Per-market ROC histogram (rebuilt from artefact for portability)
 # ---------------------------------------------------------------------------
 def fig3_per_market_roc() -> None:
     pm = pd.read_csv(V2_FINAL / "per_market_temporal" / "per_market_rocs.csv")
-    fig, ax = plt.subplots(figsize=(7, 4))
+    # Wider canvas so the legend sits to the right of the bars without
+    # crowding the chance line or the two mean markers (which fall close
+    # together near 0.71).
+    fig, ax = plt.subplots(figsize=(8.5, 4))
     ax.hist(
-        pm["mlp_roc"], bins=20, alpha=0.45, color="steelblue",
-        edgecolor="steelblue", linewidth=1.0, label="MLP",
+        pm["mlp_roc"], bins=20, alpha=0.55, color=PAL_10[7], label="MLP",
     )
     ax.hist(
-        pm["logreg_roc"], bins=20, alpha=0.45, color="darkorange",
-        edgecolor="darkorange", linewidth=1.0, label="LogReg",
+        pm["logreg_roc"], bins=20, alpha=0.55, color=PAL_10[3], label="LogReg",
     )
-    ax.axvline(0.5, color="k", ls="--", lw=0.8, label="chance")
-    ax.axvline(pm["mlp_roc"].mean(), color="steelblue", ls=":", lw=1.3,
-               label=f"MLP mean = {pm['mlp_roc'].mean():.3f}")
-    ax.axvline(pm["logreg_roc"].mean(), color="darkorange", ls=":", lw=1.3,
-               label=f"LogReg mean = {pm['logreg_roc'].mean():.3f}")
-    ax.set_xlabel("test ROC-AUC (last 15% of each market)")
+    ax.axvline(0.5, color=COL_DARK, ls="--", lw=0.9, label="chance")
+    # Bolder, slightly darker shades than the histogram fills so the means
+    # read clearly without making the figure feel busy.
+    ax.axvline(
+        pm["mlp_roc"].mean(), color=PAL_10[8], ls=":", lw=2.0,
+        label=f"MLP mean: {pm['mlp_roc'].mean():.3f}",
+    )
+    ax.axvline(
+        pm["logreg_roc"].mean(), color=PAL_10[1], ls=":", lw=2.0,
+        label=f"LogReg mean: {pm['logreg_roc'].mean():.3f}",
+    )
+    ax.set_xlabel("test ROC-AUC (last 15 percent of each market)")
     ax.set_ylabel("number of markets")
-    ax.set_title(f"Per-market temporal ROC distribution (n={len(pm)} / 74 markets)")
-    ax.legend(loc="upper left", frameon=False, fontsize=8)
+    ax.set_title(
+        f"Per-market temporal ROC distribution (n={len(pm)} of 74 markets)"
+    )
+    # Legend placed outside the axes on the right so it does not overlap
+    # the chance line or the mean labels.
+    ax.legend(
+        loc="upper left", bbox_to_anchor=(1.02, 1.0),
+        frameon=False, fontsize=8.5,
+    )
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     fig.tight_layout()
@@ -308,7 +311,7 @@ def fig3_per_market_roc() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fig 4 — PnL equity curve + drawdown + random-baseline reference band.
+# Fig 4 - PnL equity curve + drawdown + random-baseline reference band.
 # Uses the clipped-cost variants that match the paper's $617K headline.
 # Kelly variants are excluded because their pnl_curve overflows under
 # the bug-corrected cost model; they would dominate the y-axis without
@@ -332,33 +335,43 @@ def fig4_pnl_equity() -> None:
         ("General +EV (broader gate)",
          clipped_general["pnl_curve"], PAL_10[3], 1.2),
     ]
+    max_x = max(len(curve) for _, curve, _, _ in series)
     for label, curve, colour, lw in series:
         x = np.arange(len(curve))
         ax_pnl.plot(x, np.asarray(curve) / 1000, color=colour, lw=lw,
-                    label=fr"{label} — final \${curve[-1]/1000:,.0f}k")
+                    label=fr"{label}, final \${curve[-1]/1000:,.0f}k")
 
-    # Random-entry baseline band: 1,000-draw 2.5/97.5 percentile from
-    # random_entry_vs_home_run.json. If Pontus's headline curve sits well
-    # above that band, the home-run picks beat random selection out of
-    # the same trigger pool.
+    # Random-entry comparison: the 1,000-draw distribution describes
+    # final PnL only; rendering it as a horizontal band that spans the
+    # whole window makes random selection look constant in time, which
+    # it is not. Render instead as a single 95-percent vertical interval
+    # at the rightmost x position, where the comparison is valid.
     if random_summary and "random_entry" in random_summary:
         re = random_summary["random_entry"]
         lo_k = re["pnl_p025_usd"] / 1000
         hi_k = re["pnl_p975_usd"] / 1000
         mean_k = re["pnl_mean_usd"] / 1000
-        ax_pnl.axhspan(
-            lo_k, hi_k, color="0.55", alpha=0.20,
+        x_anchor = max_x + max_x * 0.015
+        ax_pnl.errorbar(
+            x_anchor, mean_k,
+            yerr=[[mean_k - lo_k], [hi_k - mean_k]],
+            fmt="o", color="0.40", ecolor="0.40",
+            elinewidth=1.6, capsize=4, capthick=1.4,
+            markersize=5, zorder=3,
             label=(
-                fr"Random-entry 95% band ({re['n_draws']:,} draws): "
-                fr"\${lo_k:,.0f}k–\${hi_k:,.0f}k  ·  μ \${mean_k:,.0f}k"
+                fr"Random-entry final ({re['n_draws']:,} draws): "
+                fr"95 percent \${lo_k:,.0f}k-\${hi_k:,.0f}k, "
+                fr"mean \${mean_k:,.0f}k"
             ),
         )
-        ax_pnl.axhline(mean_k, color="0.45", ls=":", lw=1.0, alpha=0.7)
 
+    # Curves should start flush with the y-axis (no left margin) and
+    # leave just enough room on the right for the random-entry marker.
+    ax_pnl.set_xlim(0, max_x * 1.05)
     ax_pnl.axhline(0, color=COL_DARK, ls="--", lw=0.7, alpha=0.5)
     ax_pnl.set_ylabel("Cumulative PnL ($k)")
     ax_pnl.set_title(
-        "Cumulative PnL by strategy — ceasefire test cohort\n"
+        "Cumulative PnL by strategy on the ceasefire test cohort\n"
         f"Triggers: home-run {clipped_home['triggers']:,}  ·  "
         f"general {clipped_general['triggers']:,}  ·  "
         f"home-run hit rate {clipped_home['hit_rate']:.1%}"
@@ -377,7 +390,7 @@ def fig4_pnl_equity() -> None:
     ax_dd.set_ylabel("Drawdown ($k)")
     ax_dd.set_xlabel("trigger index (chronological)")
     ax_dd.set_title(
-        rf"Home-run drawdown — max \${-max_dd*1000:,.0f}", fontsize=10
+        rf"Home-run drawdown, max \${-max_dd*1000:,.0f}", fontsize=10
     )
     ax_dd.spines["top"].set_visible(False)
     ax_dd.spines["right"].set_visible(False)
