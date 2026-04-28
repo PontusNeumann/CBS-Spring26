@@ -1,0 +1,30 @@
+{
+  "model": "hist_gbm",
+  "cv_oof_auc": 0.8726740979461997,
+  "cv_oof_brier": 0.14786235617498966,
+  "cv_fold_aucs": [
+    0.9367212512617938,
+    0.5468193468636559,
+    1.0,
+    0.9999993493287476,
+    0.9637516274822021
+  ],
+  "cv_fold_auc_mean": 0.8894583149872799,
+  "cv_fold_auc_std": 0.17297024501474914,
+  "test_raw_auc": 0.8883873896553255,
+  "test_raw_brier": 0.207547681165099,
+  "test_raw_ece": 0.2072807413489427,
+  "test_raw_n": 257177,
+  "test_raw_pos_rate": 0.503734781881739,
+  "test_calibrated_auc": 0.852558975091656,
+  "test_calibrated_brier": 0.15762226861095147,
+  "test_calibrated_ece": 0.094374096282821,
+  "test_calibrated_n": 257177,
+  "test_calibrated_pos_rate": 0.503734781881739,
+  "per_market_auc_min": 0.0,
+  "per_market_auc_max": 1.0,
+  "per_market_auc_mean": 0.7792663565790781,
+  "n_features": 65,
+  "n_train": 1114003,
+  "n_test": 257177
+}

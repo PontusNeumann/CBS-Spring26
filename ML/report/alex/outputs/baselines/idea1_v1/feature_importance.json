@@ -1,0 +1,19 @@
+{
+  "log_trade_value_usd": -0.6731432643261523,
+  "log_size": 0.43607896466437385,
+  "outcome_yes": -0.10268977099433792,
+  "side_buy": 0.10129471401683932,
+  "market_price_vol_last_1h": -0.07619206030035616,
+  "hour_of_day_sin": 0.060088305845224274,
+  "hour_of_day_cos": -0.020687566251943682,
+  "order_flow_imbalance_5min": -0.01880365349496578,
+  "log_recent_volume_1h": 0.011994188180025744,
+  "log_time_since_last_trade": 0.010613889353195632,
+  "market_price_vol_last_5min": -0.010196688899652816,
+  "trade_size_to_recent_volume_ratio": 0.009764966376763013,
+  "market_buy_share_running": 0.007796005160444862,
+  "log_time_to_deadline_hours": 0.007493356250543351,
+  "pct_time_elapsed": 0.007100174296575537,
+  "log_n_trades_to_date": -0.0015139707162991542,
+  "is_first_trade_after_quiet": -0.0010512283545093455
+}

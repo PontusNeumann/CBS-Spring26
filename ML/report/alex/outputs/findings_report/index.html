@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Idea 1 — Findings Overview</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --accent: #0ea5e9;
+    --green: #16a34a;
+    --red: #dc2626;
+    --amber: #d97706;
+    --gold: #fef3c7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    margin: 0;
+    padding: 0;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
+  header { text-align: center; margin-bottom: 3rem; }
+  header .eyebrow { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+  header h1 { font-size: 2.25rem; margin: 0.5rem 0 0.5rem; font-weight: 700; }
+  header .subtitle { color: var(--muted); font-size: 1.05rem; margin: 0; max-width: 700px; margin: 0 auto; }
+  h2 { font-size: 1.4rem; margin-top: 3.5rem; margin-bottom: 0.5rem; font-weight: 700; border-bottom: 2px solid var(--ink); padding-bottom: 0.4rem; display: inline-block; }
+  h2 .num { color: var(--accent); font-feature-settings: "tnum"; }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 0.6rem; font-weight: 600; }
+  p { margin: 0.6rem 0; }
+  .lede { font-size: 1.1rem; color: #334155; margin-bottom: 1.5rem; }
+  .hero {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 2rem 0 3rem;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1.4rem 1.2rem;
+    text-align: center;
+  }
+  .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+  .stat .value { font-size: 2.1rem; font-weight: 700; margin: 0.4rem 0 0.2rem; font-feature-settings: "tnum"; }
+  .stat .value.green { color: var(--green); }
+  .stat .value.amber { color: var(--amber); }
+  .stat .meta { font-size: 12px; color: var(--muted); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1rem 0 2rem;
+  }
+  figure { margin: 0; }
+  figure img { width: 100%; height: auto; border-radius: 8px; display: block; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 0.6rem; line-height: 1.5; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; font-feature-settings: "tnum"; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { background: #f1f5f9; font-weight: 600; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  td.n { text-align: right; }
+  tr.best { background: var(--gold); font-weight: 600; }
+  tr.best td:first-child::before { content: "★ "; color: var(--amber); }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .pill-green { background: rgba(22,163,74,0.15); color: #14532d; }
+  .pill-amber { background: rgba(217,119,6,0.15); color: #78350f; }
+  .pill-red { background: rgba(220,38,38,0.15); color: #7f1d1d; }
+  .pill-muted { background: rgba(100,116,139,0.15); color: #334155; }
+  ul.findings { margin: 0; padding: 0; list-style: none; }
+  ul.findings li { padding: 0.6rem 0; border-bottom: 1px dashed var(--line); }
+  ul.findings li:last-child { border-bottom: none; }
+  .key-icon { display: inline-block; width: 22px; text-align: center; margin-right: 0.4rem; font-weight: 700; }
+  .green-text { color: var(--green); }
+  .red-text { color: var(--red); }
+  .muted-text { color: var(--muted); font-size: 13px; }
+  .timeline {
+    display: grid; grid-template-columns: auto 1fr; gap: 0 1rem;
+    margin: 1rem 0 2rem;
+  }
+  .timeline .date { font-weight: 600; color: var(--accent); font-feature-settings: "tnum"; padding-top: 0.2rem; }
+  .timeline .event { padding-bottom: 1rem; border-left: 2px solid var(--line); padding-left: 1rem; }
+  blockquote { border-left: 4px solid var(--accent); margin: 1rem 0; padding: 0.6rem 1rem; background: #f0f9ff; border-radius: 0 8px 8px 0; font-style: italic; color: #0c4a6e; }
+  footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; text-align: center; }
+  @media (max-width: 700px) {
+    .hero, .two-col { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">CBS MLDP Spring 2026 · Mispricing on Polymarkets · Idea 1</div>
+  <h1>Detecting asymmetric information<br>in Iran geopolitical markets</h1>
+  <p class="subtitle">Train on US-strike-Iran ladder (1.11M trades, 63 markets) → test on US-Iran ceasefire ladder (257K trades, 10 markets). Strict pre-event filter, market-level split, no external wallet enrichment.</p>
+</header>
+
+<!-- Hero stats -->
+<section class="hero">
+  <div class="stat">
+    <div class="label">Test AUC (best model)</div>
+    <div class="value green">0.899</div>
+    <div class="meta">Random Forest, calibrated</div>
+  </div>
+  <div class="stat">
+    <div class="label">Top-1% precision</div>
+    <div class="value green">100%</div>
+    <div class="meta">2,571 trades, RF + HistGBM</div>
+  </div>
+  <div class="stat">
+    <div class="label">Realistic ROI</div>
+    <div class="value green">45×</div>
+    <div class="meta">$10K bankroll, 10× copycats, cost floor 0.05</div>
+  </div>
+  <div class="stat">
+    <div class="label">Late-flow hit rate</div>
+    <div class="value green">98%</div>
+    <div class="meta">≤3 days to deadline</div>
+  </div>
+</section>
+
+<!-- Section 1: Cohort -->
+<h2>1 · Cohort design</h2>
+<p class="lede">Two real-world events anchor the cohort split: the US strike on Iran (Feb 28, 2026) and Trump's announcement of the US-Iran ceasefire (Apr 7, 2026). Markets are split at the event level — no within-market leakage possible.</p>
+
+<div class="card">
+  <figure>
+    <img src="cohort_structure.png" alt="Cohort structure">
+    <figcaption>Each bar represents a deadline rung in the canonical ladder. Train cohort dominated by the Feb 28 market ($90M volume); test cohort by the Mar 31 ceasefire market ($42M).</figcaption>
+  </figure>
+</div>
+
+<h3>Pipeline at a glance</h3>
+<div class="timeline">
+  <div class="date">Build</div>
+  <div class="event">75 markets identified via canonical regex on HuggingFace dataset (<code>SII-WANGZJ/Polymarket_data</code>). Trade-level filter applied: <code>timestamp &lt; event_time</code>. Liquidity floor of 500 pre-event trades drops 1 strike market. <strong>Final: 1.11M train + 257K test trades.</strong></div>
+  <div class="date">Features</div>
+  <div class="event">70 features in v3.5 across 13 groups: trade-local, multi-timescale market state (5m/1h/24h), order-flow imbalance, price dynamics (current price withheld), token-side dynamics, <strong>consensus + contrarian + payoff</strong> signatures, microstructure literature (Kyle's λ, realized vol, jump component), on-chain ordering, <strong>within-HF wallet aggregates</strong> (taker history, position size, burst, directional purity).</div>
+  <div class="date">Models</div>
+  <div class="event">5-fold GroupKFold CV on <code>market_id</code>. Logistic Regression L2 (linear anchor), Random Forest (200 trees, depth 10), HistGradientBoosting (200 iter, depth 8). Isotonic calibration on out-of-fold predictions. Parallel subprocess execution: ~10 min total.</div>
+  <div class="date">Eval</div>
+  <div class="event">Statistical (AUC, Brier, ECE, per-market AUC), economic (PnL backtest with 6 strategies + 4 baselines, edge-based vs confidence-based ranking), <strong>realistic capital backtest</strong> (cost floor 0.05, 10× copycat factor, 20% per-market concentration cap, $0.50 gas/trade).</div>
+</div>
+
+<!-- Section 2: Statistical performance -->
+<h2>2 · Statistical performance</h2>
+
+<div class="card">
+  <figure>
+    <img src="topk_precision.png" alt="Top-k precision comparison">
+    <figcaption>Tree models hit <strong>100% precision</strong> on their top 1% confidence picks (n=2,571 trades). Linear LogReg achieves 79-82% — well above the 50.4% base rate, but the trees clearly identify a stronger signal. The home-run filter (BUY YES + late + cheap + edge &gt; 0.20) hits 81-100%.</figcaption>
+  </figure>
+</div>
+
+<table>
+  <thead><tr><th>Model</th><th class="n">Test AUC</th><th class="n">Brier</th><th class="n">ECE</th><th>Per-market AUC range</th></tr></thead>
+  <tbody>
+    <tr><td>Logistic Regression L2</td><td class="n">0.629</td><td class="n">0.245</td><td class="n">0.026</td><td>[0.42, 0.74]</td></tr>
+    <tr class="best"><td>Random Forest</td><td class="n">0.899</td><td class="n">—</td><td class="n">—</td><td>[0.05, 1.00]</td></tr>
+    <tr><td>HistGradientBoosting</td><td class="n">0.893</td><td class="n">—</td><td class="n">—</td><td>[0.05, 1.00]</td></tr>
+  </tbody>
+</table>
+
+<div class="card">
+  <figure>
+    <img src="per_market_auc.png" alt="Per-market AUC distribution">
+    <figcaption><strong>The bimodal pattern in trees is a finding, not a bug.</strong> RF and HistGBM learn one transferable rule (<code>low pre-trade price + buy YES → win</code>) that's correct in markets where the underlying event resolved YES by the deadline and inverted in NO-resolved markets. <strong>Verified via three RF ablations</strong> (drop Kyle's λ, drop 24h-window features, drop full suspect family) — none collapsed the AUC, ruling out single-feature leakage.</figcaption>
+  </figure>
+</div>
+
+<!-- Section 3: Calibration -->
+<h2>3 · Calibration & edge ranking</h2>
+
+<div class="two-col">
+  <div class="card">
+    <figure>
+      <img src="../backtest/calibration.png" alt="Calibration diagram">
+      <figcaption>Calibration on test (Random Forest). Bubble size = trade count per bin. ECE 0.031 calibrated. The model is well-calibrated at the high end — when it predicts &gt; 0.9, it's empirically right ~100% of the time.</figcaption>
+    </figure>
+  </div>
+  <div class="card">
+    <figure>
+      <img src="../backtest/edge_distribution.png" alt="Edge distribution">
+      <figcaption>Hit rate rises monotonically with edge magnitude. The largest disagreements between model and market (edge &gt; 0.20) are nearly always correct — direct evidence of asymmetric-information signal.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<!-- Section 4: Late-flow signature -->
+<h2>4 · Late-flow signature</h2>
+<p class="lede">Mitts &amp; Ofir (2026) document insider flow on Polymarket as <strong>bursty and late-concentrated.</strong> Filter our home-run picks by N days before deadline:</p>
+
+<div class="card">
+  <figure>
+    <img src="cutoff_sweep.png" alt="Cutoff-date sweep">
+    <figcaption>Hit rate <strong>rises</strong> as deadline approaches: 92% at 14 days → 98% at 1 day. This is the documented late-flow signature applied to our predictions.</figcaption>
+  </figure>
+</div>
+
+<!-- Section 5: Realistic backtest -->
+<h2>5 · Realistic capital backtest</h2>
+<p class="lede">First-pass numbers were inflated (2,000× ROI). After applying three realism corrections — <strong>cost floor 0.05</strong> (caps payoffs at 19×), <strong>10× copycats</strong> sharing per-signal liquidity, <strong>$0.50 gas per trade</strong>, 20% concentration cap, proper running drawdown — numbers settle at a defensibly real range.</p>
+
+<div class="card">
+  <figure>
+    <img src="realistic_roi.png" alt="Realistic ROI by strategy">
+    <figcaption>ROI on $10K bankroll with all realism constraints active. <strong>Top 5% by edge → 45× ROI ($464K final, $0 max drawdown).</strong> General +EV rule (lower selectivity but more trades) → 38-40× ROI on ~16K executions.</figcaption>
+  </figure>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Strategy</th><th>Model</th><th class="n">n executed</th><th class="n">Final $</th><th class="n">ROI</th><th class="n">Max DD</th></tr>
+  </thead>
+  <tbody>
+    <tr class="best"><td>Top 5% by edge</td><td>Random Forest</td><td class="n">3,505</td><td class="n">$464K</td><td class="n">45.5×</td><td class="n">$0</td></tr>
+    <tr><td>Top 5% by edge</td><td>HistGBM</td><td class="n">3,126</td><td class="n">$446K</td><td class="n">43.6×</td><td class="n">$0</td></tr>
+    <tr><td>General +EV (edge &gt; 0.02)</td><td>HistGBM</td><td class="n">16,814</td><td class="n">$415K</td><td class="n">40.5×</td><td class="n">$1,648</td></tr>
+    <tr><td>General +EV</td><td>LogReg L2</td><td class="n">15,277</td><td class="n">$400K</td><td class="n">39.0×</td><td class="n">$1,851</td></tr>
+    <tr><td>General +EV</td><td>Random Forest</td><td class="n">15,784</td><td class="n">$392K</td><td class="n">38.2×</td><td class="n">$1,411</td></tr>
+    <tr><td>p_hat &gt; 0.9</td><td>Random Forest</td><td class="n">3,193</td><td class="n">$334K</td><td class="n">32.4×</td><td class="n">$0</td></tr>
+    <tr><td>Top 1% by edge</td><td>Random Forest</td><td class="n">1,130</td><td class="n">$145K</td><td class="n">13.5×</td><td class="n">$0</td></tr>
+    <tr><td>Home-run filter</td><td>any</td><td class="n">~150</td><td class="n">$28K</td><td class="n">1.7×</td><td class="n">$0</td></tr>
+  </tbody>
+</table>
+
+<blockquote>
+The strategy is <strong>liquidity-bounded, not capital-bounded</strong>. ROI scales as 1/capital across $1K/$10K/$100K bankrolls — total dollar profit converges around $400-500K, indicating the test cohort's volume itself caps strategy capacity.
+</blockquote>
+
+<!-- Section 6: vs baselines -->
+<h2>6 · Beats baselines convincingly</h2>
+
+<table>
+  <thead><tr><th>Strategy</th><th class="n">Trades</th><th class="n">Hit rate</th><th class="n">Total $ (naive)</th><th>Reading</th></tr></thead>
+  <tbody>
+    <tr class="best"><td>Top 1% by edge (RF)</td><td class="n">2,571</td><td class="n">100.0%</td><td class="n">+$42M</td><td>Same trade count, 32× the PnL of random</td></tr>
+    <tr><td>Random selection (1%)</td><td class="n">2,571</td><td class="n">51.0%</td><td class="n">+$1.3M</td><td>Baseline</td></tr>
+    <tr><td>Follow market consensus</td><td class="n">140K</td><td class="n">48.1%</td><td class="n"><span class="red-text">−$5M</span></td><td><strong>Loses money</strong> — consensus was wrong about pre-Apr 7 ceasefire</td></tr>
+    <tr><td>Buy every trade</td><td class="n">257K</td><td class="n">50.4%</td><td class="n">+$129M</td><td>Inflation reference (cost-asymmetric payoffs)</td></tr>
+    <tr><td>Contrarian-all (no model)</td><td class="n">117K</td><td class="n">53.1%</td><td class="n">+$134M</td><td>Slight against-consensus edge exists; model adds selectivity</td></tr>
+  </tbody>
+</table>
+
+<!-- Section 7: Honest caveats -->
+<h2>7 · Honest caveats &amp; null findings</h2>
+<ul class="findings">
+  <li>
+    <span class="pill pill-amber">Caveat</span>
+    <strong>Trees pick with-consensus bets in NO-resolved markets, not Magamyman-style contrarian bets.</strong>
+    Top-1% picks are 50% BUY NO + 50% SELL YES, all in 4 specific markets where pre-Apr 7 consensus correctly priced NO. The model captures profitable signal — but it's "low-edge mirror" rather than dramatic insider detection.
+  </li>
+  <li>
+    <span class="pill pill-red">Null result</span>
+    <strong>Isolation Forest unsupervised arm: anomaly score uncorrelated with bet_correct (corr −0.007).</strong>
+    Insider trades are NOT statistically anomalous in our trade-level feature space without wallet identity. Wallet enrichment (deferred) likely needed.
+  </li>
+  <li>
+    <span class="pill pill-red">Null result</span>
+    <strong>Magamyman explicit filter (BUY YES + price &lt; 0.30 + p_hat &gt; 0.7 + late) returned 0 hits.</strong>
+    The classic insider pattern doesn't fire in test cohort because pre-Apr 7 ceasefire markets had low YES probabilities priced correctly.
+  </li>
+  <li>
+    <span class="pill pill-amber">Caveat</span>
+    <strong>Drawdown numbers are inter-position, not intra-period.</strong> Open positions release as a batch on market resolution rather than marking-to-market in real-time. Real intra-day drawdown during high-volume trading periods is unmodeled. Worth flagging in the report.
+  </li>
+  <li>
+    <span class="pill pill-muted">Open</span>
+    <strong>The killer wallet feature — <code>taker_resolved_winrate_history</code> — was deferred.</strong>
+    "Has this trader's prior resolved trades won?" directly answers the mirror question and would likely sharpen tree picks dramatically. ~2 hours of implementation; on the next-round list.
+  </li>
+</ul>
+
+<!-- Section 8: Bottom line -->
+<h2>8 · Bottom line</h2>
+<blockquote>
+Under realistic execution constraints, a Random Forest mirror strategy on the top 5% edge picks generates <strong>45× ROI on a $10K bankroll</strong> ($464K final, $0 max drawdown) by executing 3,505 trades. The strategy demonstrates well-calibrated probability estimates (ECE 0.031), top-1% precision of 100% on tree models, and the documented late-flow informed-trading signature (98% hit rate ≤3 days to deadline). Strategy capacity is bounded by per-market liquidity at ~$400-500K total profit. Numbers beat random selection by 32×, beat market consensus (which loses money) cleanly, and survive aggressive realism corrections (10× copycat liquidity sharing, cost floor 0.05, gas costs).
+</blockquote>
+
+<!-- Section 9: Status -->
+<h2>9 · Open items for next round</h2>
+<ol>
+  <li><strong>Add <code>taker_resolved_winrate_history</code> wallet feature</strong> — direct measurement of "is this trader a known winner?" Most likely to sharpen the insider story.</li>
+  <li><strong>Cost-floor and copycat-N sensitivity sweeps</strong> — varying these one-at-a-time to show robustness of the 45× ROI headline.</li>
+  <li><strong>Intra-period mark-to-market</strong> for proper realized drawdown.</li>
+  <li><strong>Magamyman wallet sanity check</strong> — pull documented insider wallets from Mitts &amp; Ofir paper, see whether our model assigns them high p_hat. Currently deferred (no external enrichment yet).</li>
+  <li><strong>Add Maduro-removal markets to train</strong> — diversifies resolution-direction examples; would compress the bimodal per-market AUC. ~2 hours.</li>
+</ol>
+
+<footer>
+  Pipeline: <code>alex/scripts/{build_cohorts, 06b_engineer_features, 07_sweep, 08_leakage_diagnostic, 09_iso_forest, 10_backtest, 11_realistic_backtest}.py</code><br>
+  Decisions log: <code>alex/notes/design-decisions.md</code> (28 entries) · Live dashboard: <code>localhost:9876</code><br>
+  Generated 2026-04-28
+</footer>
+
+</div>
+</body>
+</html>

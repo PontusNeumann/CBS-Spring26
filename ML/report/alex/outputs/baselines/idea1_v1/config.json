@@ -1,0 +1,12 @@
+{
+  "n_folds": 5,
+  "C_grid": [
+    0.01,
+    0.1,
+    1.0,
+    10.0
+  ],
+  "random_seed": 42,
+  "strike_event_utc": "2026-02-28T06:35:00+00:00",
+  "ceasefire_announcement_utc": "2026-04-07T00:00:00+00:00"
+}

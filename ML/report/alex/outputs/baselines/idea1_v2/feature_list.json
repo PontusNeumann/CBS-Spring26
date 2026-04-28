@@ -1,0 +1,18 @@
+[
+  "log_size",
+  "side_buy",
+  "outcome_yes",
+  "log_time_to_deadline_hours",
+  "pct_time_elapsed",
+  "log_time_since_last_trade",
+  "is_first_trade_after_quiet",
+  "hour_of_day_sin",
+  "hour_of_day_cos",
+  "log_n_trades_to_date",
+  "market_buy_share_running",
+  "market_price_vol_last_1h",
+  "market_price_vol_last_5min",
+  "log_recent_volume_1h",
+  "order_flow_imbalance_5min",
+  "trade_size_to_recent_volume_ratio"
+]

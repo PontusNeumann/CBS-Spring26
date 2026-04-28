@@ -12,3 +12,9 @@ __pycache__/
 # Secrets — never commit
 .env
 ML/report/.env
+
+# Alex's local heavy data + caches (kept locally only)
+ML/report/alex/data/
+ML/report/alex/.scratch/
+ML/report/alex/outputs/.DS_Store
+ML/report/alex/outputs/**/.DS_Store

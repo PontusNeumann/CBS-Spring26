@@ -1,0 +1,25 @@
+{
+  "check_name": "check1_single_feature",
+  "feature_cols": [
+    "kyle_lambda_market_static"
+  ],
+  "n_features": 1,
+  "cv_oof_auc": 0.4978195296686925,
+  "cv_fold_aucs": [
+    0.516902902966588,
+    0.49868610720768447,
+    0.5050479556200426,
+    0.48213712298915035,
+    0.4875123199471646
+  ],
+  "cv_fold_auc_mean": 0.4980572817461259,
+  "cv_fold_auc_std": 0.012402177680121798,
+  "test_auc": 0.49673173074975047,
+  "test_brier": 0.25136130227377357,
+  "per_market_auc_min": 0.5,
+  "per_market_auc_max": 0.5,
+  "per_market_n_resolved": 10,
+  "feature_importances": {
+    "kyle_lambda_market_static": 1.0
+  }
+}
