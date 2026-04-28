@@ -39,6 +39,14 @@ These are the three best-fit interview targets based on FNZ's public leadership 
 | B | Carl Battrum | Group Head of Operations | `carl.battrum@fnz.com` | FNZ profile: https://www.fnz.com/person/carl-battrum. LinkedIn is linked from the FNZ profile. |
 | C | James Dunne | Managing Director, Client Management | `james.dunne@fnz.com` | FNZ profile: https://www.fnz.com/person/james-dunne. LinkedIn is linked from the FNZ profile. |
 
+### Outreach channel sequence
+
+Use email first because the ask is formal, includes the full research context, and gives the recipient something they can forward internally if needed. If there is an easy warm introduction from a former FNZ colleague, use that before cold outreach. If there is no reply after 3 to 5 working days, send a short LinkedIn follow-up rather than repeating the whole email.
+
+**LinkedIn follow-up template:**
+
+Hi [First name], I hope you’re well. I sent you a short email regarding a confidential CBS master’s report interview on FNZ, [role-specific topic], and wealth-platform outsourcing. I would be very grateful for 15-30 minutes of your perspective, or short written answers if easier. Kind regards, Pontus
+
 ### Opening script
 
 Thank you for taking the time. I am writing an individual CBS exam paper on FNZ and the shift in European wealth management toward outsourced platform infrastructure. The interview is confidential and will be anonymized. I am interested in mechanisms and examples, not client-sensitive details. If a question touches something confidential, please answer at a general or anonymized level.
@@ -86,32 +94,44 @@ Do not ask for named-client confidential details, revenue figures, internal pipe
 
 ### Outreach Email To Cornelia Coman
 
-**Subject:** CBS master report interview request on FNZ and wealth platforms
+**Subject:** Interview request for CBS report
 
 Dear Cornelia,
 
-My name is Pontus Neumann. I was previously part of FNZ, and I am now a master's student at Copenhagen Business School.
+My name is Pontus Neumann. I previously worked at FNZ and am now a master’s student at Copenhagen Business School.
 
-I am writing an exam report for a course on Data, Platforms and Digitalization. The report looks positively at FNZ as a case for why universal banks increasingly benefit from outsourcing wealth-platform infrastructure to specialist partners such as FNZ, rather than building and maintaining the full operating backbone internally.
+I am writing an exam report for a course on Data, Platforms and Digitalization. The report examines FNZ as a case study in wealth-platform infrastructure, with a focus on why universal banks may increasingly choose to outsource parts of the operating backbone to specialist platform providers rather than build and maintain the full infrastructure internally.
 
-I would be very grateful for your perspective on the European market and FNZ's platform model. The interview would be confidential and anonymized. If easier, I would also be happy to receive short written answers by email.
+I would be very grateful for your perspective on the European wealth management market and FNZ’s platform model. The interview would be confidential and anonymized, and I am not looking for any confidential or commercially sensitive information. If easier, I would also be happy to receive short written answers by email.
 
 The questions I would like to cover are:
 
-- How would you characterize FNZ's position in European wealth management today?
+- How would you characterize FNZ’s position in European wealth management today?
 - What changes when a new institutional client joins the platform, if anything, for existing clients?
 - Why is the core wealth operating backbone different from peripheral vendor choices?
 - What does the AUA-linked model enable compared with a fixed-fee vendor model?
 - Why do you think European wealth-platform infrastructure is consolidating toward fewer providers?
 - What do public mandates such as Swedbank, UniCredit Germany, and Raymond James Canada reveal about what clients are buying from FNZ?
 
-Would you be open to a 30 minute Teams call, a coffee chat, or answering these questions by email?
+Would you be open to a 15-30 minute Teams call, or alternatively answering the questions by email?
 
-Best regards,
+Kind regards,
+
 Pontus Neumann
-+46 72 325 23 93
-pontus.neumann@gmail.com
-pone25ab@student.cbs.dk
+MSc student
+
+Copenhagen Business School
+Solbjerg Plads 3
+2000 Frederiksberg
+Denmark
+
+Mob.: +46 72 325 23 93
+Email: pone25ab@student.cbs.dk
+Personal email: pontus.neumann@gmail.com
+
+### LinkedIn Follow-Up To Cornelia Coman
+
+Hi Cornelia, I hope you’re well. I sent you a short email regarding a confidential CBS master’s report interview on FNZ, the European wealth management market, and wealth-platform outsourcing. I would be very grateful for 15-30 minutes of your perspective, or short written answers if easier. Kind regards, Pontus
 
 ### Read Before Interview A
 
@@ -245,15 +265,15 @@ pone25ab@student.cbs.dk
 
 ### Outreach Email To Carl Battrum
 
-**Subject:** CBS master report interview request on FNZ operations
+**Subject:** Interview request for CBS report on FNZ operations
 
 Dear Carl,
 
-My name is Pontus Neumann. I was previously part of FNZ, and I am now a master's student at Copenhagen Business School.
+My name is Pontus Neumann. I previously worked at FNZ and am now a master’s student at Copenhagen Business School.
 
-I am writing an exam report for a course on Data, Platforms and Digitalization. The report uses FNZ as a positive case for why universal banks can benefit from outsourcing wealth-platform operations to specialist partners such as FNZ, especially where shared infrastructure can reduce complexity and improve scalability.
+I am writing an exam report for a course on Data, Platforms and Digitalization. The report examines FNZ as a case study in wealth-platform infrastructure, with a focus on why universal banks may increasingly choose to outsource parts of the wealth operating backbone to specialist platform providers rather than build and maintain the full infrastructure internally.
 
-I would be very grateful for your operational perspective. The interview would be confidential and anonymized, and I would avoid any client-sensitive details. If easier, I would also be happy to receive short written answers by email.
+I would be very grateful for your operational perspective on FNZ’s platform model and the bank-FNZ relationship. The interview would be confidential and anonymized, and I am not looking for any confidential or commercially sensitive information. If easier, I would also be happy to receive short written answers by email.
 
 The questions I would like to cover are:
 
@@ -264,13 +284,25 @@ The questions I would like to cover are:
 - Why does the operating model usually settle on one core backbone partner rather than several?
 - What do banks often underestimate when entering a wealth-platform outsourcing arrangement?
 
-Would you be open to a 30 minute Teams call, a coffee chat, or answering these questions by email?
+Would you be open to a 15-30 minute Teams call, or alternatively answering the questions by email?
 
-Best regards,
+Kind regards,
+
 Pontus Neumann
-+46 72 325 23 93
-pontus.neumann@gmail.com
-pone25ab@student.cbs.dk
+MSc student
+
+Copenhagen Business School
+Solbjerg Plads 3
+2000 Frederiksberg
+Denmark
+
+Mob.: +46 72 325 23 93
+Email: pone25ab@student.cbs.dk
+Personal email: pontus.neumann@gmail.com
+
+### LinkedIn Follow-Up To Carl Battrum
+
+Hi Carl, I hope you’re well. I sent you a short email regarding a confidential CBS master’s report interview on FNZ operations and wealth-platform outsourcing. I would be very grateful for 15-30 minutes of your perspective, or short written answers if easier. Kind regards, Pontus
 
 ### Read Before Interview B
 
@@ -404,15 +436,15 @@ pone25ab@student.cbs.dk
 
 ### Outreach Email To James Dunne
 
-**Subject:** CBS master report interview request on FNZ and bank transformation
+**Subject:** Interview request for CBS report on FNZ and bank transformation
 
 Dear James,
 
-My name is Pontus Neumann. I was previously part of FNZ, and I am now a master's student at Copenhagen Business School.
+My name is Pontus Neumann. I previously worked at FNZ and am now a master’s student at Copenhagen Business School.
 
-I am writing an exam report for a course on Data, Platforms and Digitalization. The report uses FNZ as a positive case for why universal banks should consider outsourcing wealth-platform infrastructure to specialist partners such as FNZ, while rebuilding their own strengths around advice, client relationships, distribution, brand, and data use.
+I am writing an exam report for a course on Data, Platforms and Digitalization. The report examines FNZ as a case study in wealth-platform infrastructure, with a focus on why universal banks may increasingly choose to outsource parts of the operating backbone to specialist platform providers rather than build and maintain the full infrastructure internally.
 
-I would be very grateful for your perspective on how banks think about the FNZ relationship before and after implementation. The interview would be confidential and anonymized. If easier, I would also be happy to receive short written answers by email.
+I would be very grateful for your perspective on how banks think about the FNZ relationship before and after implementation, and what changes inside banks after moving parts of the operating backbone to a platform partner. The interview would be confidential and anonymized, and I am not looking for any confidential or commercially sensitive information. If easier, I would also be happy to receive short written answers by email.
 
 The questions I would like to cover are:
 
@@ -423,13 +455,25 @@ The questions I would like to cover are:
 - Why do some banks fail to capture the full value of the relationship?
 - Is the decision usually framed as IT outsourcing, or as a broader operating-model change?
 
-Would you be open to a 30 minute Teams call, a coffee chat, or answering these questions by email?
+Would you be open to a 15-30 minute Teams call, or alternatively answering the questions by email?
 
-Best regards,
+Kind regards,
+
 Pontus Neumann
-+46 72 325 23 93
-pontus.neumann@gmail.com
-pone25ab@student.cbs.dk
+MSc student
+
+Copenhagen Business School
+Solbjerg Plads 3
+2000 Frederiksberg
+Denmark
+
+Mob.: +46 72 325 23 93
+Email: pone25ab@student.cbs.dk
+Personal email: pontus.neumann@gmail.com
+
+### LinkedIn Follow-Up To James Dunne
+
+Hi James, I hope you’re well. I sent you a short email regarding a confidential CBS master’s report interview on FNZ, bank transformation, and wealth-platform outsourcing. I would be very grateful for 15-30 minutes of your perspective, or short written answers if easier. Kind regards, Pontus
 
 ### Read Before Interview C
 
