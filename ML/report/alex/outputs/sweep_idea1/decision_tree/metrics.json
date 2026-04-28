@@ -1,0 +1,30 @@
+{
+  "model": "decision_tree",
+  "cv_oof_auc": 0.8541569847557606,
+  "cv_oof_brier": 0.14857516806997698,
+  "cv_fold_aucs": [
+    0.9271367361411377,
+    0.46764077684310157,
+    0.9999616405801055,
+    0.9987943148426347,
+    0.8726176534159282
+  ],
+  "cv_fold_auc_mean": 0.8532302243645816,
+  "cv_fold_auc_std": 0.1986133328200479,
+  "test_raw_auc": 0.8535342388028732,
+  "test_raw_brier": 0.14649490038778126,
+  "test_raw_ece": 0.14680424450084878,
+  "test_raw_n": 257177,
+  "test_raw_pos_rate": 0.503734781881739,
+  "test_calibrated_auc": 0.8535071825949578,
+  "test_calibrated_brier": 0.12506163583221533,
+  "test_calibrated_ece": 0.001638529190523663,
+  "test_calibrated_n": 257177,
+  "test_calibrated_pos_rate": 0.503734781881739,
+  "per_market_auc_min": 0.0,
+  "per_market_auc_max": 1.0,
+  "per_market_auc_mean": 0.8998342935775062,
+  "n_features": 65,
+  "n_train": 1114003,
+  "n_test": 257177
+}
