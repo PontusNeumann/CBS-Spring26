@@ -1,0 +1,20 @@
+EDA summary — wallet-joined Alex cohort
+  rows: 1,371,180   cols: 87   numeric features: 79
+
+split sizes:
+split
+test      257177
+train    1114003
+
+base rate by split:
+split
+test     0.5037
+train    0.5031
+
+wallet-feature coverage:
+  test: 100.0% of 257,177 trades enriched
+  train: 100.0% of 1,114,003 trades enriched
+
+non-zero-null columns: 0 of 87
+top 10 missing columns:
+Series([], )

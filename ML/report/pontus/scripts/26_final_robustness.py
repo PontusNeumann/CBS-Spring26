@@ -301,15 +301,29 @@ def per_market_temporal_split() -> dict:
     pm_df = pd.DataFrame(per_market).sort_values("mlp_roc", ascending=False)
     pm_df.to_csv(OUT_DIR / "per_market_temporal" / "per_market_rocs.csv", index=False)
 
-    # Histogram plot
+    # Histogram plot — translucent fills, contrasting edges, mean markers
     fig, ax = plt.subplots(figsize=(7, 4))
-    ax.hist(pm_df["mlp_roc"], bins=20, alpha=0.7, color="steelblue", label="MLP")
-    ax.hist(pm_df["logreg_roc"], bins=20, alpha=0.4, color="orange", label="LogReg")
+    ax.hist(
+        pm_df["mlp_roc"], bins=20, alpha=0.45, color="steelblue",
+        edgecolor="steelblue", linewidth=1.0, label="MLP",
+    )
+    ax.hist(
+        pm_df["logreg_roc"], bins=20, alpha=0.45, color="darkorange",
+        edgecolor="darkorange", linewidth=1.0, label="LogReg",
+    )
     ax.axvline(0.5, color="k", linestyle="--", linewidth=0.8, label="chance")
+    ax.axvline(
+        pm_df["mlp_roc"].mean(), color="steelblue", linestyle=":",
+        linewidth=1.3, label=f"MLP mean = {pm_df['mlp_roc'].mean():.3f}",
+    )
+    ax.axvline(
+        pm_df["logreg_roc"].mean(), color="darkorange", linestyle=":",
+        linewidth=1.3, label=f"LogReg mean = {pm_df['logreg_roc'].mean():.3f}",
+    )
     ax.set_xlabel("test ROC-AUC (last 15% of each market)")
     ax.set_ylabel("number of markets")
     ax.set_title(f"Per-market temporal ROC distribution (n={len(pm_df)} / 74 markets)")
-    ax.legend()
+    ax.legend(loc="upper left", frameon=False, fontsize=8)
     fig.tight_layout()
     fig.savefig(OUT_DIR / "per_market_temporal" / "roc_histogram.png", dpi=120)
     plt.close(fig)

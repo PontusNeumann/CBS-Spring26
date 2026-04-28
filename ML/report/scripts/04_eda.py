@@ -206,7 +206,12 @@ def panel_class_balance(df: pd.DataFrame, out_path: Path) -> None:
     ax_left.axhline(50, color=COL_DARK, lw=0.8, ls="--", alpha=0.5)
     ax_left.set_ylabel("share of trades (%)")
     ax_left.set_ylim(0, 100)
-    ax_left.legend(frameon=False, loc="lower right", fontsize=7)
+    # Legend lifted out of the bars so the correct/incorrect mapping reads
+    # clearly above and to the right of the per-split panel.
+    ax_left.legend(
+        frameon=False, loc="lower left", bbox_to_anchor=(1.02, 1.02),
+        fontsize=7, ncol=2,
+    )
     clean_ax(ax_left)
 
     labels = [q[:55] + ("..." if len(q) > 55 else "") for q in mkt.index]
@@ -321,6 +326,11 @@ def panel_correlation(df: pd.DataFrame, out_path: Path, txt_out: Path) -> None:
     )
     corr = sample.corr().fillna(0)
 
+    # Upper-triangle-only display: mask the lower triangle (k=-1 keeps
+    # the diagonal visible). Cuts ink by half and avoids reading every
+    # pair twice.
+    mask = np.tril(np.ones_like(corr, dtype=bool), k=-1)
+
     # Colorbar height tied to heatmap via make_axes_locatable so the bar
     # spans the same vertical extent as the (square) matrix.
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -329,7 +339,7 @@ def panel_correlation(df: pd.DataFrame, out_path: Path, txt_out: Path) -> None:
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="3%", pad=0.15)
     sns.heatmap(
-        corr, cmap=C_MAP, vmin=-1, vmax=1, center=0,
+        corr, mask=mask, cmap=C_MAP, vmin=-1, vmax=1, center=0,
         square=True, linewidths=0.0,
         annot=False, ax=ax, cbar_ax=cax,
         cbar_kws={"label": "Pearson r"},

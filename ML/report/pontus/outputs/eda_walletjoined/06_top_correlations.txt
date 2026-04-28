@@ -1,0 +1,27 @@
+top 25 |Pearson r| feature pairs (lower-triangle scan)
+
+wallet_polygon_age_at_t_days           days_from_first_usdc_to_t           0.989
+realized_vol_1h                        jump_component_1h                   0.974
+log_payoff_if_correct                  contrarian_score                    0.972
+wallet_log_polygon_nonce_at_t          wallet_log_n_inbound_at_t           0.951
+log_recent_volume_24h                  log_trade_count_24h                 0.913
+log_recent_volume_1h                   log_trade_count_1h                  0.856
+log_taker_prior_trades_total           log_taker_unique_markets_traded     0.853
+log_recent_volume_5min                 log_trade_count_5min                0.850
+log_trade_count_5min                   log_trade_count_1h                  0.793
+log_taker_prior_trades_total           log_taker_prior_trades_in_market    0.788
+log_recent_volume_1h                   log_recent_volume_24h               0.785
+wallet_polygon_nonce_at_t              wallet_log_polygon_nonce_at_t       0.767
+log_trade_count_1h                     log_trade_count_24h                 0.764
+wallet_n_inbound_at_t                  wallet_log_n_inbound_at_t           0.759
+wallet_polygon_nonce_at_t              wallet_n_inbound_at_t               0.747
+                                       wallet_log_n_inbound_at_t           0.730
+log_recent_volume_1h                   log_trade_count_24h                 0.729
+log_taker_cumvol_in_market             log_taker_prior_trades_in_market    0.704
+log_recent_volume_5min                 log_recent_volume_1h                0.697
+log_recent_volume_24h                  log_trade_count_1h                  0.696
+log_n_trades_to_date                   log_recent_volume_24h               0.688
+wallet_n_inbound_at_t                  wallet_log_polygon_nonce_at_t       0.674
+log_taker_first_minutes_ago_in_market  log_taker_prior_trades_in_market    0.673
+log_recent_volume_5min                 log_trade_count_1h                  0.673
+log_recent_volume_1h                   log_trade_count_5min                0.673

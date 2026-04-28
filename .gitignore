@@ -19,5 +19,21 @@ ML/report/alex/.scratch/
 ML/report/alex/outputs/.DS_Store
 ML/report/alex/outputs/**/.DS_Store
 
+# Pontus's local heavy joined-feature parquets + enrichment intermediates
+ML/report/pontus/data/
+ML/report/data/wallet_enrichment.pre-alex-extras.parquet
+ML/report/data/wallet_enrichment.pre-retry2.parquet
+ML/report/data/wallet_enrichment.pre-retry3.parquet
+ML/report/data/wallet_enrichment.pre-retry4.parquet
+ML/report/data/enrichment_alex_extras.log
+ML/report/data/enrichment_retry.log
+ML/report/data/enrichment_progress.alex_extras.json
+ML/report/data/enrichment_progress.retry.json
+ML/report/data/wallet_enrichment.parquet.alex_extras_tmp
+ML/report/data/wallet_enrichment.parquet.retry_tmp
+
+# Claude Code project state
+ML/report/.claude/
+
 # Release tarballs downloaded from GitHub Releases (too large for git)
 *.tar.gz
