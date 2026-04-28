@@ -1,0 +1,21 @@
+# EDA index — wallet-joined Alex cohort
+
+- [✓] **01_missingness.png** — Missing-value share per column, split by train/test.
+- [✓] **02_wallet_coverage.png** — % of trades with enriched wallet, by split.
+- [✓] **03_class_balance.png** — Base rate per split + per-market base-rate spread.
+- [✓] **04_distributions.png** — Top-12 skewed features, KDE by bet_correct.
+- [✓] **04_skewness_table.csv** — All numeric features ranked by absolute skew.
+- [✓] **05_outlier_boxplots.png** — Box plots for the 8 most-skewed features.
+- [✓] **06_correlation_heatmap.png** — Upper-triangle Pearson heatmap, top-40 features by std.
+- [✓] **06_top_correlations.txt** — Top 25 |Pearson r| feature pairs.
+- [✓] **07_market_volume.png** — Per-market trade count vs base rate.
+- [✓] **08_train_test_shift.png** — Top-15 features by |Cohen's d| between train and test.
+- [✓] **09_late_flow.png** — Hit rate vs time-to-deadline (Mitts & Ofir-style buckets).
+- [✓] **10_wallet_strata.png** — Hit rate by wallet age decile, CEX-funding, polygon nonce decile.
+- [✓] **11_per_market_bimodality.png** — Per-market base-rate histogram (single-event resolution).
+- [✓] **12_feature_stability.png** — Single-feature ROC-AUC heatmap per market for top-8 features.
+- [✓] **13_mutual_information.png** — Top-20 features by mutual information with bet_correct.
+- [✓] **14_feature_taxonomy.png** — How the numeric features split across feature-engineering layers.
+- [✓] **15_tail_diagnostics.png** — Top-15 fat-tailed features by |excess kurtosis|. CSV gives p1/p5/p95/p99 + tail-conditional means.
+- [✓] **16_temporal_drift.png** — Daily bet_correct base rate with 7-day rolling mean, per split.
+- [✓] **summary.txt** — Plain-text summary of dataset shape, base rates, missingness.
