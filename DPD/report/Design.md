@@ -25,6 +25,14 @@ From `../../ML/report/Design.md`:
 
 The DPD docx is built from the CBS branded template at `report/KAN-CDSCO2401U_185912_DPD_Spring2026.docx`. The first page of that template (the front page wrapped in a `<w:sdt>` block) carries the CBS logo, the cover image, and the accent-colour background shape. **Those elements are not moved or modified by any build step.** The same applies to the back-page block.
 
+**Active document base and editing rule**
+
+- The active Word document is `KAN-CDSCO2401U_185912_DPD_Spring2026.docx` in this report folder.
+- The binding fallback (front page, styles, package parts) is the latest backup snapshot: `backup/KAN-CDSCO2401U_185912_DPD_Spring2026_Backup_28.docx`. If a content patch or restore is needed, preserve or restore the front page from this snapshot.
+- Do **not** rebuild the final document from `backup/Old_template.docx` (the historical pre-content template) or any older backup. That path silently drops later template and formatting choices.
+- Content-only edits to the final Word file should patch the existing `.docx` in place and leave cover, header, footer, styles, media, and back-page parts untouched. The safest automated route is to replace only `word/document.xml` text content while preserving all other `.docx` package parts.
+- The first page is not edited by automation. Front-page metadata and confidentiality wording are added manually unless the user explicitly asks otherwise.
+
 **Body text**
 
 - All body paragraphs in the built-in `Normal` style are **11 pt**.
@@ -63,6 +71,7 @@ The DPD docx is built from the CBS branded template at `report/KAN-CDSCO2401U_18
 
 - Every paragraph in the document has `space-before = 0` and `space-after = 0` set on its `<w:spacing>` element, regardless of the underlying style's defaults.
 - All `w:beforeAutospacing` and `w:afterAutospacing` flags are zeroed out so the explicit zero values actually apply.
+- Normal body paragraphs and blank `Normal` separator rows carry explicit single-line spacing (`w:line="240"`, `w:lineRule="auto"`) so they do not inherit any large document-default line spacing from the Word template.
 - Vertical separation between content elements is created by inserting a single blank paragraph in the `Normal` style with the document's default body font size. The blank paragraph is one body-text line tall — no more, no less.
 - Default rule: **one blank `Normal` row between every two content elements** (heading, body paragraph, figure, table, caption).
 
@@ -85,7 +94,7 @@ Only two top-level paragraphs carry `pageBreakBefore` on their paragraph propert
 1. The **References** heading (`Reference Heading` style).
 2. The **Appendix** heading (`Heading 1` style).
 
-No body Heading 1 (Introduction, Background, Method, Results, Discussion, Conclusion) carries `pageBreakBefore`. Body sections flow inline so the 10-page budget is not wasted on forced breaks.
+No body Heading 1 (Introduction, Background, Method, Results, Discussion, Conclusion) carries `pageBreakBefore`. Body sections flow inline so the 10-page budget is not wasted on forced breaks. The `Heading 1`, `Heading 2`, and `Heading 3` style definitions themselves must also have `pageBreakBefore` unset; otherwise Word will show "Page break before" as inherited on every heading even when the individual paragraph does not contain a direct page-break flag.
 
 The back-page block in the CBS template already carries its own `pageBreakBefore` and is left untouched.
 
@@ -129,7 +138,7 @@ Open structure, but a workable default:
 ## 5. Writing Conventions
 
 - **Language:** US English, academic tone, clear and concise.
-- **Voice:** No first person — avoid *I*, *we*, *our*. Use the passive or recast in third person.
+- **Voice:** Use academic third person by default. First person is allowed only in clearly bounded reflexive passages about the author's own practitioner experience, and only when it improves transparency. Such passages must remain anonymized: no client data, named internal checks, colleague names, incidents, screenshots, or non-public operating details.
 - **Punctuation:** No em dash and no en dash used as a sentence connector. Use a comma, colon, semicolon, or recast.
 - **Sentence rhythm:** Lead with the answer, then explain. Short sentences with selective descriptive word choices.
 - **Headings:** Sentence case. Heading 1 for top-level sections, Heading 2 for subsections, Heading 3 sparingly.
@@ -226,7 +235,7 @@ The draft passes only if every box is ticked:
 - [ ] Syllabus readings cited directly, not via lecture slides.
 - [ ] Concrete, justified recommendation delivered.
 - [ ] Scope of partially-used frameworks stated explicitly.
-- [ ] No first person, no em dash, no concept-dropping.
+- [ ] First person appears only in bounded reflexive passages, with anonymization intact; no em dash; no concept-dropping.
 - [ ] Confidentiality statement added if applicable.
 - [ ] Front page carries title, type of paper, student number, programme, date, supervisor (if any), character count, page count.
 

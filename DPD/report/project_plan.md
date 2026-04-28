@@ -1,6 +1,6 @@
 # DPD Project Plan — FNZ and the Wealth Management Platform Shift
 
-Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) individual exam paper. The case is **FNZ**, a wealth-management technology firm, framed against the broader shift in European wealth management toward platform-based, AUA-linked operating models. Personal experience at FNZ informs the choice of mechanism. Three confidential interviews supply the empirical material that the analysis works against.
+Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) individual exam paper. The case is **FNZ**, a wealth-management technology firm, framed against the broader shift in European wealth management toward platform-based, AUA-linked operating models. Prior FNZ operations experience informs the interpretation of generic mechanisms such as reconciliation, workflow automation, and regulatory-reporting validation, but it is not treated as a separate confidential data set. Three confidential interviews supply the empirical material that the analysis works against.
 
 ---
 
@@ -12,9 +12,11 @@ Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) indiv
 | Theories applied | Three, with sub-parts named explicitly (§4) |
 | Confidentiality statement on front page | **Yes** |
 | Empirical material | Three confidential interviews with senior FNZ employees (anonymized), supplemented by public-record corporate facts |
+| Reflexive practitioner material | First-person, anonymized reflection may be used sparingly where it clarifies lived operational mechanisms; no client data, colleague names, named internal checks, incidents, screenshots, or non-public operating details |
 | Citation style | APA 7 |
 | Page budget | 10 pages, body only |
 | Analytical method | Predict, observe, explain divergence, applied inside §5 Discussion |
+| Word editing workflow | Patch the active `.docx` in place. The binding fallback (front page, styles, package parts) is `backup/KAN-CDSCO2401U_185912_DPD_Spring2026_Backup_28.docx`. Do not rebuild from `backup/Old_template.docx` or any historical template. |
 
 ---
 
@@ -131,8 +133,17 @@ This pattern is the heart of the paper. It demonstrates active *application* of 
 - FNZ corporate site: AUA, institutional client count, end-investor count, headquarters, founding history.
 - FNZ press releases: Raymond James (Canada) and UniCredit (Germany) mandates; Blythe Masters succession (September 2024); CPP Investments and Motive Partners 2022 round and USD 20bn valuation.
 - M&A activity: New Access acquisition, Appway acquisition. Cited in §2 Background alongside a single pointed reference to Porter & Heppelmann (2015) on systems-of-systems.
+- Peer-reviewed support: Gonzalez, Llopis, and Gasco (2013) on financial-services outsourcing drivers; Mamede, Martins, and Mira da Silva (2023) on RPA in banking; Gawer (2021) on digital platform boundaries; Anderson-Princen (2022) on financial-sector outsourcing governance.
+- Regulatory context: EBA outsourcing guidelines and DORA material on ICT third-party risk and operational resilience.
 - Industry coverage: Financial Times, Reuters, *Wealth Briefing*, *Citywire* on European wealthtech consolidation.
 - Syllabus readings, cited directly to the originating article or book, never via a lecture slide.
+
+### Reflexive practitioner experience (first-person, anonymized)
+
+- Used only to clarify the lived operational mechanism behind the transaction-cost argument, especially reconciliation, transfers and transaction workflow automation, and regulatory-reporting validation.
+- Written in first person where it is clearly a reflection on the author's experience. This is more transparent than using "the author" as a distancing device.
+- Not cited as confidential empirical evidence. It is reflexive case familiarity, distinct from the three anonymized FNZ interviews.
+- Guardrails: no client data, named internal checks, colleague names, incidents, screenshots, non-public operating details, or client-specific control descriptions. Client-side control teams may be referenced generically where needed to explain retained bank accountability.
 
 ### Confidential interviews (cite as anonymized primary sources)
 
@@ -206,8 +217,9 @@ The implication paragraphs must be concrete, justified by the analysis above, an
 - [x] Lock citation style (APA 7).
 - [x] Lock confidentiality decision (statement on front page).
 - [x] Lock empirical strategy (public record + three confidential interviews).
+- [x] Lock Word editing workflow: preserve the latest backup front page; patch the active `.docx` in place rather than rebuilding from an older backup template.
 - [ ] Confirm whether to add one bank-side validation interview (SEB, Swedbank, Nordea, or Danske Bank representative).
-- [ ] Build the public-record bibliography (FNZ corporate, press, FT/Reuters/wealth-trade press).
+- [x] Build the public-record bibliography (FNZ corporate, press, peer-reviewed outsourcing/platform/automation research, and EBA/DORA context).
 - [ ] Draft the interview persona one-pager: role, tenure, scope, tone, what they would and would not say. Lock before any interview citation appears in the report.
 - [ ] Confirm front-page metadata (student number, programme, date, supervisor).
 - [ ] **Add the confidentiality disclaimer to the front page (Pontus to add manually).**
@@ -232,7 +244,7 @@ A shorter one-line variant is also acceptable if the cover layout is tight:
 
 ### Method statement (target ~150 words)
 
-The empirical material is drawn from three semi-structured interviews with senior FNZ executives, conducted under company confidentiality terms and anonymized by request. The interview design follows Bell, Harley and Bryman (2022). Each guide is structured as an opening block for rapport and role-setting, three thematic blocks each anchored to a single sub-part of the focal theoretical framework, and a closing block with a forward-looking question and an open prompt. Questions are open-ended, neutrally phrased, and designed to elicit concrete examples before interpretation. The three interviewees were sampled theoretically: each occupies a different vantage on the bank-FNZ relationship and therefore owns one of the three analytical sections (transaction-cost economics for the operational-leadership perspective, multi-sided platform economics for the strategic-leadership perspective, and dynamic capabilities for the commercial and client-delivery perspective). This design produces transcripts that are comparable in scaffolding but distinct in territory, reducing the risk of cross-section conflation while preserving depth on each theoretical lens. The aim is analytical depth and theoretical relevance rather than statistical representativeness.
+The empirical material is drawn from three semi-structured interviews with senior FNZ executives, conducted under company confidentiality terms and anonymized by request. The interview design follows Bell, Harley and Bryman (2022). Each guide is structured as an opening block for rapport and role-setting, three thematic blocks each anchored to a single sub-part of the focal theoretical framework, and a closing block with a forward-looking question and an open prompt. Questions are open-ended, neutrally phrased, and designed to elicit concrete examples before interpretation. The three interviewees were sampled theoretically: each occupies a different vantage on the bank-FNZ relationship and therefore owns one of the three analytical sections (transaction-cost economics for the operational-leadership perspective, multi-sided platform economics for the strategic-leadership perspective, and dynamic capabilities for the commercial and client-delivery perspective). This design produces transcripts that are comparable in scaffolding but distinct in territory, reducing the risk of cross-section conflation while preserving depth on each theoretical lens. I use my prior FNZ operations experience only as reflexive case familiarity for generic mechanisms such as reconciliation, workflow automation, and regulatory-reporting validation; no client data, named internal checks, colleague names, incidents, screenshots, or non-public operating details are reported. The aim is analytical depth and theoretical relevance rather than statistical representativeness.
 
 If the optional bank-side validation interview is conducted, §3 should add one short sentence stating that the FNZ-centered material was triangulated with a confidential interview with a representative from a European universal bank. It should be framed as validation of buyer-side implications, not as a fourth case.
 
