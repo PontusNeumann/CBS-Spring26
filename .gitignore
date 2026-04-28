@@ -18,3 +18,6 @@ ML/report/alex/data/
 ML/report/alex/.scratch/
 ML/report/alex/outputs/.DS_Store
 ML/report/alex/outputs/**/.DS_Store
+
+# Release tarballs downloaded from GitHub Releases (too large for git)
+*.tar.gz
