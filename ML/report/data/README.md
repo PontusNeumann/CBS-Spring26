@@ -4,6 +4,8 @@ Active file: `data/consolidated_modeling_data.parquet` (317.5 MB)
 
 Target: `bet_correct` (int64, binary 0/1, balanced ~50.3% positive in both train and test).
 
+**Leakage note:** all features are temporally causal (verified in `alex/scripts/06b_engineer_features.py`), but six features that the prior leakage audit dropped have been reintroduced under different names. They are listed and explained in `data-pipeline-issues.md` (2026-04-29 audit section) along with a `LEAKY_REINTRO` set you can subtract from `feature_cols` if you want to match the prior audit's exclusion. Decision deferred to modeling time.
+
 ## Load
 
 ```python

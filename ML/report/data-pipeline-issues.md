@@ -9,6 +9,67 @@ Severity legend:
 
 ---
 
+## 2026-04-29 — Audit of `consolidated_modeling_data.parquet` against the prior exclusion list
+
+After the 2026-04-29 data-folder consolidation, the team's single modeling
+file is `data/consolidated_modeling_data.parquet` (87 cols, built from Alex's
+`alex/scripts/06b_engineer_features.py` joined with the wallet enrichment).
+Its column set differs from the post-`scripts/20_finalize_dataset.py`
+exclusion in `alex/notes/feature-exclusion-list.md`. Audit findings:
+
+**Aligned (correctly absent):** P0-1 `wallet_is_whale_in_market`; P0-2
+`is_position_exit` / `is_position_flip`; P0-8 absolute-scale market-identity
+columns (`time_to_settlement_s`, `market_volume_so_far_usd`,
+`market_trade_count_so_far`, `size_x_time_to_settlement`, etc. — Alex's
+pipeline uses windowed 5min/1h/24h variants instead); P0-9 naive
+`wallet_prior_win_rate`; `trade_size_vs_position_pct`,
+`wallet_cumvol_same_side_last_10min`, `wallet_has_both_sides_in_market`.
+
+**Causality verified for the `taker_*` analogues** (read 06b directly):
+`taker_position_size_before_trade`, `taker_directional_purity_in_market`,
+and `market_buy_share_running` all use `cumsum().shift(1).fillna(0)` (or the
+strict `codes[:i] == codes[i]` count for purity) with first-in-market reset
+to 0 — strictly prior, no temporal leak. `side_buy` and `outcome_yes` are
+per-row derivations from `taker_direction` / `nonusdc_side`, no temporal
+issue.
+
+**Reintroduced features (present in the parquet, previously dropped):**
+
+| Feature in parquet | Previously dropped as | Audit ID | Risk |
+|---|---|---|---|
+| `side_buy`, `outcome_yes` | `side`, `outcomeIndex` (renamed) | P0-11 | Within-market direction determinism: the pair partitions trades into 4 categories that map deterministically to `bet_correct` once the market's resolution is known. If the split is by market ID (each market fully in train or fully in test), the shortcut does not transfer to test; if the split shares market IDs across train/test, the model can memorise per-market resolution. |
+| `taker_directional_purity_in_market` | `wallet_directional_purity_in_market` | P0-12 | Built from `_side_code = side_buy*2 + outcome_yes`, so re-opens the P0-11 channel via aggregation. Causal across time, but encodes the leaky pair. |
+| `taker_position_size_before_trade` | `wallet_position_size_before_trade` | P0-12 | Computed as `tanh(cumsum(sign_yes_equiv * tokens) / 1000)` where `sign_yes_equiv = (2*side_buy − 1) * (2*outcome_yes − 1)`. Same channel as P0-12. |
+| `market_buy_share_running` | same name | P0-12 | Aggregate of `side_buy` over prior trades in the market — direction-channel aggregate. |
+| `wallet_funded_by_cex` | structurally leaky lifetime flag | feature-exclusion §4 | Lifetime CEX-funding flag, not point-in-time. Redundant: `wallet_funded_by_cex_scoped` (the safe per-trade-time version) is also in the parquet. |
+
+**Recommendation at modeling time:** decide per model family whether to
+include the reintroduced features. Conservative default that matches the
+prior exclusion list: build a `LEAKY_REINTRO` set and exclude it after
+loading.
+
+```python
+LEAKY_REINTRO = {
+    "side_buy", "outcome_yes",
+    "taker_directional_purity_in_market",
+    "taker_position_size_before_trade",
+    "market_buy_share_running",
+    "wallet_funded_by_cex",   # keep wallet_funded_by_cex_scoped instead
+}
+META_COLS = ["split", "market_id", "ts_dt", "timestamp"]
+TARGET    = "bet_correct"
+feature_cols = [
+    c for c in df.columns
+    if c not in META_COLS + [TARGET] and c not in LEAKY_REINTRO
+]
+```
+
+**Status:** parquet kept as-is (no rebuild). Decision deferred to modeling
+stage so each script can run an inclusion/exclusion sensitivity check and
+report the deltas.
+
+---
+
 ## P0 — Mitigated for this session, upstream fix still needed
 
 ### P0-1. `wallet_is_whale_in_market` uses end-of-market p95 as threshold
