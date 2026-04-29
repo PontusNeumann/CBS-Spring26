@@ -14,7 +14,7 @@ Panels that fit the joined schema:
     06  per-market trade count + base-rate spread
     07  train-vs-test distribution shift on top features
 
-Panels skipped (joined parquet is feature-only — no wallet ID, no price
+Panels skipped (joined parquet is feature-only, no wallet ID, no price
 trajectory series, no deadline_ts column at the level the original EDA
 needed):
     - wallet PCA, wallet quadrants, price trajectories, event timing.
@@ -129,7 +129,7 @@ def panel_zero_density(df: pd.DataFrame) -> pd.Series:
     ax.set_yticks(y)
     ax.set_yticklabels(keep.index, fontsize=8)
     ax.set_xlabel("% rows where value = 0")
-    ax.set_title("Zero-density by feature (top 20). Imputation-as-zero is the dataset's NaN proxy")
+    ax.set_title("Zero-density by feature (top 20). Imputation-as-zero is the dataset's NaN proxy.")
     ax.invert_yaxis()
     ax.legend(loc="lower right", frameon=False)
     clean_ax(ax)
@@ -137,7 +137,7 @@ def panel_zero_density(df: pd.DataFrame) -> pd.Series:
 
     txt = OUT_DIR / "01_zero_density.txt"
     txt.write_text(
-        "Zero-density per feature (overall, train, test) — top 30.\n"
+        "Zero-density per feature (overall, train, test). Top 30.\n"
         "The wallet-joined parquet has 0 NaN values. Alex's feature\n"
         "engineering pre-fills structural missingness with 0 (or 0.5 for\n"
         "taker_yes_share_global) at compute time. This panel proxies\n"
@@ -160,20 +160,20 @@ def panel_wallet_coverage(df: pd.DataFrame) -> dict:
     )
     cov["pct_enriched"] *= 100
 
-    fig, ax = plt.subplots(figsize=(FIG_W, 2.8))
+    fig, ax = plt.subplots(figsize=(FIG_W, 2.6))
     bars = ax.bar(
         cov.index, cov["pct_enriched"],
         color=[COL_TRAIN if s == "train" else COL_TEST for s in cov.index],
     )
     ax.set_ylabel("% trades with enriched wallet")
-    ax.set_ylim(0, 120)
-    ax.set_title("Wallet-feature coverage by split", pad=12)
+    ax.set_ylim(0, 100)
+    ax.set_title("Wallet-feature coverage by split", pad=10)
     for bar, pct, n in zip(bars, cov["pct_enriched"], cov["n_rows"]):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
-            bar.get_height() + 1.5,
+            bar.get_height() - 4,
             f"{pct:.1f}%\n({n:,} trades)",
-            ha="center", va="bottom", fontsize=9,
+            ha="center", va="top", fontsize=9, color="white",
         )
     clean_ax(ax)
     save_fig(fig, OUT_DIR / "02_wallet_coverage.png")
@@ -248,55 +248,107 @@ def panel_distributions_and_skew(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame({"skew": skew, "excess_kurtosis": kurt}).round(3).to_csv(out_skew)
     print(f"saved {out_skew.name}")
 
-    top12 = skew.index[:12].tolist()
-    fig, axes = plt.subplots(3, 4, figsize=(FIG_W_WIDE, 6.6))
+    # Pick the top-12 by absolute skew, but require enough spread to actually
+    # render a histogram (drop near-constant features whose 1-99 pct range is
+    # degenerate, those produce empty subplots).
+    plottable = []
+    for feat in skew.index:
+        v = sample[feat].dropna()
+        if v.empty:
+            continue
+        p1, p99 = np.percentile(v, [1, 99])
+        if p1 == p99:
+            continue
+        plottable.append(feat)
+        if len(plottable) == 12:
+            break
+    top12 = plottable
+
+    fig, axes = plt.subplots(3, 4, figsize=(FIG_W_WIDE, 6.6),
+                             constrained_layout=True)
     for ax, feat in zip(axes.flat, top12):
-        for outcome, colour in ((1, COL_CORRECT), (0, COL_INCORRECT)):
-            data = sample.loc[sample[TARGET] == outcome, feat].dropna()
-            if data.empty:
+        for outcome, colour, label in (
+            (0, COL_INCORRECT, "incorrect"),
+            (1, COL_CORRECT, "correct"),
+        ):
+            vals = sample.loc[sample[TARGET] == outcome, feat].dropna()
+            if vals.empty:
                 continue
-            sns.kdeplot(
-                data, ax=ax, fill=True, alpha=0.35, color=colour, lw=1,
-                common_norm=False,
-            )
+            lo, hi = np.percentile(vals, [1, 99])
+            vals = vals.clip(lo, hi)
+            ax.hist(vals, bins=40, alpha=0.45, color=colour, density=True,
+                    label=label, edgecolor="none")
         ax.set_title(feat, fontsize=8)
-        ax.set_xlabel("")
-        ax.set_ylabel("")
+        ax.tick_params(labelsize=7)
         clean_ax(ax)
-    fig.suptitle("Top-12 skewed features — KDE by bet_correct", y=1.01)
-    fig.tight_layout()
+    axes.flat[0].legend(frameon=False, fontsize=7, loc="best")
+    fig.suptitle("Top-12 skewed features: distribution by bet_correct (1 to 99 pct clipped)",
+                 y=1.02)
     save_fig(fig, OUT_DIR / "04_distributions.png")
     return skew
 
 
 def panel_outliers(df: pd.DataFrame, skew: pd.DataFrame, top_k: int = 8) -> None:
-    feats = skew.index[:top_k].tolist()
-    sample = df[feats].sample(min(50_000, len(df)), random_state=42)
-    long = sample.melt(var_name="feature", value_name="value").dropna()
-    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 3.2))
-    sns.boxplot(
-        data=long, x="feature", y="value",
-        ax=ax, color=PAL_10[5], width=0.5, fliersize=2,
-    )
-    ax.set_title(f"Top-{top_k} skewed features — value spread")
-    ax.tick_params(axis="x", rotation=30)
-    for lbl in ax.get_xticklabels():
-        lbl.set_ha("right")
-    clean_ax(ax)
-    fig.tight_layout()
+    """One boxplot per feature, independent y-axes (features have wildly
+    different scales so a shared axis squashes most boxes flat).
+    """
+    sample = df[skew.index.tolist()].sample(min(150_000, len(df)), random_state=42)
+    data, labels = [], []
+    for feat in skew.index:
+        s = sample[feat].dropna()
+        if s.empty:
+            continue
+        lo, hi = np.percentile(s, [1, 99])
+        if lo == hi:
+            continue
+        data.append(s.clip(lo, hi).values)
+        labels.append(feat)
+        if len(data) == top_k:
+            break
+
+    n = len(data)
+    n_cols = 4
+    n_rows = (n + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(FIG_W_WIDE, 2.7 * n_rows),
+                             constrained_layout=True)
+    axes_flat = axes.flatten() if n > 1 else [axes]
+    for i, (ax, d, lbl) in enumerate(zip(axes_flat, data, labels)):
+        bp = ax.boxplot([d], tick_labels=[""], vert=True, showfliers=False,
+                        patch_artist=True, widths=0.55,
+                        medianprops=dict(color=COL_DARK, lw=1.0),
+                        whiskerprops=dict(color=COL_DARK, lw=0.8),
+                        capprops=dict(color=COL_DARK, lw=0.8))
+        bp["boxes"][0].set_facecolor(PAL_10[min(1 + i, 9)])
+        bp["boxes"][0].set_edgecolor(COL_DARK)
+        bp["boxes"][0].set_alpha(0.85)
+        ax.set_title(lbl, fontsize=7)
+        ax.tick_params(axis="y", labelsize=7)
+        clean_ax(ax)
+    for ax in axes_flat[n:]:
+        ax.set_visible(False)
+    fig.suptitle(f"Top-{n} skewed features: value spread (boxplots)", fontsize=10)
+    fig.supylabel("value (1–99th percentile clipped)", fontsize=9)
     save_fig(fig, OUT_DIR / "05_outlier_boxplots.png")
 
 
 def panel_correlation(df: pd.DataFrame) -> None:
     feats = _numeric_features(df)
     sample = df[feats].sample(min(150_000, len(df)), random_state=42)
-    corr = sample.corr(numeric_only=True).fillna(0)
+    corr_full = sample.corr(numeric_only=True).fillna(0)
 
-    # Restrict to top-40 features by std to keep the heatmap readable.
-    if len(corr) > 40:
-        std_rank = sample.std(numeric_only=True).sort_values(ascending=False)
-        keep = std_rank.head(40).index.tolist()
-        corr = corr.loc[keep, keep]
+    # Restrict to top-40 features by centrality, defined as the mean
+    # absolute Pearson correlation with all OTHER features. This picks
+    # the most entangled features, which is what a correlation matrix is
+    # designed to surface. Diagonal is excluded so self-correlation does
+    # not dominate the ranking.
+    if len(corr_full) > 40:
+        without_self = corr_full.copy()
+        np.fill_diagonal(without_self.values, 0.0)
+        centrality = without_self.abs().mean().sort_values(ascending=False)
+        keep = centrality.head(40).index.tolist()
+        corr = corr_full.loc[keep, keep]
+    else:
+        corr = corr_full
 
     # Upper-triangle only (mask the lower, keep the diagonal).
     mask = np.tril(np.ones_like(corr, dtype=bool), k=-1)
@@ -311,10 +363,27 @@ def panel_correlation(df: pd.DataFrame) -> None:
         square=True, linewidths=0.0, annot=False, ax=ax, cbar_ax=cax,
         cbar_kws={"label": "Pearson r"},
     )
-    ax.tick_params(axis="x", rotation=45, labelsize=8)
-    ax.tick_params(axis="y", rotation=0, labelsize=8)
+    # X-axis labels along the TOP edge, tilted up-and-left, no tick marks.
+    ax.xaxis.tick_top()
+    ax.xaxis.set_label_position("top")
+    ax.tick_params(axis="x", which="both", length=0, labelsize=9, pad=3)
     for lbl in ax.get_xticklabels():
+        lbl.set_rotation(-45)
         lbl.set_ha("right")
+        lbl.set_rotation_mode("anchor")
+        lbl.set_color(COL_DARK)
+        lbl.set_fontweight("medium")
+    # Y-axis labels staircased along the diagonal (next to the triangle
+    # border) instead of pinned to the far left. Hide default y-ticks.
+    ax.set_yticks([])
+    ax.tick_params(axis="y", which="both", length=0, labelleft=False)
+    for i, name in enumerate(corr.index):
+        ax.text(i, i + 0.5, name + "  ", ha="right", va="center", fontsize=8,
+                color=COL_DARK)
+    ax.set_title(
+        "Top-40 features by correlation centrality (mean |Pearson r| with the others)",
+        fontsize=11, pad=20,
+    )
     fig.tight_layout()
     save_fig(fig, OUT_DIR / "06_correlation_heatmap.png")
 
@@ -378,7 +447,7 @@ def panel_train_test_shift(df: pd.DataFrame) -> None:
     train = df[df[SPLIT] == "train"][feats]
     test = df[df[SPLIT] == "test"][feats]
     if train.empty or test.empty:
-        print("skipping shift panel — one split missing")
+        print("skipping shift panel, one split missing")
         return
 
     # Standardised mean shift per feature (Cohen's d-like).
@@ -402,12 +471,12 @@ def panel_train_test_shift(df: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 09. Late-flow signature — base rate vs time-to-deadline buckets.
+# 09. Late-flow signature, base rate vs time-to-deadline buckets.
 # Replicates the Mitts & Ofir 2026 setup that motivated the cohort design.
 # ---------------------------------------------------------------------------
 def panel_late_flow(df: pd.DataFrame) -> None:
     if "log_time_to_deadline_hours" not in df.columns:
-        print("skipping late-flow panel — log_time_to_deadline_hours missing")
+        print("skipping late-flow panel, log_time_to_deadline_hours missing")
         return
 
     # log_time_to_deadline_hours = log1p(hours) ⇒ recover hours then bucket
@@ -471,7 +540,7 @@ def panel_late_flow(df: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 10. Wallet-stratum base rates — motivates Layer-6 enrichment.
+# 10. Wallet-stratum base rates, motivates Layer-6 enrichment.
 # ---------------------------------------------------------------------------
 def panel_wallet_strata(df: pd.DataFrame) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(FIG_W_WIDE, 3.4))
@@ -526,7 +595,7 @@ def panel_wallet_strata(df: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 11. Per-market base rate — the single-event-resolution bimodality.
+# 11. Per-market base rate, the single-event-resolution bimodality.
 # ---------------------------------------------------------------------------
 def panel_per_market_bimodality(df: pd.DataFrame) -> None:
     per = df.groupby([SPLIT, MARKET]).agg(
@@ -554,7 +623,7 @@ def panel_per_market_bimodality(df: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 12. Single-feature ROC per market — feature-stability heatmap.
+# 12. Single-feature ROC per market, feature-stability heatmap.
 # ---------------------------------------------------------------------------
 def panel_feature_stability(df: pd.DataFrame, top_k: int = 8) -> None:
     from sklearn.metrics import roc_auc_score
@@ -584,7 +653,7 @@ def panel_feature_stability(df: pd.DataFrame, top_k: int = 8) -> None:
             rows.append({"market": mkt, "feature": feat, "auc": float(auc)})
 
     if not rows:
-        print("skipping feature-stability panel — no markets met thresholds")
+        print("skipping feature-stability panel, no markets met thresholds")
         return
 
     pm = pd.DataFrame(rows).pivot(index="feature", columns="market", values="auc")
@@ -617,7 +686,7 @@ def panel_feature_stability(df: pd.DataFrame, top_k: int = 8) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 13. Mutual-information feature ranking — non-linear signal counterpart
+# 13. Mutual-information feature ranking, non-linear signal counterpart
 # to the Pearson skew table.
 # ---------------------------------------------------------------------------
 def panel_mutual_information(df: pd.DataFrame) -> None:
@@ -646,7 +715,7 @@ def panel_mutual_information(df: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 14. Feature-group taxonomy — how the 79 features split across layers.
+# 14. Feature-group taxonomy, how the 79 features split across layers.
 # ---------------------------------------------------------------------------
 FEATURE_GROUPS: list[tuple[str, list[str]]] = [
     ("Trade-level", [
@@ -735,7 +804,7 @@ def panel_feature_taxonomy(df: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 15. Distribution-tail diagnostics — fat-tail screen.
+# 15. Distribution-tail diagnostics, fat-tail screen.
 # Pairs with skew + excess kurtosis from panel 04. For each top-10 fat-tail
 # feature, show the 1/5/95/99 percentiles + tail-conditional mean (mean
 # beyond p95 / below p5). Cohen's-d style robustness diagnostic from MA2.
@@ -784,13 +853,13 @@ def panel_tail_diagnostics(df: pd.DataFrame) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 16. Temporal base-rate drift — rolling base rate vs trade time.
+# 16. Temporal base-rate drift, rolling base rate vs trade time.
 # MA2-style rolling-window drift detection. Tests whether bet_correct base
 # rate is stable across the strike-countdown / ceasefire-countdown windows.
 # ---------------------------------------------------------------------------
 def panel_temporal_drift(df: pd.DataFrame) -> None:
     if "timestamp" not in df.columns:
-        print("skipping temporal-drift panel — timestamp missing")
+        print("skipping temporal-drift panel, timestamp missing")
         return
 
     times = pd.to_datetime(df["timestamp"], unit="s", utc=True)
@@ -858,11 +927,11 @@ def write_index(out_dir: Path) -> None:
         ("16_temporal_drift.png", "Daily bet_correct base rate with 7-day rolling mean, per split."),
         ("summary.txt", "Plain-text summary of dataset shape, base rates, missingness."),
     ]
-    lines = ["# EDA index — wallet-joined Alex cohort", ""]
+    lines = ["# EDA index, wallet-joined Alex cohort", ""]
     for name, blurb in items:
         path = out_dir / name
-        present = "✓" if path.exists() else "—"
-        lines.append(f"- [{present}] **{name}** — {blurb}")
+        present = "✓" if path.exists() else "x"
+        lines.append(f"- [{present}] **{name}**: {blurb}")
     (out_dir / "index.md").write_text("\n".join(lines) + "\n")
     print(f"saved index.md")
 
@@ -870,7 +939,7 @@ def write_index(out_dir: Path) -> None:
 def write_summary(df: pd.DataFrame, nulls: pd.Series, cov: dict) -> None:
     feats = _numeric_features(df)
     lines = [
-        "EDA summary — wallet-joined Alex cohort",
+        "EDA summary, wallet-joined Alex cohort",
         f"  rows: {len(df):,}   cols: {len(df.columns):,}   numeric features: {len(feats):,}",
         "",
         "split sizes:",
@@ -916,7 +985,7 @@ def main() -> None:
     panel_temporal_drift(df)
     write_summary(df, nulls, cov)
     write_index(OUT_DIR)
-    print(f"\nEDA done — outputs in {OUT_DIR.relative_to(ROOT)}")
+    print(f"\nEDA done, outputs in {OUT_DIR.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-Zero-density per feature (overall, train, test) — top 30.
+Zero-density per feature (overall, train, test). Top 30.
 The wallet-joined parquet has 0 NaN values. Alex's feature
 engineering pre-fills structural missingness with 0 (or 0.5 for
 taker_yes_share_global) at compute time. This panel proxies
