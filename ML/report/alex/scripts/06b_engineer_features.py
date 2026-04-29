@@ -2,9 +2,9 @@
 06b_engineer_features.py
 
 Comprehensive feature engineering for Polymarket Iran-strike → Iran-ceasefire cohort.
-Reads alex/data/{train,test}.parquet (raw HF trade rows), produces:
-  alex/data/train_features.parquet
-  alex/data/test_features.parquet
+Reads data/archive/alex/{train,test}.parquet (raw HF trade rows), produces:
+  data/archive/alex/train_features.parquet
+  data/archive/alex/test_features.parquet
 
 Each output is a single dataframe with: feature columns + market_id + bet_correct + ts_dt.
 
@@ -46,7 +46,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "data"
+DATA = ROOT.parent / "data" / "archive" / "alex"
 
 # Real-world events
 STRIKE_EVENT_UTC = pd.Timestamp("2026-02-28T06:35:00", tz="UTC")

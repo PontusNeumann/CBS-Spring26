@@ -7,14 +7,16 @@
    code. This script is PyTorch (see imports). Alex's workspace at
    `alex/scripts/` carries the replacement baseline sweep; the TF/Keras MLP
    lives there (TBD at time of deprecation).
-2. **Data layout.** This script reads `data/03_consolidated_dataset.csv`
-   directly and drives train / val / test via the `split` column. The CSV
-   no longer has `split` — cohort assignment moved to the market-cohort
-   parquets written by `scripts/14_build_experiment_splits.py` at
-   `data/experiments/{train,val,test}.parquet`. Several columns this script
-   references in `NON_FEATURE_COLS` are physically gone from the CSV now
-   (see `scripts/20_finalize_dataset.py`). The `not in set` filter is still
-   safe, but `df['split'].value_counts()` on row 327 raises `KeyError`.
+2. **Data layout.** This script reads `data/archive/pipeline/03_consolidated_dataset.csv`
+   (legacy build-pipeline CSV, archived 2026-04-29) and drives train / val /
+   test via the `split` column. The CSV no longer has `split` — cohort
+   assignment moved to the market-cohort parquets written by
+   `scripts/14_build_experiment_splits.py` at
+   `outputs/experiments/{train,val,test}.parquet`. Several columns this
+   script references in `NON_FEATURE_COLS` are physically gone from the CSV
+   now (see `scripts/20_finalize_dataset.py`). For forward modeling use
+   `data/consolidated_modeling_data.parquet` directly (load snippet in
+   `data/README.md`); the `split` column is present there.
 
 Historical context preserved below as a reference for the intended
 pipeline shape (SELU MLP, isotonic calibration on val, baselines,
@@ -51,7 +53,7 @@ import matplotlib.pyplot as plt
 # ---------------------------------------------------------------------------
 
 REPORT_DIR = Path(__file__).resolve().parent.parent
-DATA_CSV = REPORT_DIR / "data" / "03_consolidated_dataset.csv"
+DATA_CSV = REPORT_DIR / "data" / "archive" / "pipeline" / "03_consolidated_dataset.csv"
 OUT_DIR = REPORT_DIR / "outputs" / "modelling"
 
 # Columns that are NOT features. Everything else in the frame is treated as a
@@ -327,7 +329,7 @@ def run() -> None:
         "12_train_mlp.py is deprecated — see module docstring. "
         "Use the TF/Keras pipeline under alex/scripts/ for the exam "
         "submission, and the market-cohort parquets under "
-        "data/experiments/ as the train/val/test input."
+        "outputs/experiments/ as the train/val/test input."
     )
     # Unreachable below — preserved for historical context.
     OUT_DIR.mkdir(parents=True, exist_ok=True)

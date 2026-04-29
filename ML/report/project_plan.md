@@ -11,6 +11,10 @@
 - `handovers/handover_<date>.md` — per-session handover covering only the most recent work done. Anything that matters long-term is folded back into this plan.
 - `docs/archive/mldp-project-overview.md` — Alex's narrower 7-sub-market proposal. Superseded by this plan; kept for history only.
 
+**Ready-to-use modeling dataset (consolidated 2026-04-29):**
+
+The team is aligned on a single shared dataset. There is now exactly one `data/` folder in the repo (`ML/report/data/`); the previous `pontus/data/` and `alex/data/` folders have been merged into it. Use `data/consolidated_modeling_data.parquet` (317.5 MB, 1,371,180 rows × 87 cols) — it carries train/test in a `split` column, target `bet_correct`, 70 core features, and 12 wallet features. See `data/README.md` for the load snippet, column groups, and provenance.
+
 ---
 
 ## 1. Summary
@@ -264,21 +268,17 @@ report/
 │   ├── cbs_paper_image_{1,2,3}.png          # CBS cover/branding images.
 │   └── trading_image.jpg                    # Motivation-section illustration.
 │
-├── data/                                    # Local outputs; .gitignored except committed evidence.
-│   ├── 00_hf_markets_master.parquet         # HF markets metadata cache (116 MB) — join table for event_slug / category.
-│   ├── 00_hf_trades_cache.parquet           # HF-path Iran trades subset (~50 MB).
-│   ├── 01_markets_meta.csv                  # 74 resolved Iran markets' metadata.
-│   ├── 01_prices.csv                        # Iran intraday price history.
-│   ├── 02_trades.csv                        # Concatenated Iran trades (HF + API).
-│   ├── 03_consolidated_dataset.csv               # Consolidated dataset (features + labels + split + missingness flags).
-│   ├── 03_consolidated_dataset.pre11.csv         # Single safety backup, kept one step behind current.
-│   ├── MISSING_DATA.md                      # Authoritative policy for NaN handling and indicator columns; cited by §5.6.
-│   ├── wallet_enrichment.parquet            # Layer 6 Etherscan enrichment output; written by 03_enrich_wallets.py.
-│   ├── enrichment_progress.json             # Live status snapshot of 03_enrich_wallets.py.
-│   ├── enrichment_stdout.log                # Streaming log for the enrichment run.
-│   ├── iran_strike_labeled_v2.parquet       # Alex's 7-market dataset — git-tracked as evidence, not our pipeline.
-│   ├── backtest_v{2,3}_outputs/             # Alex's evidence artefacts — git-tracked, not our results.
-│   └── mlp_reframed_v{2,3}_outputs/         # Same — Alex's exploration runs.
+├── data/                                    # SINGLE source of truth for all team modeling data (consolidated 2026-04-29).
+│   ├── consolidated_modeling_data.parquet   # ← USE THIS for modeling (317.5 MB, 1,371,180 rows × 87 cols, train/test in `split` column).
+│   ├── consolidated_modeling_data.info.json # Row/column counts, build timestamp, full wallet feature list.
+│   ├── wallet_enrichment.parquet            # Layer 6 Etherscan enrichment output; joined into modeling file.
+│   ├── README.md                            # Load snippet + folder layout + provenance.
+│   ├── MISSING_DATA.md                      # NaN handling and indicator-column policy; cited by §5.6.
+│   └── archive/                             # Frozen traceback only — not needed for modeling.
+│       ├── train_features_walletjoined.parquet
+│       ├── test_features_walletjoined.parquet
+│       ├── pipeline/                        # Upstream raw + intermediate files (00_*, 01_*, 02_*, 03_consolidated_dataset.csv, iran_strike_labeled_v2.parquet).
+│       └── alex/                            # Alex's pre-wallet-join pipeline outputs (train/test/markets_subset/feature_cols).
 │
 ├── guidelines/                              # CBS course materials and reference exemplars.
 │   ├── 01_Project_Guidelines_original.pdf

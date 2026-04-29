@@ -1,9 +1,10 @@
 """EDA for the Iran-markets enriched dataset.
 
-Reads `data/03_consolidated_dataset.csv` (the consolidated dataset produced by
-`02_build_dataset.py`) and writes figures plus a numeric summary to
-`outputs/eda/`. All figures follow `report/Design.md` conventions so they drop
-straight into the Word document with no post-processing.
+Reads `data/archive/pipeline/03_consolidated_dataset.csv` (legacy build-pipeline
+output, archived 2026-04-29; the canonical modeling dataset is now
+`data/consolidated_modeling_data.parquet`) and writes figures plus a numeric
+summary to `outputs/eda/`. All figures follow `report/Design.md` conventions so
+they drop straight into the Word document with no post-processing.
 
 EDA stages (aligned to lectures 2, 5, 7):
     01  shape + dtypes + missingness            (L2 preprocessing)
@@ -16,7 +17,7 @@ EDA stages (aligned to lectures 2, 5, 7):
     08  wallet behavioural quadrants
 
 Usage:
-    python scripts/04_eda.py [--csv data/03_consolidated_dataset.csv] [--out outputs/eda]
+    python scripts/04_eda.py [--csv data/archive/pipeline/03_consolidated_dataset.csv] [--out outputs/eda]
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ import pandas as pd
 import seaborn as sns
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
+DATA_DIR = ROOT / "data" / "archive" / "pipeline"
 OUT_DIR_DEFAULT = ROOT / "outputs" / "eda"
 
 

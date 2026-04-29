@@ -1,6 +1,6 @@
 # Alex idea1 data snapshot 2026-04-28
 
-Companion data for [PR #13](https://github.com/PontusNeumann/CBS-Spring26/pull/13). Extract to `ML/report/alex/data/` to reproduce all backtest + sensitivity runs.
+Companion data for [PR #13](https://github.com/PontusNeumann/CBS-Spring26/pull/13). Files now live in `ML/report/data/archive/alex/` (consolidated 2026-04-29). Path used to be `ML/report/alex/data/`.
 
 ## `feature_cols.json` (0.002 MB, sha256:62ebdf8403fe79c5)
 

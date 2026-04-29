@@ -3,8 +3,11 @@ ML/assignments/ML MA3/data/
 # macOS
 .DS_Store
 
-# Polymarket data exports (kept locally, not in git)
-ML/report/data/
+# Polymarket data — heavy binaries kept out of git (distributed via GitHub Releases).
+# README.md / MISSING_DATA.md / release-manifest*.md / *.info.json / .gitkeep stay tracked.
+ML/report/data/**/*.parquet
+ML/report/data/**/*.csv
+ML/report/data/**/*.log
 
 # Python bytecode
 __pycache__/
@@ -13,27 +16,10 @@ __pycache__/
 .env
 ML/report/.env
 
-# Alex's local heavy data + caches (kept locally only)
-ML/report/alex/data/
+# Per-person scratch caches (alex/data/ and pontus/data/ no longer exist post-2026-04-29 consolidation)
 ML/report/alex/.scratch/
 ML/report/alex/outputs/.DS_Store
 ML/report/alex/outputs/**/.DS_Store
-
-# Pontus's local heavy joined-feature parquets + enrichment intermediates
-ML/report/pontus/data/*
-!ML/report/pontus/data/README.md
-!ML/report/pontus/data/consolidated_modeling_data.info.json
-!ML/report/pontus/data/.gitkeep
-ML/report/data/wallet_enrichment.pre-alex-extras.parquet
-ML/report/data/wallet_enrichment.pre-retry2.parquet
-ML/report/data/wallet_enrichment.pre-retry3.parquet
-ML/report/data/wallet_enrichment.pre-retry4.parquet
-ML/report/data/enrichment_alex_extras.log
-ML/report/data/enrichment_retry.log
-ML/report/data/enrichment_progress.alex_extras.json
-ML/report/data/enrichment_progress.retry.json
-ML/report/data/wallet_enrichment.parquet.alex_extras_tmp
-ML/report/data/wallet_enrichment.parquet.retry_tmp
 
 # Claude Code project state
 ML/report/.claude/

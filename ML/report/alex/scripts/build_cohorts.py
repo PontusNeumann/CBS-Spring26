@@ -2,10 +2,10 @@
 
 Dataset: SII-WANGZJ/Polymarket_data (HuggingFace).
 Output:
-  - alex/data/train.parquet   Iran-strike canonical ladder trades, ts < 2026-02-28 06:35 UTC
-  - alex/data/test.parquet    US-Iran-ceasefire canonical ladder trades, ts < 2026-04-07 00:00 UTC
+  - data/archive/alex/train.parquet   Iran-strike canonical ladder trades, ts < 2026-02-28 06:35 UTC
+  - data/archive/alex/test.parquet    US-Iran-ceasefire canonical ladder trades, ts < 2026-04-07 00:00 UTC
   - alex/outputs/cohort_inventory/keyword_matches.csv   every title matched by broad keyword filter
-  - alex/data/markets_subset.parquet  metadata for every included market
+  - data/archive/alex/markets_subset.parquet  metadata for every included market
 
 Dependencies (install in an ephemeral venv):
     python -m venv .venv && source .venv/bin/activate
@@ -57,7 +57,7 @@ HF_MARKETS = f"{HF_REPO}/markets.parquet"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]  # .../ML/report/
 ALEX = REPO_ROOT / "alex"
-DATA_DIR = ALEX / "data"
+DATA_DIR = REPO_ROOT / "data" / "archive" / "alex"
 NOTES_DIR = ALEX / "notes"
 OUT_DIR = ALEX / "outputs" / "cohort_inventory"
 SCRATCH = ALEX / ".scratch"
@@ -545,7 +545,7 @@ def build_inventory(
     lines.append("```\n\n")
     lines.append("Outputs on success:\n")
     lines.append(
-        "- `alex/data/train.parquet`\n- `alex/data/test.parquet`\n- `alex/data/markets_subset.parquet` (metadata for included markets)\n- `alex/outputs/cohort_inventory/keyword_matches.csv`\n- `alex/notes/cohort_inventory.md` (this file)\n\n"
+        "- `data/archive/alex/train.parquet`\n- `data/archive/alex/test.parquet`\n- `data/archive/alex/markets_subset.parquet` (metadata for included markets)\n- `alex/outputs/cohort_inventory/keyword_matches.csv`\n- `alex/notes/cohort_inventory.md` (this file)\n\n"
     )
 
     lines.append("## 10. Autonomous decisions requiring user audit\n")

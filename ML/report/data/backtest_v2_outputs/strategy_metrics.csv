@@ -1,6 +1,0 @@
-strategy,n_triggers,total_pnl,avg_pnl_per_trigger,hit_rate,sharpe,max_drawdown,capital_at_risk,return_pct
-MLP_general_EV,43245,3347385.57,77.41,0.5093,60.765,1631574.76,4324500.0,77.41
-MLP_homerun,87,-8700.0,-100.0,0.0,,8600.0,8700.0,-100.0
-naive_enter_all,86532,8002632.55,92.48,0.5237,96.283,813170.61,8653200.0,92.48
-random_match_general,43245,4015508.99,92.85,0.5224,68.157,2149.92,4324500.0,92.85
-follow_whales,413,40348.07,97.7,0.5109,6.262,9039.81,41300.0,97.7

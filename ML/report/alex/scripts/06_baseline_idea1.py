@@ -5,8 +5,8 @@ LogReg baseline for cohort design "idea 1" (multi-market train on US-strike-Iran
 ladder; multi-market test on US x Iran ceasefire ladder).
 
 Pipeline:
-  1. Load alex/data/{train,test}.parquet (raw HF trade rows)
-  2. Join to alex/data/markets_subset.parquet for metadata
+  1. Load data/archive/alex/{train,test}.parquet (raw HF trade rows)
+  2. Join to data/archive/alex/markets_subset.parquet for metadata
   3. Derive `bet_correct` target from outcome_prices + nonusdc_side + taker_direction
   4. Engineer 16 market-agnostic, no-lookahead features
   5. 5-fold GroupKFold CV on train (groups = market_id), time-respecting within fold
@@ -52,7 +52,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # ---------------------------------------------------------------------------
 
 ROOT = Path(__file__).resolve().parents[1]  # alex/
-DATA = ROOT / "data"
+DATA = ROOT.parent / "data" / "archive" / "alex"
 OUT = ROOT / "outputs" / "baselines" / "idea1_v2"
 OUT.mkdir(parents=True, exist_ok=True)
 

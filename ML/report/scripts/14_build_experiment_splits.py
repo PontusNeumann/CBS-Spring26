@@ -3,12 +3,14 @@
 Slice the consolidated dataset into small, self-contained parquet files for
 the market-cohort split defined in project_plan.md §4 → Split.
 
-Each cohort is written to `data/experiments/<name>.parquet`, fully
+Each cohort is written to `outputs/experiments/<name>.parquet`, fully
 feature-complete, so the modelling script can load a cohort in <1 s without
 re-reading the ~1 GB CSV every time.
 
-Currently implemented: train cohort only. Val and test cohorts are listed
-below but commented out; uncomment and re-run once market picks are finalised.
+NOTE (2026-04-29): superseded by the team-shared
+`data/consolidated_modeling_data.parquet`, which already carries train/test in
+a `split` column. This script is kept as historical pipeline; if re-run it
+reads the legacy CSV from `data/archive/pipeline/`.
 """
 
 from __future__ import annotations
@@ -18,8 +20,8 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
-CSV = ROOT / "data" / "03_consolidated_dataset.csv"
-OUT_DIR = ROOT / "data" / "experiments"
+CSV = ROOT / "data" / "archive" / "pipeline" / "03_consolidated_dataset.csv"
+OUT_DIR = ROOT / "outputs" / "experiments"
 
 # Pre-modelling filter per §4: drop post-resolution close-out trades.
 APPLY_SETTLEMENT_FILTER = True
