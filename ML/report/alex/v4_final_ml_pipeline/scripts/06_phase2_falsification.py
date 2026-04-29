@@ -8,7 +8,7 @@ T2.2  B1b — naive consensus baseline
 T2.3  A1  — SELL semantics (closing vs open-short)
 
 Outputs:
-  alex/.scratch/pressure_tests/phase2_results.json
+  alex/.scratch/pressure_tests/phase2_v4_results.json
   alex/.scratch/pressure_tests/plots/b1a_*.png, b1b_*.png
 """
 
@@ -41,6 +41,16 @@ PLOTS = SCRATCH_OUT / "plots"
 PLOTS.mkdir(parents=True, exist_ok=True)
 PRED = SCRATCH_BASE / "backtest"
 
+# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
+TEST_PARQUET = "test_features_v4.parquet"
+EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+
+# Models we look up in cached preds. Keep in sync with _backtest_worker.py
+# and 10_backtest.py. LightGBM is loaded if its npz exists.
+MODELS = ["logreg_l2", "random_forest", "hist_gbm", "lightgbm"]
+# Tree/boosting models considered as "the model" in B1a / B1b verdicts.
+TREE_MODELS = ["random_forest", "hist_gbm", "lightgbm"]
+
 results: dict = {}
 
 
@@ -58,11 +68,26 @@ def _record(test_id, status, detail):
 
 def load_test_with_preds():
     """Load test + cached predictions, with consistent sort + corrected pre_yes."""
-    test = pd.read_parquet(DATA / "test_features.parquet")
+    # --- v4 data guard ------------------------------------------------------
+    test_path = DATA / TEST_PARQUET
+    if not test_path.exists():
+        raise SystemExit(
+            f"v4 parquet missing: {test_path}. Pontus has not delivered, or "
+            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
+        )
+    fcols = json.loads((DATA / "feature_cols.json").read_text())
+    if len(fcols) != EXPECTED_N_FEATURES:
+        raise SystemExit(
+            f"feature_cols.json has {len(fcols)} features, expected "
+            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
+        )
+
+    test = pd.read_parquet(test_path)
     test["market_id"] = test["market_id"].astype(str)
     test["_orig_idx"] = np.arange(len(test))
     test_sorted = test.sort_values(["market_id", "timestamp"]).reset_index(drop=True)
     sort_key = test.sort_values(["market_id", "timestamp"])["_orig_idx"].values
+    n_test = len(test)
 
     # Attach corrected pre_yes_price (per-token-price bug fix)
     raw = pd.read_parquet(DATA / "test.parquet")
@@ -73,8 +98,18 @@ def load_test_with_preds():
     )
 
     preds = {}
-    for m in ["logreg_l2", "random_forest", "hist_gbm"]:
-        d = np.load(PRED / f"preds_{m}.npz")
+    for m in MODELS:
+        path = PRED / f"preds_{m}.npz"
+        if not path.exists():
+            print(f"  · {m}: no preds at {path} — skipping")
+            continue
+        d = np.load(path)
+        if len(d["raw"]) != n_test:
+            raise SystemExit(
+                f"[{m}] worker preds length {len(d['raw'])} != n_test {n_test}. "
+                f"Sort-key reorder would silently misalign predictions. "
+                f"Re-run with RETRAIN=1 (worker may have read a stale parquet)."
+            )
         # Predictions are saved in original (un-sorted) order
         preds[m] = {
             "raw": d["raw"][sort_key],
@@ -161,7 +196,12 @@ def t2_1_decomposition(test, preds):
         )
 
     # Plot for RF
-    p_hat_rf = preds["random_forest"]["cal"]
+    headline_model = next(
+        (m for m in ("random_forest", "lightgbm", "hist_gbm") if m in preds), None
+    )
+    if headline_model is None:
+        raise SystemExit("no tree-model preds available; cannot continue")
+    p_hat_rf = preds[headline_model]["cal"]
     cost_rf, edge_rf, trader_yes_rf = compute_cost_edge(test, p_hat_rf)
     k = int(n * 0.01)
     top_idx_rf = np.argsort(p_hat_rf)[-k:]
@@ -177,8 +217,8 @@ def t2_1_decomposition(test, preds):
     axes[0].legend()
     axes[0].grid(alpha=0.3)
 
-    # Consensus alignment as a stacked bar per model
-    models_order = ["logreg_l2", "random_forest", "hist_gbm"]
+    # Consensus alignment as a stacked bar per model (only models actually loaded)
+    models_order = [m for m in MODELS if m in findings]
     with_pcts = [findings[m]["pct_with_consensus"] * 100 for m in models_order]
     against_pcts = [findings[m]["pct_against_consensus"] * 100 for m in models_order]
     x = np.arange(len(models_order))
@@ -241,14 +281,15 @@ def t2_2_naive_baseline(test, preds):
 
     # Compare top-1% precision and AUC for naive vs models
     k = int(n * 0.01)
-    table = []
-    for label, score in [
+    score_rows = [
         ("naive_consensus_aligned", naive_score),
         ("naive_extreme_confidence", naive_score_extreme),
-        ("logreg_l2", preds["logreg_l2"]["cal"]),
-        ("random_forest", preds["random_forest"]["cal"]),
-        ("hist_gbm", preds["hist_gbm"]["cal"]),
-    ]:
+    ]
+    for m in MODELS:
+        if m in preds:
+            score_rows.append((m, preds[m]["cal"]))
+    table = []
+    for label, score in score_rows:
         try:
             auc = float(roc_auc_score(bet_correct, score))
         except Exception:
@@ -264,11 +305,10 @@ def t2_2_naive_baseline(test, preds):
         auc_str = f"{r['auc']:.3f}" if r["auc"] is not None else "—"
         print(f"  {r['strategy']:<28} {auc_str:>7} {r['top_1pct_precision']:>9.3f}")
 
-    # Verdict: if naive matches or beats model, model adds no signal
+    # Verdict: if naive matches or beats model, model adds no signal.
+    # "model" means any tree/boosting model (RF / HGBM / LightGBM).
     model_aucs = [
-        r["auc"]
-        for r in table
-        if r["strategy"] in ("random_forest", "hist_gbm") and r["auc"] is not None
+        r["auc"] for r in table if r["strategy"] in TREE_MODELS and r["auc"] is not None
     ]
     naive_auc = next(
         (r["auc"] for r in table if r["strategy"] == "naive_consensus_aligned"), None
@@ -276,11 +316,10 @@ def t2_2_naive_baseline(test, preds):
     naive_extreme_auc = next(
         (r["auc"] for r in table if r["strategy"] == "naive_extreme_confidence"), None
     )
-    model_top = max(
-        r["top_1pct_precision"]
-        for r in table
-        if r["strategy"] in ("random_forest", "hist_gbm")
-    )
+    tree_top_precisions = [
+        r["top_1pct_precision"] for r in table if r["strategy"] in TREE_MODELS
+    ]
+    model_top = max(tree_top_precisions) if tree_top_precisions else 0.0
     naive_top = next(
         (
             r["top_1pct_precision"]
@@ -342,7 +381,12 @@ def t2_3_sell_semantics(test, preds):
     )
 
     # How many SELLs in the top-1% picks (by RF p_hat)?
-    p_hat_rf = preds["random_forest"]["cal"]
+    headline_model = next(
+        (m for m in ("random_forest", "lightgbm", "hist_gbm") if m in preds), None
+    )
+    if headline_model is None:
+        raise SystemExit("no tree-model preds available; cannot continue")
+    p_hat_rf = preds[headline_model]["cal"]
     n = len(test)
     k = int(n * 0.01)
     top_idx = np.argsort(p_hat_rf)[-k:]
@@ -399,7 +443,7 @@ def main():
     t2_2_naive_baseline(test, preds)
     t2_3_sell_semantics(test, preds)
 
-    out_path = SCRATCH_OUT / "phase2_results.json"
+    out_path = SCRATCH_OUT / "phase2_v4_results.json"
     out_path.write_text(json.dumps(results, indent=2, default=str))
 
     print("\n" + "=" * 60)

@@ -1,7 +1,7 @@
 """
-07_sweep.py
+03_sweep.py
 
-Multi-model sweep on idea1 feature set (~65 features). Lecture-aligned.
+Multi-model sweep on idea1 v4 feature set (76 features = 70 v3.5 + 6 wallet). Lecture-aligned.
 
 Models:
   1. LogReg L2 (L04)            — linear anchor
@@ -9,7 +9,7 @@ Models:
   3. Decision Tree (L05)        — interpretable
   4. Random Forest (L05)        — bagged trees
   5. HistGradientBoosting (L05) — fast boosting
-  6. PCA(20) → LogReg (L05)     — dim-reduction pipeline
+  6. PCA(K_elbow) → LogReg (L05)— dim-reduction pipeline; K chosen by scree elbow
   7. MLP via TF/Keras (L09)     — deep learning
   8. Isolation Forest (L07)     — UNSUPERVISED insider-trade detector
 
@@ -63,6 +63,12 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 N_FOLDS = 5
 RANDOM_SEED = 42
+
+# v4 contract — fail fast if we're not pointed at the wallet-augmented parquets.
+# Set to False once Pontus delivers and 01_validate_schema.py has run successfully.
+TRAIN_PARQUET = "train_features_v4.parquet"
+TEST_PARQUET = "test_features_v4.parquet"
+EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +260,82 @@ def pca_logreg_importance(pipe, feat_names):
     # in original feature space, but report top-K PCA components by |coef|.
     lr = pipe.named_steps["lr"]
     return {f"pc_{i}": float(c) for i, c in enumerate(lr.coef_[0])}
+
+
+# ---------------------------------------------------------------------------
+# PCA component-count selection — elbow / scree
+# ---------------------------------------------------------------------------
+
+
+def find_pca_elbow_k(X_train, max_components=50, save_plot_path=None):
+    """Pick PCA K via the geometric elbow method on the explained-variance curve.
+
+    Procedure:
+      1. Standardise X_train (PCA is scale-sensitive).
+      2. Fit PCA with K_max = min(max_components, n_features) components.
+      3. For each candidate K, measure perpendicular distance from the point
+         (K, cumulative_variance[K]) to the chord connecting the first and last
+         points of the curve. The K with maximum distance is the elbow.
+      4. Floor at 2 (we want at least a 2D projection).
+      5. Optionally save a scree plot with the chosen K marked.
+    """
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_train)
+    k_max = min(max_components, X_scaled.shape[1])
+    pca_full = PCA(n_components=k_max, random_state=RANDOM_SEED)
+    pca_full.fit(X_scaled)
+
+    var_ratio = pca_full.explained_variance_ratio_
+    cumvar = np.cumsum(var_ratio)
+
+    # Geometric elbow: distance of each (k, cumvar[k]) from the chord
+    # connecting (1, cumvar[0]) → (k_max, cumvar[-1]).
+    xs = np.arange(1, k_max + 1, dtype=float)
+    ys = cumvar
+    p1 = np.array([xs[0], ys[0]])
+    p2 = np.array([xs[-1], ys[-1]])
+    line_vec = p2 - p1
+    line_len = np.linalg.norm(line_vec)
+    points = np.column_stack([xs, ys])
+    # perpendicular distance from each point to the chord
+    dists = np.abs(np.cross(line_vec, points - p1)) / line_len
+    elbow_k = int(xs[int(np.argmax(dists))])
+    elbow_k = max(2, elbow_k)
+
+    if save_plot_path is not None:
+        save_plot_path = Path(save_plot_path)
+        save_plot_path.parent.mkdir(parents=True, exist_ok=True)
+        fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+        axes[0].plot(xs, var_ratio, "o-", color="#1f77b4")
+        axes[0].axvline(
+            elbow_k, color="red", linestyle="--", label=f"elbow K={elbow_k}"
+        )
+        axes[0].set_xlabel("PCA component")
+        axes[0].set_ylabel("Explained variance ratio")
+        axes[0].set_title("Scree plot")
+        axes[0].legend()
+        axes[1].plot(xs, cumvar, "o-", color="#2ca02c")
+        axes[1].axvline(
+            elbow_k, color="red", linestyle="--", label=f"elbow K={elbow_k}"
+        )
+        axes[1].axhline(0.95, color="gray", linestyle=":", label="95% var")
+        axes[1].set_xlabel("PCA component")
+        axes[1].set_ylabel("Cumulative explained variance")
+        axes[1].set_title("Cumulative variance")
+        axes[1].legend()
+        fig.tight_layout()
+        fig.savefig(save_plot_path, dpi=120)
+        plt.close(fig)
+
+    diagnostics = {
+        "elbow_k": elbow_k,
+        "k_max_searched": k_max,
+        "var_ratio": var_ratio.tolist(),
+        "cumvar": cumvar.tolist(),
+        "var_at_elbow": float(cumvar[elbow_k - 1]),
+        "var_at_k20": float(cumvar[min(19, k_max - 1)]),
+    }
+    return elbow_k, diagnostics
 
 
 # ---------------------------------------------------------------------------
@@ -477,9 +559,27 @@ def main():
     print("=" * 60)
     print("idea1 sweep: 7 supervised models + isolation forest")
     print("=" * 60)
-    train = pd.read_parquet(DATA / "train_features.parquet")
-    test = pd.read_parquet(DATA / "test_features.parquet")
+
+    # --- v4 data guard ------------------------------------------------------
+    # Refuses to run unless both v4 parquets are present AND feature_cols.json
+    # has been updated to the 76-feature contract by 01_validate_schema.py.
+    train_path = DATA / TRAIN_PARQUET
+    test_path = DATA / TEST_PARQUET
+    missing = [str(p) for p in (train_path, test_path) if not p.exists()]
+    if missing:
+        raise SystemExit(
+            f"v4 parquet(s) missing: {missing}. Pontus has not delivered, or "
+            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
+        )
     feature_cols = json.loads((DATA / "feature_cols.json").read_text())
+    if len(feature_cols) != EXPECTED_N_FEATURES:
+        raise SystemExit(
+            f"feature_cols.json has {len(feature_cols)} features, expected "
+            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
+        )
+
+    train = pd.read_parquet(train_path)
+    test = pd.read_parquet(test_path)
     print(f"train: {train.shape}, test: {test.shape}, n_features: {len(feature_cols)}")
 
     X_train = train[feature_cols].fillna(0).replace([np.inf, -np.inf], 0)
@@ -632,13 +732,26 @@ def main():
     except ImportError:
         print("\n[lightgbm] not installed — skip. `pip install lightgbm` to enable.")
 
-    # 6. PCA → LogReg
+    # 6. PCA → LogReg — K chosen by elbow method on the scree curve
+    pca_dir = OUT / "pca_logreg"
+    pca_dir.mkdir(exist_ok=True)
+    pca_k, pca_diag = find_pca_elbow_k(
+        X_train,
+        max_components=min(50, X_train.shape[1]),
+        save_plot_path=pca_dir / "scree.png",
+    )
+    (pca_dir / "pca_selection.json").write_text(json.dumps(pca_diag, indent=2))
+    print(
+        f"\n[pca_logreg] elbow K = {pca_k} "
+        f"(cumvar at K={pca_k}: {pca_diag['var_at_elbow']:.3f}, "
+        f"cumvar at K=20: {pca_diag['var_at_k20']:.3f})"
+    )
     summaries.append(
         evaluate_supervised(
             "pca_logreg",
             lambda: Pipeline(
                 [
-                    ("pca", PCA(n_components=20, random_state=RANDOM_SEED)),
+                    ("pca", PCA(n_components=pca_k, random_state=RANDOM_SEED)),
                     (
                         "lr",
                         LogisticRegression(

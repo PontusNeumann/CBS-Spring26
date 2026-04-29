@@ -1,8 +1,8 @@
 """
-13_optuna_tuning.py — Optuna TPE tuning for RF + HistGBM (D-037 rigor).
+05_optuna_tuning.py — Optuna TPE tuning for RF + HistGBM + LightGBM (D-037 rigor).
 
-Spawns two parallel workers (one per model). Each runs Optuna TPE with
-MedianPruner over 50 trials, evaluating mean AUC over 5-fold GroupKFold
+Spawns parallel workers (one per model). Each runs Optuna TPE with
+MedianPruner over N trials, evaluating mean AUC over 5-fold GroupKFold
 on market_id (preserves cross-regime transfer claim). Best params refit
 on full train + predicted on test for tuned-vs-default comparison.
 
@@ -13,8 +13,11 @@ Outputs:
       preds_test_tuned.npz
     hist_gbm/
       (same)
+    lightgbm/
+      (same — only if `lightgbm` is installed)
 
-Wall-time on M4 Pro: ~1.5-2 hours, dominated by RF.
+Wall-time on M4 Pro: ~1.5-2 hours, dominated by RF. Adding LightGBM costs
+~30 min on top.
 """
 
 from __future__ import annotations
@@ -36,8 +39,8 @@ def main():
     parser.add_argument(
         "--models",
         nargs="+",
-        default=["random_forest", "hist_gbm"],
-        choices=["random_forest", "hist_gbm"],
+        default=["random_forest", "hist_gbm", "lightgbm"],
+        choices=["random_forest", "hist_gbm", "lightgbm"],
     )
     args = parser.parse_args()
 

@@ -66,6 +66,10 @@ GAS_COST = 0.50  # USD per executed trade
 SLIPPAGE_THRESHOLD = 0.25  # if bet > 25% of original trade USD, apply slippage
 SLIPPAGE_FACTOR = 0.05  # add 5% to effective cost
 
+# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
+TEST_PARQUET = "test_features_v4.parquet"
+EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+
 # Realism parameters live in _common: COST_FLOOR=0.05, LIQUIDITY_SCALER=0.10.
 # Override here only if you need a non-default realism scenario.
 
@@ -115,10 +119,11 @@ def realistic_backtest(
     order = sig_idx[np.argsort(timestamps[sig_idx])]
 
     capital = initial_capital
-    open_positions: dict[str, float] = {}  # market_id -> total $ in open positions
-    open_resolutions: dict[
-        str, list
-    ] = {}  # market_id -> list of (resolution_ts, return_amount)
+    open_positions: dict[str, float] = {}  # market_id -> total $ committed (entry-side)
+    # market_id -> list of (resolution_ts, return_amount, entry_bet)
+    # entry_bet is the original commitment, decremented from open_positions on release
+    # so concentration math reflects "$ tied up", not "$ returned" (the latter is 0 on loss).
+    open_resolutions: dict[str, list] = {}
     capital_curve = [(int(timestamps[order[0]]) - 1, capital)]
     skipped_capital = 0
     skipped_concentration = 0
@@ -130,14 +135,14 @@ def realistic_backtest(
         nonlocal capital
         for mid in list(open_resolutions.keys()):
             still_pending = []
-            for res_ts, return_amt in open_resolutions[mid]:
+            for res_ts, return_amt, entry_bet in open_resolutions[mid]:
                 if res_ts <= now_ts:
                     capital += return_amt
-                    open_positions[mid] = open_positions.get(mid, 0) - return_amt
+                    open_positions[mid] = open_positions.get(mid, 0) - entry_bet
                     if open_positions[mid] <= 0.01:
                         open_positions.pop(mid, None)
                 else:
-                    still_pending.append((res_ts, return_amt))
+                    still_pending.append((res_ts, return_amt, entry_bet))
             if still_pending:
                 open_resolutions[mid] = still_pending
             else:
@@ -192,16 +197,17 @@ def realistic_backtest(
             return_amt = payoff - gas_cost
             pnl = bet * (1 - effective_cost) / effective_cost - gas_cost
         else:
-            return_amt = 0.0 - gas_cost  # the gas debit happens, no payoff
             pnl = -bet - gas_cost
             # Apply gas debit immediately so we don't double-count later
             capital -= gas_cost
-            # No future return
+            # No future return — the bet is gone, capital won't be repaid on resolution
             return_amt = 0.0
 
-        # Track open position for concentration math
+        # Track open position for concentration math. entry_bet is the original
+        # commitment; release_resolved subtracts it from open_positions[mid] so
+        # losing bets free their concentration slot when the market resolves.
         open_positions[mid] = current_in_market + bet
-        open_resolutions.setdefault(mid, []).append((res_ts, return_amt))
+        open_resolutions.setdefault(mid, []).append((res_ts, return_amt, bet))
 
         n_executed += 1
         trades_log.append(
@@ -264,7 +270,21 @@ def main():
     print("realistic backtest — capital-aware execution")
     print("=" * 60)
 
-    test = pd.read_parquet(DATA / "test_features.parquet")
+    # --- v4 data guard ------------------------------------------------------
+    test_path = DATA / TEST_PARQUET
+    if not test_path.exists():
+        raise SystemExit(
+            f"v4 parquet missing: {test_path}. Pontus has not delivered, or "
+            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
+        )
+    fcols = json.loads((DATA / "feature_cols.json").read_text())
+    if len(fcols) != EXPECTED_N_FEATURES:
+        raise SystemExit(
+            f"feature_cols.json has {len(fcols)} features, expected "
+            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
+        )
+
+    test = pd.read_parquet(test_path)
     test_raw = pd.read_parquet(DATA / "test.parquet")
     markets = pd.read_parquet(DATA / "markets_subset.parquet")
     res_times = market_resolution_time(markets)
@@ -292,7 +312,7 @@ def main():
     # Reload predictions in the same sort order — use the timestamp+market_id pair
     # to map cached preds (saved in original test_features order) back to sorted test.
     # Simpler: re-read test_features and apply same sort, then attach preds by index.
-    test_orig = pd.read_parquet(DATA / "test_features.parquet")
+    test_orig = pd.read_parquet(test_path)
     test_orig["market_id"] = test_orig["market_id"].astype(str)
     test_orig["_orig_idx"] = np.arange(len(test_orig))
     sort_key = test_orig.sort_values(["market_id", "timestamp"])["_orig_idx"].values
@@ -316,7 +336,7 @@ def main():
     # Load cached predictions. Predictions are saved in the original test_features
     # row order (before sort). Reorder them via sort_key to align with the sorted
     # `test` DataFrame.
-    models = ["logreg_l2", "random_forest", "hist_gbm"]
+    models = ["logreg_l2", "random_forest", "hist_gbm", "lightgbm"]
     model_data = {}
     for m in models:
         path = SCRATCH / f"preds_{m}.npz"
@@ -325,6 +345,12 @@ def main():
             continue
         d = np.load(path)
         cal_orig = d["cal"]
+        if len(cal_orig) != n_test:
+            raise SystemExit(
+                f"[{m}] worker preds length {len(cal_orig)} != n_test {n_test}. "
+                f"Sort-key reorder would silently misalign predictions. "
+                f"Re-run with RETRAIN=1 (worker may have read a stale parquet)."
+            )
         # Reorder: sort_key[i] = original index at sorted position i
         cal = cal_orig[sort_key]
         cost, edge, _ = compute_cost_and_edge(test, cal)

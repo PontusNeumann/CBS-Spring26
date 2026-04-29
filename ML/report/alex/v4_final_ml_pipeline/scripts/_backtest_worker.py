@@ -42,6 +42,11 @@ N_JOBS_PER_WORKER = 4
 RANDOM_SEED = 42
 N_FOLDS = 5
 
+# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
+TRAIN_PARQUET = "train_features_v4.parquet"
+TEST_PARQUET = "test_features_v4.parquet"
+EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+
 
 def make_logreg_l2():
     return LogisticRegression(
@@ -74,10 +79,27 @@ def make_hist_gbm():
     )
 
 
+def make_lightgbm():
+    import lightgbm as lgb
+
+    return lgb.LGBMClassifier(
+        n_estimators=400,
+        max_depth=-1,
+        num_leaves=63,
+        learning_rate=0.05,
+        min_child_samples=200,
+        class_weight="balanced",
+        n_jobs=N_JOBS_PER_WORKER,
+        random_state=RANDOM_SEED,
+        verbosity=-1,
+    )
+
+
 MODELS = {
     "logreg_l2": (make_logreg_l2, True),
     "random_forest": (make_random_forest, False),
     "hist_gbm": (make_hist_gbm, False),
+    "lightgbm": (make_lightgbm, False),
 }
 
 
@@ -90,9 +112,24 @@ def main():
     factory, scale = MODELS[args.model]
     print(f"[{args.model}] starting (n_jobs={N_JOBS_PER_WORKER})", flush=True)
 
-    train = pd.read_parquet(DATA / "train_features.parquet")
-    test = pd.read_parquet(DATA / "test_features.parquet")
+    # --- v4 data guard ------------------------------------------------------
+    train_path = DATA / TRAIN_PARQUET
+    test_path = DATA / TEST_PARQUET
+    missing = [str(p) for p in (train_path, test_path) if not p.exists()]
+    if missing:
+        raise SystemExit(
+            f"v4 parquet(s) missing: {missing}. Pontus has not delivered, or "
+            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
+        )
     fcols = json.loads((DATA / "feature_cols.json").read_text())
+    if len(fcols) != EXPECTED_N_FEATURES:
+        raise SystemExit(
+            f"feature_cols.json has {len(fcols)} features, expected "
+            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
+        )
+
+    train = pd.read_parquet(train_path)
+    test = pd.read_parquet(test_path)
 
     X_train = train[fcols].fillna(0).replace([np.inf, -np.inf], 0)
     y_train = train["bet_correct"].astype(int).values

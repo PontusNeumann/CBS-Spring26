@@ -453,6 +453,74 @@ RF general_ev is non-monotonic (peaks at N=5): at N=1 the per-trade volume cap i
 
 ---
 
+## D-038: PCA component count via scree elbow (2026-04-29)
+
+**Status:** Locked — implemented in `v4_final_ml_pipeline/scripts/03_sweep.py::find_pca_elbow_k()`
+
+**Decision:** Choose the number of PCA components for the PCA→LogReg pipeline (Stage 4, model 6) algorithmically via the geometric elbow method on the scree curve, not as a hardcoded constant.
+
+**Procedure:**
+1. Standardise X_train (PCA is scale-sensitive).
+2. Fit PCA with `K_max = min(50, n_features) = 50` components.
+3. For each candidate K ∈ [1, K_max], compute the perpendicular distance from `(K, cumvar[K])` to the chord connecting the first and last points of the cumulative-variance curve.
+4. Pick K with maximum perpendicular distance. Floor at 2.
+5. Save scree plot (variance ratio + cumulative-variance with 95% line and elbow marked) to `outputs/sweep_idea1/pca_logreg/scree.png`. Save full diagnostics (var_ratio array, cumvar array, var_at_elbow, var_at_k20) to `pca_selection.json`.
+
+**Alternatives considered:**
+
+| Option | Why rejected |
+|---|---|
+| Fixed K=20 (previous) | Arbitrary — no defence if asked "why 20?" |
+| Variance threshold (`n_components=0.95`) | Principled but K varies with feature changes; harder to compare v3.5 vs v4 |
+| Kaiser criterion (eigenvalue > 1) | Tends to over-retain; less common in modern ML pedagogy |
+| CV sweep over K ∈ {5, 10, 20, 30, 50} | Predictive-task-aligned but conflates dim-reduction question with classification question; the L05 box is about *the projection*, not about end-to-end optimisation |
+
+**Justification:** The L05 dimensionality-reduction box wants a principled, reproducible K choice. The scree elbow is the textbook geometric construction (Cattell 1966). Deterministic, no extra dependency (`kneed` not required — geometric distance to chord is one numpy line), and the 2-panel plot is a drop-in figure for the report's Methodology section.
+
+**Implications:**
+- Comparison-table row for `pca_logreg` is now driven by elbow-K, not K=20. Need to re-run Stage 4 once v4 data lands and report whichever K the elbow lands on.
+- Per-PC importance output (`pca_logreg_importance`) still keys on `pc_0..pc_{K-1}` — no schema change.
+- If the elbow lands very low (K=3-5, plausible on highly-collinear feature sets), the PCA→LogReg model will likely lose AUC vs the K=20 baseline. That's expected — the point of this model is the L05 box, not headline AUC. Headline still belongs to RF/HGBM/LightGBM.
+- Methodology paragraph: "We selected the number of principal components by the geometric elbow on the scree curve, retaining {var_at_elbow:.0%} of variance with K = {elbow_k} components."
+
+---
+
+## D-039: MLP excluded from economic backtest by default (2026-04-29)
+
+**Status:** Locked unless Stage 4 results overturn it. `_backtest_worker.py` knows about LogReg L2 / RF / HistGBM / LightGBM only — MLP is intentionally not registered.
+
+**Decision:** Run MLP through Stage 4 classification scoring (`03_sweep.py`) but do NOT backtest it economically (Stage 8) by default. MLP earns the L09 deep-learning box on classification metrics alone.
+
+**Rationale:**
+- MLP is in the pipeline to satisfy the L09 deep-learning lecture box, not as a deployment candidate. Tabular data with 76 features is the regime where tree ensembles routinely beat feed-forward NNs.
+- Economic backtests already cover RF + HGBM + LightGBM + LogReg. Adding MLP inflates the comparison table without changing the report's narrative.
+- Engineering cost is non-trivial: `_backtest_worker.py` is shaped around `factory()` + `predict_proba` + isotonic, which doesn't fit MLP's training loop (per-fold scaler, inner chronological hold-out for early stopping, `keras.backend.clear_session()` between folds). Backtesting MLP needs either a parallel `_backtest_worker_keras.py` or a refactor of the worker to dual-handle. ~1 hr of architectural work.
+
+**Conditional override (decision-tree gate):** if after Stage 4 the decision tree from the README fires — *"MLP beats best tree on test AUC AND DeLong p < 0.05"* — MLP becomes a headline candidate and we need ROI numbers to defend the call. In that scenario only, build the keras worker variant and re-run Stage 8 with MLP included.
+
+**Implications:**
+- Report Methodology paragraph: "Economic backtests are reported for the four top non-NN models (RF, HistGBM, LightGBM, LogReg L2); the MLP's classification performance is reported in Table N. The MLP was not selected for deployment evaluation given its marginal AUC vs. tree models."
+- If `_backtest_worker_keras.py` is later added, log a separate decision (D-04x) extending this one rather than mutating it.
+
+---
+
+## D-040: Realistic backtest concentration bookkeeping bug — fixed (2026-04-29)
+
+**Status:** Patched in `v4_final_ml_pipeline/scripts/11_realistic_backtest.py`. `12_sensitivity_sweep.py` inherits via `importlib`-imported `realistic_backtest`.
+
+**Bug:** `open_positions[mid]` (the per-market $-committed counter used for the concentration limit) was decremented by `return_amt` on resolution. For losing bets, `return_amt = 0`, so the original `bet` amount stayed "tied up" forever. With many losses on the same market, the `max_concentration_pct × capital` cap progressively locked the strategy out of further bets in that market — even though the loss had been realised at entry and the capital was free.
+
+**Fix:** `open_resolutions` entries are now 3-tuples `(res_ts, return_amt, entry_bet)`. `release_resolved` decrements `open_positions[mid]` by `entry_bet` (the original commitment), not `return_amt`. Same bookkeeping for wins (decrement by entry_bet, capital += payoff−gas) and losses (decrement by entry_bet, capital += 0). End-of-test `final_capital = capital + sum(open_positions.values())` now sums to the right value because all positions clear cleanly.
+
+**Implications:**
+- Stage 8.2 ROI numbers re-run on v4 preds will be modestly higher than the v3.5 numbers, *before* any wallet-feature signal kicks in. The previous v3.5 +14% headline was a conservative undercount caused by this bug.
+- The methodological narrative is unchanged (still capital-aware, still N=10 copycats, still 5% max bet) — only the bookkeeping is fixed.
+- When writing the report, do not compare v4 ROI against v3.5 ROI as a like-for-like apples-to-apples — the bookkeeping fix is a separate effect from the wallet features. The honest comparison is **v4-with-fix vs v3.5-with-fix**, which would require regenerating v3.5 numbers under the patched bookkeeping. Decide before drafting whether to (a) re-run v3.5 with the fix and report both as "post-fix" baselines, or (b) caveat in-text that the v4 ROI lift includes a small mechanical contribution from the bookkeeping correction.
+
+**Discovery:** Spotted during the v4-pipeline file-by-file review (review session, 2026-04-29) by tracing what happens on the loss branch of `realistic_backtest`. The second `return_amt = 0.0` on the loss path overrides the gas-cost assignment, and `release_resolved` only ever subtracts `return_amt` from `open_positions[mid]`. Patched same session.
+
+---
+
 ## Pressure-test summary (final, post-fix)
 
 Phase 1 (9 quick verifications): NO FATAL FAILURES
