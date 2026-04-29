@@ -20,7 +20,10 @@ ML/report/alex/outputs/.DS_Store
 ML/report/alex/outputs/**/.DS_Store
 
 # Pontus's local heavy joined-feature parquets + enrichment intermediates
-ML/report/pontus/data/
+ML/report/pontus/data/*
+!ML/report/pontus/data/README.md
+!ML/report/pontus/data/consolidated_modeling_data.info.json
+!ML/report/pontus/data/.gitkeep
 ML/report/data/wallet_enrichment.pre-alex-extras.parquet
 ML/report/data/wallet_enrichment.pre-retry2.parquet
 ML/report/data/wallet_enrichment.pre-retry3.parquet
