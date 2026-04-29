@@ -1,0 +1,6 @@
+number,value,state,params_max_depth,params_max_features,params_min_samples_leaf,params_n_estimators,duration
+0,0.8586864694320502,COMPLETE,none,0.5,552,200,0 days 00:37:22.080249
+1,0.8573491958444686,COMPLETE,10,0.7,272,150,0 days 00:35:02.836486
+2,0.8415971623530545,COMPLETE,10,sqrt,694,150,0 days 00:06:10.993809
+3,0.8583110227813746,COMPLETE,10,0.5,118,250,0 days 00:45:09.837969
+4,,RUNNING,8,0.3,122,400,

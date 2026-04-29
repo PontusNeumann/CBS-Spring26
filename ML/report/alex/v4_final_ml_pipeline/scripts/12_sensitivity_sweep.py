@@ -58,7 +58,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 # v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
 TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+EXPECTED_N_FEATURES = 64  # cleaned: 80 - 16 cohort-flip features dropped per D-042
 
 # Sweep grids
 COST_FLOORS = [0.001, 0.01, 0.05, 0.10, 0.20]

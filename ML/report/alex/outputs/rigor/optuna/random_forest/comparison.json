@@ -1,0 +1,13 @@
+{
+  "model": "random_forest",
+  "tuned": {
+    "best_oof_auc": 0.8586864694320502,
+    "test_auc_raw": 0.792983343179675,
+    "best_params": {
+      "n_estimators": 200,
+      "max_depth": "none",
+      "min_samples_leaf": 552,
+      "max_features": 0.5
+    }
+  }
+}

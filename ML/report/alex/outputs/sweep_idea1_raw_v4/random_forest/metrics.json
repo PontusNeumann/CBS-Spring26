@@ -1,0 +1,30 @@
+{
+  "model": "random_forest",
+  "cv_oof_auc": 0.8451100756079235,
+  "cv_oof_brier": 0.16630940069690214,
+  "cv_fold_aucs": [
+    0.7707711603883265,
+    0.4943623494865479,
+    0.9829213712598929,
+    0.9970746060615385,
+    0.9897247186918385
+  ],
+  "cv_fold_auc_mean": 0.8469708411776289,
+  "cv_fold_auc_std": 0.19571995103839837,
+  "test_raw_auc": 0.8751229737927988,
+  "test_raw_brier": 0.16557641779687118,
+  "test_raw_ece": 0.13370399424047572,
+  "test_raw_n": 257177,
+  "test_raw_pos_rate": 0.503734781881739,
+  "test_calibrated_auc": 0.8670598616427192,
+  "test_calibrated_brier": 0.15309343479135606,
+  "test_calibrated_ece": 0.04959892363154929,
+  "test_calibrated_n": 257177,
+  "test_calibrated_pos_rate": 0.503734781881739,
+  "per_market_auc_min": 0.09248616521957924,
+  "per_market_auc_max": 0.99975672978013,
+  "per_market_auc_mean": 0.8732000008835383,
+  "n_features": 80,
+  "n_train": 1114003,
+  "n_test": 257177
+}

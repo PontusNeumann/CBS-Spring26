@@ -47,7 +47,7 @@ RANDOM_SEED = 42
 # v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
 TRAIN_PARQUET = "train_features_v4.parquet"
 TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+EXPECTED_N_FEATURES = 80  # 69 v3.5 (post kyle_lambda drop) + 11 wallet
 
 
 def make_rf(params, n_jobs=4):

@@ -8,17 +8,17 @@
     },
     "worst": {
       "cost_floor": 0.001,
-      "copycats": 100,
-      "roi": -0.07455000000000182,
-      "n_executed": 2254
+      "copycats": 10,
+      "roi": -0.8633486017481536,
+      "n_executed": 2080
     },
     "headline_floor005_copy10": {
-      "roi": 0.13838451437502353,
-      "n_executed": 2099,
-      "final_capital": 11383.845143750235
+      "roi": -0.8633486017481536,
+      "n_executed": 2080,
+      "final_capital": 1366.5139825184638
     },
     "roi_range_pct": [
-      -7.455000000000182,
+      -86.33486017481536,
       131.1411772247952
     ]
   },
@@ -45,27 +45,50 @@
       27.31997345954447
     ]
   },
+  "lightgbm/general_ev": {
+    "best": {
+      "cost_floor": 0.2,
+      "copycats": 1,
+      "roi": 0.22559768786292606,
+      "n_executed": 1256
+    },
+    "worst": {
+      "cost_floor": 0.001,
+      "copycats": 10,
+      "roi": -0.8704589654313817,
+      "n_executed": 2031
+    },
+    "headline_floor005_copy10": {
+      "roi": -0.8704589654313817,
+      "n_executed": 2031,
+      "final_capital": 1295.4103456861824
+    },
+    "roi_range_pct": [
+      -87.04589654313817,
+      22.559768786292604
+    ]
+  },
   "random_forest/general_ev": {
     "best": {
       "cost_floor": 0.2,
       "copycats": 1,
-      "roi": 0.9327391562229838,
-      "n_executed": 3696
+      "roi": 0.9369300593227036,
+      "n_executed": 3702
     },
     "worst": {
-      "cost_floor": 0.001,
-      "copycats": 50,
-      "roi": -0.054200000000001095,
-      "n_executed": 2145
+      "cost_floor": 0.01,
+      "copycats": 1,
+      "roi": -0.7652732559304907,
+      "n_executed": 1295
     },
     "headline_floor005_copy10": {
-      "roi": 0.07390939220868095,
-      "n_executed": 1832,
-      "final_capital": 10739.09392208681
+      "roi": -0.6648344105090009,
+      "n_executed": 2190,
+      "final_capital": 3351.6558949099904
     },
     "roi_range_pct": [
-      -5.420000000000109,
-      93.27391562229838
+      -76.52732559304907,
+      93.69300593227035
     ]
   }
 }

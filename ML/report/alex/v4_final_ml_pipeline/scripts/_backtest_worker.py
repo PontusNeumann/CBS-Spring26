@@ -26,11 +26,15 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.decomposition import PCA
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GroupKFold
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
 warnings.filterwarnings("ignore")
 
@@ -45,7 +49,7 @@ N_FOLDS = 5
 # v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
 TRAIN_PARQUET = "train_features_v4.parquet"
 TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+EXPECTED_N_FEATURES = 64  # cleaned: 80 - 16 cohort-flip features dropped per D-042
 
 
 def make_logreg_l2():
@@ -95,11 +99,71 @@ def make_lightgbm():
     )
 
 
+def make_logreg_l1():
+    return LogisticRegression(
+        C=0.1,
+        penalty="l1",
+        solver="liblinear",
+        class_weight="balanced",
+        max_iter=2000,
+        random_state=RANDOM_SEED,
+    )
+
+
+def make_decision_tree():
+    return DecisionTreeClassifier(
+        max_depth=8,
+        min_samples_leaf=200,
+        class_weight="balanced",
+        random_state=RANDOM_SEED,
+    )
+
+
+def make_pca_logreg():
+    # PCA k=16 from sweep elbow (alex/outputs/sweep_idea1/pca_logreg/pca_selection.json).
+    # Pipeline expects scaled input — driver passes scale=True.
+    return Pipeline(
+        [
+            ("pca", PCA(n_components=16, random_state=RANDOM_SEED)),
+            (
+                "lr",
+                LogisticRegression(
+                    C=1.0,
+                    penalty="l2",
+                    class_weight="balanced",
+                    max_iter=2000,
+                    random_state=RANDOM_SEED,
+                ),
+            ),
+        ]
+    )
+
+
+def make_mlp_sklearn():
+    return MLPClassifier(
+        hidden_layer_sizes=(64, 32),
+        activation="relu",
+        solver="adam",
+        alpha=1e-4,
+        batch_size=4096,
+        learning_rate_init=1e-3,
+        max_iter=50,
+        early_stopping=True,
+        validation_fraction=0.1,
+        n_iter_no_change=5,
+        random_state=RANDOM_SEED,
+    )
+
+
 MODELS = {
     "logreg_l2": (make_logreg_l2, True),
+    "logreg_l1": (make_logreg_l1, True),
+    "decision_tree": (make_decision_tree, False),
     "random_forest": (make_random_forest, False),
     "hist_gbm": (make_hist_gbm, False),
     "lightgbm": (make_lightgbm, False),
+    "pca_logreg": (make_pca_logreg, True),
+    "mlp_sklearn": (make_mlp_sklearn, True),
 }
 
 
@@ -170,8 +234,11 @@ def main():
     cal.fit(oof, y_train)
     cal_test = cal.transform(raw)
 
-    # Feature importances if available
-    if hasattr(final, "feature_importances_"):
+    # Feature importances if available. For Pipeline (pca_logreg), final.coef_
+    # lives in PCA-space — skip attribution rather than emit something misleading.
+    if isinstance(final, Pipeline):
+        fi = {}
+    elif hasattr(final, "feature_importances_"):
         fi = dict(zip(fcols, final.feature_importances_.tolist()))
     elif hasattr(final, "coef_"):
         fi = dict(zip(fcols, final.coef_[0].tolist()))

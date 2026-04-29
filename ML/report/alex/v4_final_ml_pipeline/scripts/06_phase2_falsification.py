@@ -43,7 +43,7 @@ PRED = SCRATCH_BASE / "backtest"
 
 # v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
 TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+EXPECTED_N_FEATURES = 64  # cleaned: 80 - 16 cohort-flip features dropped per D-042
 
 # Models we look up in cached preds. Keep in sync with _backtest_worker.py
 # and 10_backtest.py. LightGBM is loaded if its npz exists.

@@ -34,22 +34,36 @@ from _common import DATA
 EXPECTED_TRAIN_ROWS = 1_114_003
 EXPECTED_TEST_ROWS = 257_177
 
+# Pontus's 2026-04-29 release ships 12 wallet columns; one (`wallet_funded_by_cex`,
+# the static lifetime flag) is dropped at unpack time per FORBIDDEN_LEAKY_COLS.
+# The remaining 11 are all expected as features in v4. `wallet_enriched` was
+# previously labelled diagnostic-only but it is a meaningful binary signal
+# (was-this-wallet-resolvable-on-Etherscan), so keep it as a feature.
 EXPECTED_NEW_WALLET_COLS = {
+    "wallet_enriched",
     "wallet_polygon_age_at_t_days",
+    "wallet_polygon_nonce_at_t",
     "wallet_log_polygon_nonce_at_t",
+    "wallet_n_inbound_at_t",
     "wallet_log_n_inbound_at_t",
     "wallet_n_cex_deposits_at_t",
+    "wallet_cex_usdc_cumulative_at_t",
     "wallet_log_cex_usdc_cum",
+    "days_from_first_usdc_to_t",
     "wallet_funded_by_cex_scoped",
 }
-DIAGNOSTIC_COLS = {"wallet_enriched"}  # OK to include but NOT a feature
+DIAGNOSTIC_COLS: set[str] = set()
 FORBIDDEN_LEAKY_COLS = {
     "wallet_funded_by_cex",  # static lifetime constant — leaky pre-funding
     "n_tokentx",  # lifetime total — peeks at post-trade activity
     "wallet_prior_win_rate",  # the naive (P0-9 leak) version, not the causal one
+    "kyle_lambda_market_static",  # definitional leak — fit on first half of each market
 }
 
-KEY_COLS = ["market_id", "timestamp", "taker"]
+# `taker` is not in the consolidated parquet (Pontus's join script lifts it
+# only to compute wallet features, doesn't carry it through). Use the cols
+# that ARE present and uniquely identify each row.
+KEY_COLS = ["market_id", "timestamp", "bet_correct"]
 
 
 def fail(msg: str) -> "sys.NoReturn":

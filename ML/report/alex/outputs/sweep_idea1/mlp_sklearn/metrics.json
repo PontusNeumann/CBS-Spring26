@@ -1,0 +1,30 @@
+{
+  "model": "mlp_sklearn",
+  "cv_oof_auc": 0.866861300397278,
+  "cv_oof_brier": 0.16875116535546963,
+  "cv_fold_aucs": [
+    0.9491936084243047,
+    0.5394573016567594,
+    0.853585268777077,
+    0.9684984288863989,
+    0.9743940225827823
+  ],
+  "cv_fold_auc_mean": 0.8570257260654645,
+  "cv_fold_auc_std": 0.16465596859383813,
+  "test_raw_auc": 0.8025448776998921,
+  "test_raw_brier": 0.22745870294622997,
+  "test_raw_ece": 0.18630901125296417,
+  "test_raw_n": 257177,
+  "test_raw_pos_rate": 0.503734781881739,
+  "test_calibrated_auc": 0.8025137944762059,
+  "test_calibrated_brier": 0.1837196453081199,
+  "test_calibrated_ece": 0.06248041843331107,
+  "test_calibrated_n": 257177,
+  "test_calibrated_pos_rate": 0.503734781881739,
+  "per_market_auc_min": 0.05782599910646898,
+  "per_market_auc_max": 0.9995976514648175,
+  "per_market_auc_mean": 0.6977142106028648,
+  "n_features": 64,
+  "n_train": 1114003,
+  "n_test": 257177
+}

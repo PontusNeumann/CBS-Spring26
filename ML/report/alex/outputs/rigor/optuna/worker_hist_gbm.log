@@ -1,0 +1,3 @@
+[hist_gbm] loading data...
+[hist_gbm] train 1,114,003×70, test 257,177
+[hist_gbm] starting 50 trials (storage=sqlite:////Users/alex/Documents/Claude Projects/CBS-Spring26/ML/report/alex/outputs/rigor/optuna/hist_gbm/study.db)

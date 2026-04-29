@@ -74,7 +74,7 @@ COST_FLOOR_RAW = 0.001  # raw economic math; realism uses 0.05 (see _common)
 # v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
 TRAIN_PARQUET = "train_features_v4.parquet"
 TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+EXPECTED_N_FEATURES = 64  # cleaned: 80 - 16 cohort-flip features dropped per D-042
 
 
 # ---------------------------------------------------------------------------

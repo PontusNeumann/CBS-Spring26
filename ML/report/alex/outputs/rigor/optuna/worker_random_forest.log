@@ -1,0 +1,5 @@
+[random_forest] loading data...
+[random_forest] train 1,114,003×80, test 257,177
+[random_forest] starting 10 trials (storage=sqlite:////Users/alex/Documents/Claude Projects/CBS-Spring26/ML/report/alex/outputs/rigor/optuna/random_forest/study.db)
+/opt/anaconda3/lib/python3.13/multiprocessing/resource_tracker.py:324: UserWarning: resource_tracker: There appear to be 2 leaked semaphore objects to clean up at shutdown: {'/loky-25018-4pq_pp1p', '/loky-25018-c2qxd7sb'}
+  warnings.warn(

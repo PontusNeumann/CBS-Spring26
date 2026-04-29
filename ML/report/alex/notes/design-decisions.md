@@ -557,6 +557,73 @@ This is therefore acceptable as a locked v4 engineering choice, but not an ideal
 
 ---
 
+## D-042: Drop 16 cohort-flip features for the "honest" v4 sweep (2026-04-29)
+
+**Status:** Active. Cleaned `feature_cols.json` (64 features) used for the cleaned re-run; raw 80-feature list backed up at `alex/data/feature_cols_v4_raw.json` and the raw sweep outputs at `alex/outputs/sweep_idea1_raw_v4/` for side-by-side comparison.
+
+**Decision:** Drop the following 16 features from the v4 modelling matrix and re-run `03_sweep.py` on the residual 64. New feature count: **64** (= 80 raw − 16 cohort-flip).
+
+```
+# P0-11 — direction-determinism pair
+side_buy
+outcome_yes
+
+# P0-12 — direction-dependent aggregates
+taker_yes_share_global
+taker_directional_purity_in_market
+taker_position_size_before_trade
+yes_volume_share_recent_5min
+yes_volume_share_recent_1h
+yes_buy_pressure_5min
+token_side_skew_5min
+is_long_shot_buy
+contrarian_score
+contrarian_strength
+market_buy_share_running
+order_flow_imbalance_5min
+order_flow_imbalance_1h
+order_flow_imbalance_24h
+```
+
+**Justification:**
+
+The raw v4 sweep produced AUCs that look strong but are driven by the cohort-flip channel rather than transferable signal:
+
+| Model | OOF AUC (raw 80) | Test AUC (raw 80) | Per-market AUC range |
+|---|---|---|---|
+| logreg_l2 | 0.626 | 0.627 | 0.351 – 0.784 |
+| decision_tree | 0.821 | 0.828 | 0.000 – 1.000 |
+| **random_forest** | **0.845** | **0.867** | **0.092 – 1.000** |
+| hist_gbm | 0.788 | 0.767 | 0.001 – 1.000 |
+| pca_logreg | 0.640 | 0.639 | 0.294 – 0.769 |
+
+Three diagnostics:
+
+1. **Per-market AUC of 0.000 / 1.000** for tree models. Within a market, prediction is binary right or binary wrong — i.e., the model has memorised "this market resolves YES" via the side/outcome pair and applied it uniformly.
+2. **Fold-2 OOF AUC ≈ 0.47** across linear, tree, and PCA models (worse than chance). Fold 2 contains markets whose resolution flips relative to the rest of train, so the cohort-flip shortcut inverts.
+3. **Optuna RF tuning made it worse on test:** `min_samples_leaf=552, max_features=0.5` lifted OOF AUC to 0.859 but dropped test AUC to 0.793 (-7.4 pp vs default). Tighter regularisation removes the deep memorisation that powered the default's 0.867; the gap between OOF and test grew, evidencing overfit to within-cohort direction.
+
+The 16 features above are the channel. `side_buy`+`outcome_yes` are P0-11 (their pair encodes `bet_correct = (side_buy == 1) XNOR (outcome_yes == winning_token1)` — deterministic given resolution). The other 14 are P0-12: direction-dependent aggregates whose value flips sign / share when resolution flips between cohorts. All 16 were dropped in alex's earlier v3.5 work and reintroduced in v4 because Pontus's release used a different feature philosophy (see [`feature-review-2026-04-29.md`](feature-review-2026-04-29.md) §2 §4).
+
+**Implications:**
+
+- The 64-feature run is the **defensible** comparison. Headline numbers in the report should be from the cleaned run, with the raw run reported as the falsification — "naive feature set produces apparently strong AUCs that the cohort-flip diagnostic shows are shortcut-driven; once cohort-flip channels are removed the lift collapses to X."
+- LightGBM was added to the install (`.venv` 4.6.0) so the cleaned sweep covers all 8 models.
+- `EXPECTED_N_FEATURES` bumped 80 → 64 in `03_sweep.py` for the cleaned run; downstream guard scripts will be re-aligned only after the cleaned sweep lands clean numbers.
+- Stage 6 Optuna (`05_optuna_tuning.py`) does **not** need re-running on the cleaned schema for the headline. Default models on cleaned features are the honest comparison; tuning a regularised model on a clean feature set is a Stage 2 nicety, not a P0 deliverable.
+
+**Alternatives considered:**
+
+| Option | Why not |
+|---|---|
+| Replace `side_buy + outcome_yes` with a single `is_yes_bet = side_buy XNOR outcome_yes` collapse | Loses no information per-row but still encodes direction in a way that flips with cohort resolution; cleaner just to drop |
+| Keep direction-dependent features and rely on Optuna regularisation to defang them | Falsified empirically by D-042 evidence above (OOF↑ test↓) |
+| Run cohort-balanced training (oversample test-style markets in train) | Out of scope for v4; would require regenerating cohort splits |
+
+**References:** [`feature-review-2026-04-29.md`](feature-review-2026-04-29.md), [`feature-exclusion-list.md`](feature-exclusion-list.md) (P0-11, P0-12 entries), [`pressure-test.md`](pressure-test.md).
+
+---
+
 ## Pressure-test summary (final, post-fix)
 
 Phase 1 (9 quick verifications): NO FATAL FAILURES

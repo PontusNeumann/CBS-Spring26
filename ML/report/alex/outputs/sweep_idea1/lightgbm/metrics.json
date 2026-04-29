@@ -1,0 +1,30 @@
+{
+  "model": "lightgbm",
+  "cv_oof_auc": 0.8295136228631376,
+  "cv_oof_brier": 0.1697067997987379,
+  "cv_fold_aucs": [
+    0.7931643425481933,
+    0.5759359618551191,
+    0.8264102549060961,
+    0.9366854775270669,
+    0.9762941821035663
+  ],
+  "cv_fold_auc_mean": 0.8216980437880084,
+  "cv_fold_auc_std": 0.1402550917835286,
+  "test_raw_auc": 0.7827106568952146,
+  "test_raw_brier": 0.18294685989321433,
+  "test_raw_ece": 0.03685807847778454,
+  "test_raw_n": 257177,
+  "test_raw_pos_rate": 0.503734781881739,
+  "test_calibrated_auc": 0.7825406248741547,
+  "test_calibrated_brier": 0.18678260461874957,
+  "test_calibrated_ece": 0.041522778379265775,
+  "test_calibrated_n": 257177,
+  "test_calibrated_pos_rate": 0.503734781881739,
+  "per_market_auc_min": 0.2261875136600964,
+  "per_market_auc_max": 0.9957062405213245,
+  "per_market_auc_mean": 0.708762190383222,
+  "n_features": 64,
+  "n_train": 1114003,
+  "n_test": 257177
+}

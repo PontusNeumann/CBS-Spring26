@@ -1,0 +1,13 @@
+{
+  "best_value_oof_auc": 0.8586864694320502,
+  "best_params": {
+    "n_estimators": 200,
+    "max_depth": "none",
+    "min_samples_leaf": 552,
+    "max_features": 0.5
+  },
+  "n_trials": 5,
+  "n_completed": 4,
+  "n_pruned": 0,
+  "note": "finalised after early-stop; some scheduled trials were not run"
+}

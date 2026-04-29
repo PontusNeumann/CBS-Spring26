@@ -66,9 +66,103 @@ GAS_COST = 0.50  # USD per executed trade
 SLIPPAGE_THRESHOLD = 0.25  # if bet > 25% of original trade USD, apply slippage
 SLIPPAGE_FACTOR = 0.05  # add 5% to effective cost
 
+
+# ---------------------------------------------------------------------------
+# Live progress viewer — writes self-refreshing HTML on each cell completion.
+# Open alex/outputs/backtest/realistic/progress.html in a browser to watch.
+# ---------------------------------------------------------------------------
+
+
+def _render_progress_html(state: dict) -> str:
+    rows = state.get("recent_results", [])
+    headline = state.get("headline_pivot", [])
+
+    def fmt_row_html(r):
+        roi = r.get("roi", 0)
+        col = "#1a7f1a" if roi > 0 else "#b03030" if roi < 0 else "#666"
+        return (
+            f"<tr><td>{r['model']}</td><td>{r['strategy']}</td>"
+            f"<td>${r['initial_capital']:,}</td><td>{int(r['max_bet_pct'] * 100)}%</td>"
+            f"<td>{r['liquidity_scaler']}</td><td style='text-align:right'>{r['n_executed']:,}</td>"
+            f"<td style='text-align:right'>${r['final_capital']:,.0f}</td>"
+            f"<td style='text-align:right;color:{col};font-weight:600'>{roi * 100:+.1f}%</td></tr>"
+        )
+
+    headline_html = ""
+    if headline:
+        headline_html = "<h2>Headline — $10K, 5% bet, no copycats (live)</h2><table>"
+        headline_html += "<tr><th>strategy</th>"
+        models = sorted({r["model"] for r in headline})
+        for m in models:
+            headline_html += f"<th>{m}</th>"
+        headline_html += "</tr>"
+        strategies = sorted({r["strategy"] for r in headline})
+        by = {(r["model"], r["strategy"]): r for r in headline}
+        for s in strategies:
+            headline_html += f"<tr><td>{s}</td>"
+            for m in models:
+                r = by.get((m, s))
+                if r is None:
+                    headline_html += "<td>—</td>"
+                else:
+                    roi = r["roi"]
+                    col = "#1a7f1a" if roi > 0 else "#b03030" if roi < 0 else "#666"
+                    headline_html += (
+                        f"<td style='text-align:right;color:{col};font-weight:600'>"
+                        f"{roi * 100:+.1f}%</td>"
+                    )
+            headline_html += "</tr>"
+        headline_html += "</table>"
+
+    pct = state.get("pct", 0)
+    eta_min = state.get("eta_seconds", 0) / 60
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="5">
+<title>Realistic backtest — live</title>
+<style>
+  body {{ font-family: -apple-system, system-ui, sans-serif; max-width: 1200px; margin: 24px auto; padding: 0 16px; color: #222; }}
+  h1, h2 {{ font-weight: 600; }}
+  .bar {{ background: #eee; border-radius: 8px; height: 22px; overflow: hidden; margin: 12px 0; }}
+  .fill {{ background: linear-gradient(90deg, #2196f3, #00bcd4); height: 100%; transition: width 0.5s; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }}
+  th, td {{ padding: 6px 10px; border-bottom: 1px solid #eee; text-align: left; }}
+  th {{ background: #fafafa; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; }}
+  .meta {{ color: #666; font-size: 13px; }}
+  .stat {{ display: inline-block; margin-right: 24px; }}
+  .stat strong {{ font-size: 20px; display: block; color: #222; }}
+  .stat span {{ color: #666; font-size: 12px; }}
+</style>
+</head>
+<body>
+<h1>Realistic backtest — live progress</h1>
+<div class="bar"><div class="fill" style="width: {pct:.1f}%"></div></div>
+<div>
+  <div class="stat"><strong>{state.get("completed", 0)} / {state.get("total_cells", 0)}</strong><span>cells done ({pct:.1f}%)</span></div>
+  <div class="stat"><strong>{eta_min:.1f} min</strong><span>ETA remaining</span></div>
+  <div class="stat"><strong>{state.get("elapsed_min", 0):.1f} min</strong><span>elapsed</span></div>
+  <div class="stat"><strong>{state.get("current_model", "")}</strong><span>current model</span></div>
+</div>
+<p class="meta">Last cell: {state.get("last_cell", "—")} &nbsp;·&nbsp; Auto-refreshes every 5s</p>
+{headline_html}
+<h2>Recent cells (last 30)</h2>
+<table>
+<tr><th>model</th><th>strategy</th><th>capital</th><th>bet%</th><th>ls</th><th>n exec</th><th>final $</th><th>ROI</th></tr>
+{"".join(fmt_row_html(r) for r in rows[-30:][::-1])}
+</table>
+</body></html>"""
+
+
+def _emit_progress(state_path: Path, html_path: Path, state: dict) -> None:
+    state_path.write_text(json.dumps(state, default=str))
+    html_path.write_text(_render_progress_html(state))
+
+
 # v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
 TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+EXPECTED_N_FEATURES = 64  # cleaned: 80 - 16 cohort-flip features dropped per D-042
 
 # Realism parameters live in _common: COST_FLOOR=0.05, LIQUIDITY_SCALER=0.10.
 # Override here only if you need a non-default realism scenario.
@@ -336,7 +430,13 @@ def main():
     # Load cached predictions. Predictions are saved in the original test_features
     # row order (before sort). Reorder them via sort_key to align with the sorted
     # `test` DataFrame.
-    models = ["logreg_l2", "random_forest", "hist_gbm", "lightgbm"]
+    models = [
+        "logreg_l2",
+        "random_forest",
+        "hist_gbm",
+        "lightgbm",
+        "mlp_sklearn",
+    ]
     model_data = {}
     for m in models:
         path = SCRATCH / f"preds_{m}.npz"
@@ -370,15 +470,45 @@ def main():
             "top1pct_edge": top_k_mask(edge, 0.01),
             "top5pct_edge": top_k_mask(edge, 0.05),
             "phat_gt_0.9": p_hat > 0.9,
+            "phat_gt_0.95": p_hat > 0.95,
+            "phat_gt_0.99": p_hat > 0.99,
+            "general_ev_cheap": general_ev_rule(edge) & (cost < 0.30),
+            "general_ev_late": general_ev_rule(edge) & (time_to_deadline_sec < 86400),
         }
 
     # ---- Sensitivity grid ---------------------------------------------------
+    # Trimmed: $1M tier dropped (max_bet_usd=$100 caps deployment → ROI ≈ 0).
     capital_grid = [1_000, 10_000, 100_000]
     bet_pct_grid = [0.01, 0.05, 0.10]
+    # 1.0 = default (no copycats); 0.10 = stress test with 10× copycats sharing.
+    fill_share_grid = [1.0, 0.10]
 
     summary = {"models": {}}
     sensitivity_rows = []
     curves_for_plot = {}
+
+    # Live progress viewer setup
+    import time as _time
+
+    state_path = OUT / "_progress.json"
+    html_path = OUT / "progress.html"
+    # Count strategies using the first model's real arrays (home_run_rule reads
+    # time_to_deadline_sec which is full-length).
+    _first_data = next(iter(model_data.values()))
+    n_strategies_per_model = len(
+        make_strategies(_first_data["p_hat"], _first_data["edge"], _first_data["cost"])
+    )
+    total_cells = (
+        len(model_data)
+        * n_strategies_per_model
+        * len(capital_grid)
+        * len(bet_pct_grid)
+        * len(fill_share_grid)
+    )
+    _t0 = _time.time()
+    _completed = 0
+
+    print(f"[live] watch progress at file://{html_path}")
 
     for m, data in model_data.items():
         strategies = make_strategies(data["p_hat"], data["edge"], data["cost"])
@@ -387,28 +517,31 @@ def main():
             scenarios = {}
             for cap in capital_grid:
                 for bet_pct in bet_pct_grid:
-                    r = realistic_backtest(
-                        signal_mask=mask,
-                        cost=data["cost"],
-                        bet_correct=bet_correct,
-                        timestamps=timestamps,
-                        market_ids=market_ids,
-                        usd_amount=usd_amount,
-                        market_res_times=res_times,
-                        initial_capital=cap,
-                        max_bet_pct_capital=bet_pct,
-                    )
-                    scenarios[f"cap{cap}_bet{int(bet_pct * 100)}pct"] = {
-                        k: v
-                        for k, v in r.items()
-                        if k not in ("capital_curve", "trades_executed")
-                    }
-                    sensitivity_rows.append(
-                        {
+                    for ls in fill_share_grid:
+                        r = realistic_backtest(
+                            signal_mask=mask,
+                            cost=data["cost"],
+                            bet_correct=bet_correct,
+                            timestamps=timestamps,
+                            market_ids=market_ids,
+                            usd_amount=usd_amount,
+                            market_res_times=res_times,
+                            initial_capital=cap,
+                            max_bet_pct_capital=bet_pct,
+                            liquidity_scaler=ls,
+                        )
+                        ls_label = "no_fill_share" if ls >= 1.0 else f"ls{ls:g}"
+                        scenarios[f"cap{cap}_bet{int(bet_pct * 100)}pct_{ls_label}"] = {
+                            k: v
+                            for k, v in r.items()
+                            if k not in ("capital_curve", "trades_executed")
+                        }
+                        row = {
                             "model": m,
                             "strategy": s_name,
                             "initial_capital": cap,
                             "max_bet_pct": bet_pct,
+                            "liquidity_scaler": ls,
                             "n_signals": r["n_signals"],
                             "n_executed": r["n_executed"],
                             "final_capital": r["final_capital"],
@@ -417,17 +550,49 @@ def main():
                             "skipped_capital": r["skipped_capital"],
                             "skipped_concentration": r["skipped_concentration"],
                         }
-                    )
-                    if (
-                        cap == 10_000
-                        and bet_pct == 0.05
-                        and s_name in ("general_ev", "top1pct_edge", "home_run")
-                    ):
-                        curves_for_plot[f"{m}_{s_name}"] = r["capital_curve"]
+                        sensitivity_rows.append(row)
+                        if (
+                            cap == 10_000
+                            and bet_pct == 0.05
+                            and ls >= 1.0
+                            and s_name in ("general_ev", "top1pct_edge", "home_run")
+                        ):
+                            curves_for_plot[f"{m}_{s_name}"] = r["capital_curve"]
+
+                        _completed += 1
+                        elapsed = _time.time() - _t0
+                        rate = _completed / max(elapsed, 1e-6)
+                        eta = (total_cells - _completed) / rate if rate > 0 else 0
+                        # Headline pivot = $10K, 5% bet, ls=1.0
+                        headline = [
+                            x
+                            for x in sensitivity_rows
+                            if x["initial_capital"] == 10_000
+                            and x["max_bet_pct"] == 0.05
+                            and x["liquidity_scaler"] == 1.0
+                        ]
+                        _emit_progress(
+                            state_path,
+                            html_path,
+                            {
+                                "completed": _completed,
+                                "total_cells": total_cells,
+                                "pct": 100 * _completed / total_cells,
+                                "elapsed_min": elapsed / 60,
+                                "eta_seconds": eta,
+                                "current_model": m,
+                                "last_cell": (
+                                    f"{m} / {s_name} / cap=${cap:,} / bet={int(bet_pct * 100)}% / ls={ls}"
+                                ),
+                                "recent_results": sensitivity_rows,
+                                "headline_pivot": headline,
+                            },
+                        )
             model_results[s_name] = scenarios
         summary["models"][m] = model_results
         print(
-            f"  ✓ {m}: backtested {len(strategies)} strategies × {len(capital_grid) * len(bet_pct_grid)} scenarios"
+            f"  ✓ {m}: backtested {len(strategies)} strategies × "
+            f"{len(capital_grid) * len(bet_pct_grid) * len(fill_share_grid)} scenarios"
         )
 
     # ---- Save ----------------------------------------------------------------
@@ -435,20 +600,25 @@ def main():
     sens_df = pd.DataFrame(sensitivity_rows)
     sens_df.to_csv(OUT / "sensitivity.csv", index=False)
 
-    # Print headline tables: $10K capital, 5% bet
-    print("\n" + "=" * 80)
-    print("HEADLINE — $10K starting capital, 5% max bet per trade")
-    print("=" * 80)
-    headline = sens_df[
-        (sens_df.initial_capital == 10_000) & (sens_df.max_bet_pct == 0.05)
-    ]
-    headline_pivot = headline.pivot_table(
-        index="strategy",
-        columns="model",
-        values=["final_capital", "roi", "n_executed"],
-        aggfunc="first",
-    )
-    print(headline_pivot.round(2).to_string())
+    # Print headline tables: $10K capital, 5% bet, both fill-share scenarios
+    for ls_val, label in [(1.0, "default no copycats"), (0.10, "10× copycats stress")]:
+        print("\n" + "=" * 80)
+        print(
+            f"HEADLINE — $10K starting capital, 5% max bet per trade — {label} (ls={ls_val})"
+        )
+        print("=" * 80)
+        headline = sens_df[
+            (sens_df.initial_capital == 10_000)
+            & (sens_df.max_bet_pct == 0.05)
+            & (sens_df.liquidity_scaler == ls_val)
+        ]
+        headline_pivot = headline.pivot_table(
+            index="strategy",
+            columns="model",
+            values=["final_capital", "roi", "n_executed"],
+            aggfunc="first",
+        )
+        print(headline_pivot.round(2).to_string())
 
     # Plot capital curves
     if curves_for_plot:

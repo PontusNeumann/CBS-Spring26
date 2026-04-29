@@ -2,12 +2,31 @@
 
 Self-contained ML pipeline for the CBS MLDP exam project. Predicts trade outcomes on Polymarket geopolitical event markets and tests cross-regime transfer (Iran-strike countdown markets → Iran-ceasefire countdown markets).
 
-**Current state (v3.5 baseline, locked):** AUC 0.899 (RF), 100% top-1% precision, +23.7% headline ROI under N=1 realism. v4 pipeline (with Pontus's wallet-identity features added) is built and ready to run when his joined parquet lands. See [`notes/alex-approach.md`](notes/alex-approach.md) for the full pipeline summary.
+**Current state (v4, cleaned 64-feature schema, 5 models in realistic backtest):** Headline focus is **MLP (sklearn)** and **Random Forest** — the two models that survive the realistic backtest. MLP test AUC 0.803, RF 0.778. See [`notes/alex-approach.md`](notes/alex-approach.md) and [`outputs/backtest/overview.png`](outputs/backtest/overview.png) for the full picture.
 
 **Research question (locked 2026-04-28, see D-001 + D-034):**
-> Can a supervised model predict trade outcomes on Polymarket geopolitical event markets, and do the predictions transfer across event regimes?
+> Can a ML / DL model predict trade outcomes on Polymarket geopolitical event markets, and do the predictions transfer across event regimes?
 
 The original "asymmetric-information detection" framing was retired after pressure tests showed top picks are 100% consensus-aligned and a 3-line naive consensus rule matches the model's top-1% precision (B1b finding).
+
+**Cohort split (cross-regime by construction):**
+- **Train** — 65 Iran-strike countdown markets, 1.11M trades, 2025-12-22 → 2026-02-28 (67 days). Strike event at 2026-02-28 06:35 UTC is the cutoff.
+- **Test** — 10 Iran-ceasefire countdown markets, 257K trades, 2026-02-28 → 2026-03-31 (31 days). Ceasefire announcement 2026-04-07 determines outcomes (markets with deadline before that resolve NO, after resolve YES).
+
+**Headline numbers (realistic backtest — $10K bankroll, 5% max bet, 20% concentration, no copycats):**
+
+| model       | best strategy        | 31-day ROI | beats naive (+17%) by |
+|-------------|----------------------|-----------:|----------------------:|
+| **MLP**     | `phat_gt_0.9`        |     **+20%** |               +3 pp   |
+| RF          | `phat_gt_0.9`        |       +14% |              -3 pp   |
+| naive       | `phat_gt_0.9`        |       +17% |                  —   |
+| hist_gbm    | `top5pct_edge`       |       +27% |             +10 pp¹  |
+| lightgbm    | `top1pct_phat`       |        +4% |             -13 pp   |
+| logreg_l2   | `top1pct_phat`       |        -2% |             -19 pp   |
+
+¹ Single 601-trade cell, not robust — lightgbm on the same strategy is −15%.
+
+**Why MLP and RF are the focus:** they are the only supervised models that beat or match the naive consensus baseline at high-confidence thresholds (`phat_gt_0.9` and above). The classical models (logreg_l2, hist_gbm, lightgbm) cannot routinely produce p_hat > 0.9 because their isotonic-calibrated outputs saturate below that — see [`outputs/backtest/overview_classical.png`](outputs/backtest/overview_classical.png) for the empty-cell evidence.
 
 ---
 
@@ -44,8 +63,10 @@ v4_final_ml_pipeline/        ← THE ACTIVE PIPELINE (run this)
     ├── 08_complexity_benchmark.py (Stage 7.3 — skeleton)
     ├── 09_shap_top_picks.py   (Stage 7.4 — skeleton)
     ├── 10_backtest.py         (Stage 8.1)
-    ├── 11_realistic_backtest.py (Stage 8.2)
-    └── 12_sensitivity_sweep.py (Stage 8.3)
+    ├── 11_realistic_backtest.py (Stage 8.2 — emits live progress.html)
+    ├── 12_sensitivity_sweep.py (Stage 8.3)
+    ├── 13_naive_baseline_backtest.py (Stage 8.4 — naive consensus benchmark)
+    └── 14_overview_chart.py   (Stage 8.5 — single shareable PNG)
 
 scripts/                      ← HISTORICAL (v3.5 baseline that produced PR #13)
                                 Don't run these for v4 work — see scripts/README.md

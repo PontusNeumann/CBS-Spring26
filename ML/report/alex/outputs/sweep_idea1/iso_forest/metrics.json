@@ -1,17 +1,17 @@
 {
   "model": "iso_forest",
-  "anomaly_score_target_corr_train": -0.0232660413302885,
-  "anomaly_score_target_corr_test": -0.006482635973520206,
-  "anomaly_score_test_auc": 0.499108803078055,
-  "top_0.1pct_precision": 0.49416342412451364,
+  "anomaly_score_target_corr_train": -0.013703744702451164,
+  "anomaly_score_target_corr_test": 0.004574801693961253,
+  "anomaly_score_test_auc": 0.5064211550000981,
+  "top_0.1pct_precision": 0.5369649805447471,
   "top_0.1pct_n": 257,
-  "top_0.5pct_precision": 0.43891050583657587,
+  "top_0.5pct_precision": 0.4723735408560311,
   "top_0.5pct_n": 1285,
-  "top_1pct_precision": 0.46985608712563204,
+  "top_1pct_precision": 0.4955270322831583,
   "top_1pct_n": 2571,
-  "top_5pct_precision": 0.4782236739772904,
+  "top_5pct_precision": 0.49043397106859543,
   "top_5pct_n": 12858,
-  "top_10pct_precision": 0.4783995022747599,
+  "top_10pct_precision": 0.499086207566979,
   "top_10pct_n": 25717,
   "n_train": 1114003,
   "n_test": 257177,
@@ -19,62 +19,62 @@
     {
       "market_id": "1466012",
       "n": 12031,
-      "mean_anom": 0.22034866777957965,
-      "top1pct_winrate": 0.6083333333333333
+      "mean_anom": 0.2169307351540787,
+      "top1pct_winrate": 0.3333333333333333
     },
     {
       "market_id": "1466013",
       "n": 16374,
-      "mean_anom": 0.17991599335505307,
-      "top1pct_winrate": 0.588957055214724
+      "mean_anom": 0.19121940880441507,
+      "top1pct_winrate": 0.6380368098159509
     },
     {
       "market_id": "1466014",
       "n": 24967,
-      "mean_anom": 0.18965830738515058,
-      "top1pct_winrate": 0.42570281124497994
+      "mean_anom": 0.1940809363212106,
+      "top1pct_winrate": 0.39759036144578314
     },
     {
       "market_id": "1466015",
       "n": 90730,
-      "mean_anom": 0.19865236114587662,
-      "top1pct_winrate": 0.4101433296582139
+      "mean_anom": 0.195834723220091,
+      "top1pct_winrate": 0.40683572216097025
     },
     {
       "market_id": "1466016",
       "n": 35432,
-      "mean_anom": 0.15086611739383707,
-      "top1pct_winrate": 0.4067796610169492
+      "mean_anom": 0.15449541046772022,
+      "top1pct_winrate": 0.5056497175141242
     },
     {
       "market_id": "1484894",
       "n": 13011,
-      "mean_anom": 0.1562027322753089,
-      "top1pct_winrate": 0.36923076923076925
+      "mean_anom": 0.15871950666931664,
+      "top1pct_winrate": 0.4
     },
     {
       "market_id": "1484895",
       "n": 12826,
-      "mean_anom": 0.17035779798984874,
-      "top1pct_winrate": 0.5703125
+      "mean_anom": 0.16439704149943074,
+      "top1pct_winrate": 0.59375
     },
     {
       "market_id": "1569627",
       "n": 37601,
-      "mean_anom": 0.14073942354138022,
-      "top1pct_winrate": 0.5664893617021277
+      "mean_anom": 0.13440213614949945,
+      "top1pct_winrate": 0.4973404255319149
     },
     {
       "market_id": "1571566",
       "n": 5127,
-      "mean_anom": 0.24508730786613256,
-      "top1pct_winrate": 0.39215686274509803
+      "mean_anom": 0.22807864399767333,
+      "top1pct_winrate": 0.45098039215686275
     },
     {
       "market_id": "1706788",
       "n": 9078,
-      "mean_anom": 0.16713780972407294,
-      "top1pct_winrate": 0.6222222222222222
+      "mean_anom": 0.17611327118676615,
+      "top1pct_winrate": 0.6888888888888889
     }
   ]
 }

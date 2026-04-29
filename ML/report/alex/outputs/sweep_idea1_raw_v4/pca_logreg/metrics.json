@@ -1,0 +1,30 @@
+{
+  "model": "pca_logreg",
+  "cv_oof_auc": 0.6404616454993253,
+  "cv_oof_brier": 0.23502498345867565,
+  "cv_fold_aucs": [
+    0.7012714646776758,
+    0.4921536888103729,
+    0.6070768204717789,
+    0.6935975101364704,
+    0.7060676457114303
+  ],
+  "cv_fold_auc_mean": 0.6400334259615457,
+  "cv_fold_auc_std": 0.08238237819167495,
+  "test_raw_auc": 0.6391384960471691,
+  "test_raw_brier": 0.2352450935153594,
+  "test_raw_ece": 0.031451241145480695,
+  "test_raw_n": 257177,
+  "test_raw_pos_rate": 0.503734781881739,
+  "test_calibrated_auc": 0.63895531769423,
+  "test_calibrated_brier": 0.23561732891465803,
+  "test_calibrated_ece": 0.022225883076565797,
+  "test_calibrated_n": 257177,
+  "test_calibrated_pos_rate": 0.503734781881739,
+  "per_market_auc_min": 0.29354364681477785,
+  "per_market_auc_max": 0.768522152459249,
+  "per_market_auc_mean": 0.6162869382742879,
+  "n_features": 80,
+  "n_train": 1114003,
+  "n_test": 257177
+}

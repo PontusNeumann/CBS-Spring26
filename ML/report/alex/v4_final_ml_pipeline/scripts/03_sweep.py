@@ -26,6 +26,7 @@ Outputs: alex/outputs/sweep_idea1/<model_name>/{metrics.json, ...}
 from __future__ import annotations
 
 import json
+import time
 import warnings
 from pathlib import Path
 
@@ -68,7 +69,7 @@ RANDOM_SEED = 42
 # Set to False once Pontus delivers and 01_validate_schema.py has run successfully.
 TRAIN_PARQUET = "train_features_v4.parquet"
 TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+EXPECTED_N_FEATURES = 64  # cleaned: 80 - 16 cohort-flip features dropped per D-042
 
 
 # ---------------------------------------------------------------------------
@@ -365,9 +366,75 @@ def build_keras_mlp(input_dim):
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=1e-3),
         loss="binary_crossentropy",
-        metrics=["AUC"],
+        metrics=[keras.metrics.AUC(name="auc")],
     )
     return model
+
+
+def fit_keras_mlp_manual(
+    model,
+    X_train,
+    y_train,
+    X_val,
+    y_val,
+    max_epochs=20,
+    batch_size=4096,
+    patience=3,
+):
+    """Manual Keras training loop.
+
+    On this local TensorFlow/Python 3.13 setup, ``model.fit`` can hang at the
+    first full-data epoch while using 0% CPU. Explicit ``train_on_batch`` keeps
+    the same Keras MLP model but avoids that data-adapter path.
+    """
+    y_train = np.asarray(y_train, dtype="float32")
+    y_val = np.asarray(y_val, dtype="float32")
+    rng = np.random.default_rng(RANDOM_SEED)
+    best_auc = -np.inf
+    best_weights = None
+    wait = 0
+    history = []
+    n = len(X_train)
+    for epoch in range(1, max_epochs + 1):
+        t0 = time.time()
+        order = rng.permutation(n)
+        losses = []
+        for start in range(0, n, batch_size):
+            idx = order[start : start + batch_size]
+            result = model.train_on_batch(X_train[idx], y_train[idx])
+            loss = float(result[0] if isinstance(result, (list, tuple)) else result)
+            losses.append(loss)
+        val_pred = model.predict(X_val, batch_size=batch_size, verbose=0).ravel()
+        val_auc = float(roc_auc_score(y_val, val_pred))
+        mean_loss = float(np.mean(losses))
+        history.append(
+            {
+                "epoch": epoch,
+                "loss": mean_loss,
+                "val_auc": val_auc,
+                "seconds": float(time.time() - t0),
+            }
+        )
+        print(
+            f"    epoch {epoch:02d}: loss={mean_loss:.4f}, "
+            f"val_auc={val_auc:.4f}, {history[-1]['seconds']:.1f}s",
+            flush=True,
+        )
+        if val_auc > best_auc + 1e-5:
+            best_auc = val_auc
+            best_weights = [w.copy() for w in model.get_weights()]
+            wait = 0
+        else:
+            wait += 1
+            if wait >= patience:
+                print(
+                    f"    early stop after epoch {epoch}; best val_auc={best_auc:.4f}",
+                    flush=True,
+                )
+                break
+    if best_weights is not None:
+        model.set_weights(best_weights)
+    return history
 
 
 def evaluate_keras_mlp(X_train, y_train, g_train, X_test, y_test, test_df):
@@ -375,14 +442,15 @@ def evaluate_keras_mlp(X_train, y_train, g_train, X_test, y_test, test_df):
     from tensorflow import keras
 
     name = "mlp_keras"
-    print(f"\n[{name}] CV...")
+    print(f"\n[{name}] CV...", flush=True)
     gkf = GroupKFold(n_splits=N_FOLDS)
     oof = np.zeros(len(y_train), dtype=float)
     fold_aucs = []
+    fold_histories = []
     for fold_idx, (tr_idx, va_idx) in enumerate(gkf.split(X_train, y_train, g_train)):
         scaler = StandardScaler()
-        X_tr = scaler.fit_transform(X_train.iloc[tr_idx])
-        X_va = scaler.transform(X_train.iloc[va_idx])
+        X_tr = scaler.fit_transform(X_train.iloc[tr_idx]).astype("float32")
+        X_va = scaler.transform(X_train.iloc[va_idx]).astype("float32")
 
         # Inner chronological split for early stopping (last 10% by row order)
         n_inner_val = max(int(0.1 * len(X_tr)), 1000)
@@ -392,45 +460,48 @@ def evaluate_keras_mlp(X_train, y_train, g_train, X_test, y_test, test_df):
         y_inner_val = y_train.iloc[tr_idx].values[-n_inner_val:]
 
         model = build_keras_mlp(X_train.shape[1])
-        es = keras.callbacks.EarlyStopping(
-            monitor="val_AUC", mode="max", patience=3, restore_best_weights=True
-        )
-        model.fit(
+        print(f"  fold {fold_idx + 1}/{N_FOLDS}: fit {len(X_tr_inner):,}, val {len(X_inner_val):,}", flush=True)
+        history = fit_keras_mlp_manual(
+            model,
             X_tr_inner,
             y_tr_inner,
-            validation_data=(X_inner_val, y_inner_val),
-            epochs=20,
+            X_inner_val,
+            y_inner_val,
+            max_epochs=20,
             batch_size=4096,
-            verbose=0,
-            callbacks=[es],
+            patience=3,
         )
+        fold_histories.append(history)
         preds = model.predict(X_va, batch_size=4096, verbose=0).ravel()
         oof[va_idx] = preds
         fold_auc = roc_auc_score(y_train.iloc[va_idx], preds)
         fold_aucs.append(fold_auc)
-        print(f"  fold {fold_idx + 1}: AUC = {fold_auc:.4f}")
+        print(f"  fold {fold_idx + 1}: AUC = {fold_auc:.4f}", flush=True)
         keras.backend.clear_session()
 
     cv_oof_auc = float(roc_auc_score(y_train, oof))
-    print(f"  OOF AUC: {cv_oof_auc:.4f}")
+    print(f"  OOF AUC: {cv_oof_auc:.4f}", flush=True)
 
-    print(f"[{name}] final fit + test scoring...")
+    print(f"[{name}] final fit + test scoring...", flush=True)
     scaler = StandardScaler()
-    X_tr_scaled = scaler.fit_transform(X_train)
-    X_te_scaled = scaler.transform(X_test)
+    X_tr_scaled = scaler.fit_transform(X_train).astype("float32")
+    X_te_scaled = scaler.transform(X_test).astype("float32")
     n_inner_val = max(int(0.1 * len(X_tr_scaled)), 1000)
     final_model = build_keras_mlp(X_train.shape[1])
-    es = keras.callbacks.EarlyStopping(
-        monitor="val_AUC", mode="max", patience=3, restore_best_weights=True
+    print(
+        f"  final fit: fit {len(X_tr_scaled[:-n_inner_val]):,}, "
+        f"val {len(X_tr_scaled[-n_inner_val:]):,}",
+        flush=True,
     )
-    final_model.fit(
+    final_history = fit_keras_mlp_manual(
+        final_model,
         X_tr_scaled[:-n_inner_val],
         y_train.values[:-n_inner_val],
-        validation_data=(X_tr_scaled[-n_inner_val:], y_train.values[-n_inner_val:]),
-        epochs=20,
+        X_tr_scaled[-n_inner_val:],
+        y_train.values[-n_inner_val:],
+        max_epochs=20,
         batch_size=4096,
-        verbose=0,
-        callbacks=[es],
+        patience=3,
     )
     raw = final_model.predict(X_te_scaled, batch_size=4096, verbose=0).ravel()
     cal = IsotonicRegression(out_of_bounds="clip")
@@ -464,7 +535,18 @@ def evaluate_keras_mlp(X_train, y_train, g_train, X_test, y_test, test_df):
     }
     (out_dir / "metrics.json").write_text(json.dumps(summary, indent=2))
     (out_dir / "per_market_test.json").write_text(json.dumps(pm, indent=2))
-    print(f"  test AUC (cal): {test_metrics_cal['test_calibrated_auc']:.4f}")
+    scratch = ROOT / ".scratch" / "backtest"
+    scratch.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        scratch / f"preds_{name}.npz",
+        raw=raw.astype("float32"),
+        cal=cal_pred.astype("float32"),
+        oof=oof.astype("float32"),
+    )
+    (out_dir / "training_history.json").write_text(
+        json.dumps({"folds": fold_histories, "final_fit": final_history}, indent=2)
+    )
+    print(f"  test AUC (cal): {test_metrics_cal['test_calibrated_auc']:.4f}", flush=True)
     return summary
 
 

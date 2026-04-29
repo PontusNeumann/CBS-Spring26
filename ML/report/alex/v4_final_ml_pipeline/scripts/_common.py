@@ -49,7 +49,7 @@ OUT = ROOT / "outputs"
 # ---------------------------------------------------------------------------
 
 COST_FLOOR_DEFAULT = 0.05  # caps payoff at 19× per win
-LIQUIDITY_SCALER_DEFAULT = 0.10  # 1/N copycats sharing fill (10× default)
+LIQUIDITY_SCALER_DEFAULT = 1.0  # 1/N copycats sharing fill; default = no copycats
 
 STRIKE_EVENT_UTC = pd.Timestamp("2026-02-28T06:35:00", tz="UTC")
 CEASEFIRE_ANNOUNCEMENT_UTC = pd.Timestamp("2026-04-07T23:59:59", tz="UTC")

@@ -772,7 +772,10 @@ FEATURE_COLS = [
     "log_payoff_if_correct",
     "risk_reward_ratio_pre",
     # J. Microstructure literature
-    "kyle_lambda_market_static",
+    # kyle_lambda_market_static dropped 2026-04-29 — fit on each market's first
+    # half then broadcast to all rows in that market, so trades in the first
+    # half see post-trade information from the same market. Refitting causally
+    # would need rolling OLS per market; cost outweighs signal.
     "realized_vol_1h",
     "jump_component_1h",
     "signed_oi_autocorr_1h",
