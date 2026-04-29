@@ -6,7 +6,7 @@ for the best model's top-1% picks on test, so the report can answer
 "which features drive the model's confidence on its best predictions?"
 
 Inputs:
-  data/test_features_v4.parquet
+  data/consolidated_modeling_data.parquet    (single dataset, split by `split` column)
   .scratch/backtest/preds_<best_model>.npz   (from _backtest_worker.py via 10_backtest.py)
   outputs/sweep_idea1/comparison_table.csv   (used to auto-pick the headline model)
 
@@ -60,9 +60,9 @@ def main():
 
     # TODO: implement
     # import shap
+    # from _common import load_modeling_dataset
     #
-    # test = pd.read_parquet(DATA / "test_features_v4.parquet")
-    # fcols = json.loads((DATA / "feature_cols.json").read_text())
+    # _, _, test, fcols = load_modeling_dataset()
     # X_test = test[fcols].fillna(0).replace([np.inf, -np.inf], 0)
     #
     # # Load best model's calibrated preds

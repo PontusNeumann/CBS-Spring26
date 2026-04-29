@@ -35,14 +35,69 @@ import numpy as np
 import pandas as pd
 
 # ---------------------------------------------------------------------------
-# Path constants — anchored to alex/ workspace
+# Path constants, anchored to the report root
 # ---------------------------------------------------------------------------
 
-# this file is at alex/v4_final_ml_pipeline/scripts/_common.py → parents[2] = alex/
-ROOT = Path(__file__).resolve().parents[2]
+# this file is at alex/v4_final_ml_pipeline/scripts/_common.py, parents[3] = report root
+ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "data"
+ARCHIVE_DATA = DATA / "archive" / "alex"  # raw cohort + per-trade pre-wallet-join files
 SCRATCH = ROOT / ".scratch"
 OUT = ROOT / "outputs"
+
+# ---------------------------------------------------------------------------
+# Modeling-data contract (post 2026-04-29 consolidation).
+# Single parquet `data/consolidated_modeling_data.parquet` with `split`
+# column carrying train/test, plus 70 core + 12 wallet features. The audit
+# in `data-pipeline-issues.md` (2026-04-29) flags 9 features for exclusion:
+# 5 reintroduced direction-determinism leaks (P0-11/P0-12) and 4 low-signal
+# CEX features. After exclusion, 73 modelling features remain.
+# ---------------------------------------------------------------------------
+
+DATASET_PARQUET = "consolidated_modeling_data.parquet"
+META_COLS = ["split", "market_id", "ts_dt", "timestamp"]
+TARGET_COL = "bet_correct"
+LEAKY_REINTRO = {
+    "side_buy", "outcome_yes",
+    "taker_directional_purity_in_market",
+    "taker_position_size_before_trade",
+    "market_buy_share_running",
+    "wallet_funded_by_cex",
+}
+LOW_SIGNAL_DROP = {
+    "wallet_funded_by_cex_scoped",
+    "wallet_cex_usdc_cumulative_at_t",
+    "wallet_log_cex_usdc_cum",
+    "wallet_n_cex_deposits_at_t",
+}
+EXCLUDE = LEAKY_REINTRO | LOW_SIGNAL_DROP
+
+
+def load_modeling_dataset(*, drop_excluded: bool = True):
+    """Load the canonical modeling dataset and split into train/test.
+
+    Returns
+    -------
+    df : pd.DataFrame                full frame with `split` column
+    train, test : pd.DataFrame       sliced views
+    fcols : list[str]                model feature columns (meta and target dropped;
+                                     leaky / low-signal excluded by default)
+    """
+    dataset_path = DATA / DATASET_PARQUET
+    if not dataset_path.exists():
+        raise SystemExit(
+            f"dataset parquet missing at {dataset_path}. Pull from the GitHub "
+            f"release `pontus-modeling-data-2026-04-29` (see "
+            f"data/release-manifest-2026-04-29.md) and untar into data/."
+        )
+    df = pd.read_parquet(dataset_path)
+    skip = set(META_COLS) | {TARGET_COL}
+    if drop_excluded:
+        skip = skip | EXCLUDE
+    fcols = [c for c in df.columns if c not in skip]
+    train = df[df["split"] == "train"]
+    test = df[df["split"] == "test"]
+    return df, train, test, fcols
 
 # ---------------------------------------------------------------------------
 # Realism + cohort constants

@@ -71,10 +71,9 @@ STAKE = 100.0
 RANDOM_SEED = 42
 COST_FLOOR_RAW = 0.001  # raw economic math; realism uses 0.05 (see _common)
 
-# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
-TRAIN_PARQUET = "train_features_v4.parquet"
-TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import load_modeling_dataset, ARCHIVE_DATA  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -346,24 +345,9 @@ def main():
     print("v4 economic backtest")
     print("=" * 60)
 
-    # --- v4 data guard ------------------------------------------------------
-    train_path = DATA / TRAIN_PARQUET
-    test_path = DATA / TEST_PARQUET
-    missing = [str(p) for p in (train_path, test_path) if not p.exists()]
-    if missing:
-        raise SystemExit(
-            f"v4 parquet(s) missing: {missing}. Pontus has not delivered, or "
-            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
-        )
-    fcols = json.loads((DATA / "feature_cols.json").read_text())
-    if len(fcols) != EXPECTED_N_FEATURES:
-        raise SystemExit(
-            f"feature_cols.json has {len(fcols)} features, expected "
-            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
-        )
-
-    train = pd.read_parquet(train_path)
-    test = pd.read_parquet(test_path)
+    _, train, test, fcols = load_modeling_dataset()
+    train = train.copy()
+    test = test.copy()
 
     # Sort test by (market_id, timestamp) and remember original row indices so
     # we can reorder cached predictions (workers save in the on-disk file order).
@@ -377,7 +361,7 @@ def main():
     # Compute corrected pre_yes_price (per-token-price bug fix). Same algorithm
     # as 11_realistic_backtest.py::compute_pre_yes_price_corrected. Aligns to the
     # sorted `test` order because we sort test_raw the same way inside the fn.
-    test_raw = pd.read_parquet(DATA / "test.parquet")
+    test_raw = pd.read_parquet(ARCHIVE_DATA / "test.parquet")
     test["pre_yes_price_corrected"] = compute_pre_yes_price_corrected(test_raw)
     print(
         f"[fix] corrected pre_yes mean {test['pre_yes_price_corrected'].mean():.3f} "

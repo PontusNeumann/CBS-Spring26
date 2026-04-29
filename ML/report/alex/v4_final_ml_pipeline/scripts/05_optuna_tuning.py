@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 from time import time as _time
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 OUT = ROOT / "outputs" / "rigor" / "optuna"
 OUT.mkdir(parents=True, exist_ok=True)
 

@@ -1,25 +1,17 @@
 """
-01_validate_schema.py — Stage 1 of the v4 pipeline.
+01_validate_schema.py, DEPRECATED.
 
-Verifies that Pontus's delivered v4 parquets match the contract before any
-modelling runs against them. If anything fails, halt and ask Pontus to
-re-deliver — do NOT patch the parquet ourselves.
+Originally Stage 1 of the v4 pipeline: verified the v3.5 to v4 transition
+(separate `train_features_v4.parquet` / `test_features_v4.parquet` against
+the v3.5 baseline at `train_features.parquet` / `test_features.parquet`,
+plus an updated `feature_cols.json`).
 
-Inputs:
-  data/train_features.parquet           v3.5 baseline (already on disk)
-  data/test_features.parquet            v3.5 baseline (already on disk)
-  data/train_features_v4.parquet        Pontus's joined output
-  data/test_features_v4.parquet         Pontus's joined output
-  data/feature_cols.json                v3.5 feature list (will be updated)
-
-Outputs:
-  data/feature_cols.json                updated to include the 6 new wallet columns
-  stdout: PASS / FAIL per check
-
-Note: feature engineering happens BEFORE this pipeline. v3.5 features
-(70 columns) are produced by alex/scripts/06b_engineer_features.py against
-the raw HF dataset; the wallet-augmented v4 join is done by Pontus on his
-side and shipped as a parquet.
+After the 2026-04-29 data consolidation that contract no longer applies.
+The canonical modelling dataset is a single parquet at
+`data/consolidated_modeling_data.parquet` with `split` carrying train/test.
+The v3.5 and v4 source parquets are preserved at `data/archive/alex/` for
+traceback only. Use `_common.load_modeling_dataset()` from any v4 script
+instead of running this validator.
 """
 
 from __future__ import annotations

@@ -41,9 +41,9 @@ PLOTS = SCRATCH_OUT / "plots"
 PLOTS.mkdir(parents=True, exist_ok=True)
 PRED = SCRATCH_BASE / "backtest"
 
-# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
-TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import load_modeling_dataset, ARCHIVE_DATA  # noqa: E402
 
 # Models we look up in cached preds. Keep in sync with _backtest_worker.py
 # and 10_backtest.py. LightGBM is loaded if its npz exists.
@@ -68,21 +68,8 @@ def _record(test_id, status, detail):
 
 def load_test_with_preds():
     """Load test + cached predictions, with consistent sort + corrected pre_yes."""
-    # --- v4 data guard ------------------------------------------------------
-    test_path = DATA / TEST_PARQUET
-    if not test_path.exists():
-        raise SystemExit(
-            f"v4 parquet missing: {test_path}. Pontus has not delivered, or "
-            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
-        )
-    fcols = json.loads((DATA / "feature_cols.json").read_text())
-    if len(fcols) != EXPECTED_N_FEATURES:
-        raise SystemExit(
-            f"feature_cols.json has {len(fcols)} features, expected "
-            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
-        )
-
-    test = pd.read_parquet(test_path)
+    _, _, test, fcols = load_modeling_dataset()
+    test = test.copy()
     test["market_id"] = test["market_id"].astype(str)
     test["_orig_idx"] = np.arange(len(test))
     test_sorted = test.sort_values(["market_id", "timestamp"]).reset_index(drop=True)
@@ -90,7 +77,7 @@ def load_test_with_preds():
     n_test = len(test)
 
     # Attach corrected pre_yes_price (per-token-price bug fix)
-    raw = pd.read_parquet(DATA / "test.parquet")
+    raw = pd.read_parquet(ARCHIVE_DATA / "test.parquet")
     test_sorted["pre_yes_price_corrected"] = compute_pre_yes_price_corrected(raw)
     print(
         f"[fix] corrected pre_yes mean {test_sorted['pre_yes_price_corrected'].mean():.3f} "
@@ -347,7 +334,7 @@ def t2_2_naive_baseline(test, preds):
 def t2_3_sell_semantics(test, preds):
     _section("T2.3  A1 — SELL semantics (closing vs open-short)")
 
-    raw_test = pd.read_parquet(DATA / "test.parquet")
+    raw_test = pd.read_parquet(ARCHIVE_DATA / "test.parquet")
     raw_test["market_id"] = raw_test["market_id"].astype(str)
     raw_test = raw_test.sort_values(["market_id", "timestamp"]).reset_index(drop=True)
 

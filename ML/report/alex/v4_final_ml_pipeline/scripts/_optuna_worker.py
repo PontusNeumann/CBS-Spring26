@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import warnings
 from pathlib import Path
 
@@ -36,18 +37,15 @@ from sklearn.preprocessing import StandardScaler
 warnings.filterwarnings("ignore")
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "data"
+# allow `from _common import ...` no matter the cwd of the spawning process
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import load_modeling_dataset, ROOT, DATA  # noqa: E402
+
 SCRATCH = ROOT / ".scratch" / "backtest"
 OUT_BASE = ROOT / "outputs" / "rigor" / "optuna"
 
 N_FOLDS = 5
 RANDOM_SEED = 42
-
-# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
-TRAIN_PARQUET = "train_features_v4.parquet"
-TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
 
 
 def make_rf(params, n_jobs=4):
@@ -170,24 +168,7 @@ def main():
 
     print(f"[{args.model}] loading data...", flush=True)
 
-    # --- v4 data guard ------------------------------------------------------
-    train_path = DATA / TRAIN_PARQUET
-    test_path = DATA / TEST_PARQUET
-    missing = [str(p) for p in (train_path, test_path) if not p.exists()]
-    if missing:
-        raise SystemExit(
-            f"v4 parquet(s) missing: {missing}. Pontus has not delivered, or "
-            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
-        )
-    fcols = json.loads((DATA / "feature_cols.json").read_text())
-    if len(fcols) != EXPECTED_N_FEATURES:
-        raise SystemExit(
-            f"feature_cols.json has {len(fcols)} features, expected "
-            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
-        )
-
-    train = pd.read_parquet(train_path)
-    test = pd.read_parquet(test_path)
+    _, train, test, fcols = load_modeling_dataset()
     X_train = train[fcols].fillna(0).replace([np.inf, -np.inf], 0)
     y_train = train["bet_correct"].astype(int)
     g_train = train["market_id"].values

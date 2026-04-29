@@ -66,9 +66,9 @@ GAS_COST = 0.50  # USD per executed trade
 SLIPPAGE_THRESHOLD = 0.25  # if bet > 25% of original trade USD, apply slippage
 SLIPPAGE_FACTOR = 0.05  # add 5% to effective cost
 
-# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
-TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import load_modeling_dataset, ARCHIVE_DATA  # noqa: E402
 
 # Realism parameters live in _common: COST_FLOOR=0.05, LIQUIDITY_SCALER=0.10.
 # Override here only if you need a non-default realism scenario.
@@ -270,23 +270,10 @@ def main():
     print("realistic backtest — capital-aware execution")
     print("=" * 60)
 
-    # --- v4 data guard ------------------------------------------------------
-    test_path = DATA / TEST_PARQUET
-    if not test_path.exists():
-        raise SystemExit(
-            f"v4 parquet missing: {test_path}. Pontus has not delivered, or "
-            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
-        )
-    fcols = json.loads((DATA / "feature_cols.json").read_text())
-    if len(fcols) != EXPECTED_N_FEATURES:
-        raise SystemExit(
-            f"feature_cols.json has {len(fcols)} features, expected "
-            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
-        )
-
-    test = pd.read_parquet(test_path)
-    test_raw = pd.read_parquet(DATA / "test.parquet")
-    markets = pd.read_parquet(DATA / "markets_subset.parquet")
+    _, _, test, fcols = load_modeling_dataset()
+    test = test.copy()
+    test_raw = pd.read_parquet(ARCHIVE_DATA / "test.parquet")
+    markets = pd.read_parquet(ARCHIVE_DATA / "markets_subset.parquet")
     res_times = market_resolution_time(markets)
 
     # Re-attach original USD amount per trade. test_raw and test have same row count

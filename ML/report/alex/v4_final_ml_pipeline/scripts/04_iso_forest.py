@@ -30,17 +30,16 @@ from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore")
 
-ROOT = Path(__file__).resolve().parents[2]
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import load_modeling_dataset  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "data"
 OUT = ROOT / "outputs" / "sweep_idea1" / "iso_forest"
 OUT.mkdir(parents=True, exist_ok=True)
 
 RANDOM_SEED = 42
-
-# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
-TRAIN_PARQUET = "train_features_v4.parquet"
-TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
 
 
 def main():
@@ -48,24 +47,7 @@ def main():
     print("Isolation Forest on v4 features")
     print("=" * 60)
 
-    # --- v4 data guard ------------------------------------------------------
-    train_path = DATA / TRAIN_PARQUET
-    test_path = DATA / TEST_PARQUET
-    missing = [str(p) for p in (train_path, test_path) if not p.exists()]
-    if missing:
-        raise SystemExit(
-            f"v4 parquet(s) missing: {missing}. Pontus has not delivered, or "
-            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
-        )
-    feature_cols = json.loads((DATA / "feature_cols.json").read_text())
-    if len(feature_cols) != EXPECTED_N_FEATURES:
-        raise SystemExit(
-            f"feature_cols.json has {len(feature_cols)} features, expected "
-            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
-        )
-
-    train = pd.read_parquet(train_path)
-    test = pd.read_parquet(test_path)
+    _, train, test, feature_cols = load_modeling_dataset()
     print(f"train: {train.shape}, test: {test.shape}, n_features: {len(feature_cols)}")
 
     X_train = train[feature_cols].fillna(0).replace([np.inf, -np.inf], 0)

@@ -34,7 +34,11 @@ import pandas as pd
 
 warnings.filterwarnings("ignore")
 
-ROOT = Path(__file__).resolve().parents[2]  # alex/
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _common import ARCHIVE_DATA  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[3]  # report root
 DATA = ROOT / "data"
 SCRATCH_OUT = ROOT / ".scratch" / "pressure_tests"
 SCRATCH_OUT.mkdir(parents=True, exist_ok=True)
@@ -65,8 +69,8 @@ def _record(test_id: str, status: str, detail: dict):
 def t1_1_pre_event_filter():
     _section("T1.1  C1 — pre-event timestamp filter")
     # Use raw trade parquets (timestamp lives there)
-    train = pd.read_parquet(DATA / "train.parquet", columns=["timestamp"])
-    test = pd.read_parquet(DATA / "test.parquet", columns=["timestamp"])
+    train = pd.read_parquet(ARCHIVE_DATA / "train.parquet", columns=["timestamp"])
+    test = pd.read_parquet(ARCHIVE_DATA / "test.parquet", columns=["timestamp"])
     tr_max = float(train["timestamp"].max())
     te_max = float(test["timestamp"].max())
     tr_violation = tr_max >= STRIKE_EVENT_UTC_TS
@@ -101,10 +105,10 @@ def t1_1_pre_event_filter():
 def t1_2_pre_trade_price():
     _section("T1.2  D1 — pre_trade_price lag correctness")
     test_raw = pd.read_parquet(
-        DATA / "test.parquet", columns=["market_id", "timestamp", "price"]
+        ARCHIVE_DATA / "test.parquet", columns=["market_id", "timestamp", "price"]
     )
     test_feat = pd.read_parquet(
-        DATA / "test_features.parquet",
+        ARCHIVE_DATA / "test_features.parquet",
         columns=["market_id", "timestamp", "pre_trade_price"],
     )
     # Both files come from the same source; sort identically
@@ -197,8 +201,8 @@ def t1_3_rolling_audit():
 
 def t1_4_wallet_position():
     _section("T1.4  D3 — wallet position cumsum (full-dataset recompute)")
-    raw = pd.read_parquet(DATA / "test.parquet")
-    feat = pd.read_parquet(DATA / "test_features.parquet")
+    raw = pd.read_parquet(ARCHIVE_DATA / "test.parquet")
+    feat = pd.read_parquet(ARCHIVE_DATA / "test_features.parquet")
 
     raw["market_id"] = raw["market_id"].astype(str)
     feat["market_id"] = feat["market_id"].astype(str)
@@ -312,8 +316,8 @@ def t1_5_scaler_audit():
 
 def t1_6_dedupe_check():
     _section("T1.6  F2 — duplicate transaction_hash")
-    train = pd.read_parquet(DATA / "train.parquet", columns=["transaction_hash"])
-    test = pd.read_parquet(DATA / "test.parquet", columns=["transaction_hash"])
+    train = pd.read_parquet(ARCHIVE_DATA / "train.parquet", columns=["transaction_hash"])
+    test = pd.read_parquet(ARCHIVE_DATA / "test.parquet", columns=["transaction_hash"])
     tr_dups = int(train["transaction_hash"].duplicated().sum())
     te_dups = int(test["transaction_hash"].duplicated().sum())
     detail = {
@@ -337,7 +341,7 @@ def t1_6_dedupe_check():
 def t1_7_answer1_check():
     _section("T1.7  A3 — answer1 == 'Yes' for all 75 markets")
     m = pd.read_parquet(
-        DATA / "markets_subset.parquet",
+        ARCHIVE_DATA / "markets_subset.parquet",
         columns=["id", "question", "answer1", "answer2"],
     )
     bad = m[m["answer1"] != "Yes"]
@@ -368,7 +372,7 @@ def t1_7_answer1_check():
 
 def t1_8_dominant_resolutions():
     _section("T1.8  C2 — resolution for 4 dominant test markets")
-    m = pd.read_parquet(DATA / "markets_subset.parquet")
+    m = pd.read_parquet(ARCHIVE_DATA / "markets_subset.parquet")
     m["id"] = m["id"].astype(str)
     dominant_ids = ["1466012", "1466013", "1466014", "1466015"]
     sub = m[m.id.isin(dominant_ids)][
@@ -424,15 +428,15 @@ def t1_8_dominant_resolutions():
 def t1_9_volume_reconciliation():
     _section("T1.9  F1 — HF coverage vs market.volume")
     m = pd.read_parquet(
-        DATA / "markets_subset.parquet", columns=["id", "question", "volume", "cohort"]
+        ARCHIVE_DATA / "markets_subset.parquet", columns=["id", "question", "volume", "cohort"]
     )
     m["id"] = m["id"].astype(str)
 
     train_trades = pd.read_parquet(
-        DATA / "train.parquet", columns=["market_id", "usd_amount"]
+        ARCHIVE_DATA / "train.parquet", columns=["market_id", "usd_amount"]
     )
     test_trades = pd.read_parquet(
-        DATA / "test.parquet", columns=["market_id", "usd_amount"]
+        ARCHIVE_DATA / "test.parquet", columns=["market_id", "usd_amount"]
     )
     all_trades = pd.concat([train_trades, test_trades])
     all_trades["market_id"] = all_trades["market_id"].astype(str)
