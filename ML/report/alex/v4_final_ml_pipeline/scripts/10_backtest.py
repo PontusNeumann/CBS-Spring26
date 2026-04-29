@@ -52,11 +52,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
-from sklearn.isotonic import IsotonicRegression
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import GroupKFold
-from sklearn.preprocessing import StandardScaler
 
 from _common import (
     DATA,
@@ -74,8 +69,12 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 STAKE = 100.0
 RANDOM_SEED = 42
-N_FOLDS_CALIBRATION = 5
 COST_FLOOR_RAW = 0.001  # raw economic math; realism uses 0.05 (see _common)
+
+# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
+TRAIN_PARQUET = "train_features_v4.parquet"
+TEST_PARQUET = "test_features_v4.parquet"
+EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
 
 
 # ---------------------------------------------------------------------------
@@ -113,45 +112,43 @@ def magamyman_filter(
 
 
 # ---------------------------------------------------------------------------
-# Train + calibrate models
+# Best-model selection — read from sweep comparison_table.csv
 # ---------------------------------------------------------------------------
 
 
-def cv_oof_for_calibration(make_estimator, X, y, groups, scale=True):
-    gkf = GroupKFold(n_splits=N_FOLDS_CALIBRATION)
-    oof = np.zeros(len(y), dtype=float)
-    for tr, va in gkf.split(X, y, groups):
-        if scale:
-            sc = StandardScaler()
-            X_tr = sc.fit_transform(X.iloc[tr])
-            X_va = sc.transform(X.iloc[va])
-        else:
-            X_tr = X.iloc[tr].values
-            X_va = X.iloc[va].values
-        clf = make_estimator()
-        clf.fit(X_tr, y.iloc[tr])
-        oof[va] = clf.predict_proba(X_va)[:, 1]
-    return oof
+def pick_best_model_from_sweep(
+    model_names: list[str], default: str = "random_forest"
+) -> str:
+    """Pick the headline model by reading outputs/sweep_idea1/comparison_table.csv.
 
-
-def train_and_predict(X_train, y_train, g_train, X_test, factory, scale=True):
-    """Returns calibrated test predictions + isotonic calibrator."""
-    oof = cv_oof_for_calibration(factory, X_train, y_train, g_train, scale=scale)
-    cal = IsotonicRegression(out_of_bounds="clip")
-    cal.fit(oof, y_train)
-
-    if scale:
-        sc = StandardScaler()
-        X_tr_s = sc.fit_transform(X_train)
-        X_te_s = sc.transform(X_test)
-    else:
-        X_tr_s = X_train.values
-        X_te_s = X_test.values
-    final = factory()
-    final.fit(X_tr_s, y_train)
-    raw_test = final.predict_proba(X_te_s)[:, 1]
-    cal_test = cal.transform(raw_test)
-    return final, cal, raw_test, cal_test, oof
+    Returns the model in `model_names` with the highest test_auc_cal. If the
+    sweep output is missing or unparseable, fall back to `default` and warn.
+    """
+    table_path = ROOT / "outputs" / "sweep_idea1" / "comparison_table.csv"
+    if not table_path.exists():
+        print(f"[best-model] {table_path} missing — defaulting to {default!r}")
+        return default
+    try:
+        df = pd.read_csv(table_path)
+        elig = df[df["model"].isin(model_names)].copy()
+        elig["test_auc_cal_num"] = pd.to_numeric(elig["test_auc_cal"], errors="coerce")
+        elig = elig.dropna(subset=["test_auc_cal_num"])
+        if elig.empty:
+            print(
+                f"[best-model] no parseable AUC rows in sweep — defaulting to {default!r}"
+            )
+            return default
+        winner = elig.sort_values("test_auc_cal_num", ascending=False).iloc[0]
+        print(
+            f"[best-model] sweep winner: {winner['model']} "
+            f"(test_auc_cal = {winner['test_auc_cal']})"
+        )
+        return str(winner["model"])
+    except Exception as e:
+        print(
+            f"[best-model] failed to parse sweep table ({e}); defaulting to {default!r}"
+        )
+        return default
 
 
 # ---------------------------------------------------------------------------
@@ -346,11 +343,27 @@ def plot_calibration(p_hat: np.ndarray, bet_correct: np.ndarray, path: Path, n_b
 
 def main():
     print("=" * 60)
-    print("v3.5 economic backtest")
+    print("v4 economic backtest")
     print("=" * 60)
-    train = pd.read_parquet(DATA / "train_features.parquet")
-    test = pd.read_parquet(DATA / "test_features.parquet")
+
+    # --- v4 data guard ------------------------------------------------------
+    train_path = DATA / TRAIN_PARQUET
+    test_path = DATA / TEST_PARQUET
+    missing = [str(p) for p in (train_path, test_path) if not p.exists()]
+    if missing:
+        raise SystemExit(
+            f"v4 parquet(s) missing: {missing}. Pontus has not delivered, or "
+            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
+        )
     fcols = json.loads((DATA / "feature_cols.json").read_text())
+    if len(fcols) != EXPECTED_N_FEATURES:
+        raise SystemExit(
+            f"feature_cols.json has {len(fcols)} features, expected "
+            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
+        )
+
+    train = pd.read_parquet(train_path)
+    test = pd.read_parquet(test_path)
 
     # Sort test by (market_id, timestamp) and remember original row indices so
     # we can reorder cached predictions (workers save in the on-disk file order).
@@ -405,7 +418,7 @@ def main():
     SCRATCH = ROOT / ".scratch" / "backtest"
     SCRATCH.mkdir(parents=True, exist_ok=True)
 
-    model_names = ["logreg_l2", "random_forest", "hist_gbm"]
+    model_names = ["logreg_l2", "random_forest", "hist_gbm", "lightgbm"]
     pred_paths = {name: SCRATCH / f"preds_{name}.npz" for name in model_names}
 
     # Workers are deterministic (random_state=42). If all preds exist, skip
@@ -463,6 +476,12 @@ def main():
     model_preds = {}
     for name in model_names:
         d = np.load(pred_paths[name])
+        if len(d["raw"]) != n_test:
+            raise SystemExit(
+                f"[{name}] worker preds length {len(d['raw'])} != n_test {n_test}. "
+                f"Sort-key reorder would silently misalign predictions. "
+                f"Re-run with RETRAIN=1 (worker may have read a stale parquet)."
+            )
         raw, cal, oof = d["raw"][sort_key], d["cal"][sort_key], d["oof"]
         cost, edge, _ = compute_cost_and_edge(test, cal, cost_floor=COST_FLOOR_RAW)
         model_preds[name] = {
@@ -549,7 +568,7 @@ def main():
     # ===================================================================
     # Tier 2: cutoff-date sweep on home-run for best model
     # ===================================================================
-    best_model = "random_forest"  # the winner from sweep
+    best_model = pick_best_model_from_sweep(model_names, default="random_forest")
     print(f"\n=== cutoff-date sweep — home-run on {best_model} ===")
     preds = model_preds[best_model]
     edge = preds["edge"]

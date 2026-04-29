@@ -12,8 +12,8 @@ Required by the report's Methodology + Results sections (D-037).
 
 Inputs:
   data/{train,test}_features_v4.parquet
-  .scratch/preds/preds_{random_forest,hist_gbm,lightgbm,mlp_keras,...}.npz
-    (assumes 03_sweep.py + 06_optuna_tuning.py have already run)
+  .scratch/backtest/preds_{random_forest,hist_gbm,lightgbm,logreg_l2}.npz
+    (assumes 03_sweep.py + 05_optuna_tuning.py have already run)
 
 Outputs:
   outputs/rigor/auc_ci.json                     model → {auc, ci_lower, ci_upper}
@@ -41,7 +41,9 @@ warnings.filterwarnings("ignore")
 OUT = ROOT / "outputs" / "rigor"
 OUT.mkdir(parents=True, exist_ok=True)
 
-PRED_DIR = SCRATCH / "backtest"  # cached predictions from 03_sweep / 06_optuna_tuning
+PRED_DIR = (
+    SCRATCH / "backtest"
+)  # cached predictions from _backtest_worker / 05_optuna_tuning
 N_BOOTSTRAP = 1_000
 RANDOM_SEED = 42
 

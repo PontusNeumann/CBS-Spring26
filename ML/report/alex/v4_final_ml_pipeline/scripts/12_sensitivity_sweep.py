@@ -56,6 +56,10 @@ SCRATCH = SCRATCH_BASE / "backtest"
 OUT = ROOT / "outputs" / "backtest" / "sensitivity"
 OUT.mkdir(parents=True, exist_ok=True)
 
+# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
+TEST_PARQUET = "test_features_v4.parquet"
+EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
+
 # Sweep grids
 COST_FLOORS = [0.001, 0.01, 0.05, 0.10, 0.20]
 COPYCAT_NS = [1, 5, 10, 25, 50, 100]
@@ -64,9 +68,12 @@ COPYCAT_NS = [1, 5, 10, 25, 50, 100]
 INITIAL_CAPITAL = 10_000
 MAX_BET_PCT = 0.05
 
-# (model, strategy) pairs to sweep — keep small to bound runtime
+# (model, strategy) pairs to sweep — keep small to bound runtime.
+# LightGBM included so whichever boosting model wins Stage 4's decision-tree
+# gate ("LightGBM beats HGBM by > 0.5pp") gets a sensitivity grid.
 TARGETS = [
-    ("hist_gbm", "general_ev"),  # the +14% headline
+    ("hist_gbm", "general_ev"),  # v3.5 +14% headline
+    ("lightgbm", "general_ev"),  # alternative boosting library
     ("random_forest", "general_ev"),
     ("hist_gbm", "top5pct_edge"),
 ]
@@ -94,7 +101,21 @@ def main():
     )
     print("=" * 60)
 
-    test = pd.read_parquet(DATA / "test_features.parquet")
+    # --- v4 data guard ------------------------------------------------------
+    test_path = DATA / TEST_PARQUET
+    if not test_path.exists():
+        raise SystemExit(
+            f"v4 parquet missing: {test_path}. Pontus has not delivered, or "
+            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
+        )
+    fcols = json.loads((DATA / "feature_cols.json").read_text())
+    if len(fcols) != EXPECTED_N_FEATURES:
+        raise SystemExit(
+            f"feature_cols.json has {len(fcols)} features, expected "
+            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
+        )
+
+    test = pd.read_parquet(test_path)
     test_raw = pd.read_parquet(DATA / "test.parquet")
     markets = pd.read_parquet(DATA / "markets_subset.parquet")
     res_times = market_resolution_time(markets)
@@ -116,15 +137,34 @@ def main():
         np.exp(test["log_time_to_deadline_hours"].values) - 1
     ) * 3600
 
-    # Load cached preds (deterministic; from 10_backtest.py worker run)
+    # Load cached preds (deterministic; from 10_backtest.py worker run).
+    # Preload every model referenced by TARGETS so missing preds fail loudly,
+    # not silently (KeyError on the first lookup).
+    n_test = len(test)
     preds_by_model = {}
-    for m in ["random_forest", "hist_gbm"]:
-        d = np.load(SCRATCH / f"preds_{m}.npz")
-        preds_by_model[m] = d["cal"][sort_key]
+    for m in sorted({mod for mod, _ in TARGETS}):
+        path = SCRATCH / f"preds_{m}.npz"
+        if not path.exists():
+            print(
+                f"  ✗ {m}: no preds at {path} — skipping (TARGETS using it will be dropped)"
+            )
+            continue
+        d = np.load(path)
+        cal_orig = d["cal"]
+        if len(cal_orig) != n_test:
+            raise SystemExit(
+                f"[{m}] worker preds length {len(cal_orig)} != n_test {n_test}. "
+                f"Sort-key reorder would silently misalign predictions. "
+                f"Re-run with RETRAIN=1 (worker may have read a stale parquet)."
+            )
+        preds_by_model[m] = cal_orig[sort_key]
         print(f"  loaded {m} preds (mean p_hat {preds_by_model[m].mean():.3f})")
 
     rows = []
     for model_name, strat_name in TARGETS:
+        if model_name not in preds_by_model:
+            print(f"  · skip ({model_name}, {strat_name}): preds not loaded")
+            continue
         p_hat = preds_by_model[model_name]
         for cf in COST_FLOORS:
             cost, edge, _ = compute_cost_and_edge(test, p_hat, cost_floor=cf)

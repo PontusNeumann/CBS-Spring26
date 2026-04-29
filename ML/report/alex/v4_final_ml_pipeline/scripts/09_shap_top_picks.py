@@ -7,7 +7,8 @@ for the best model's top-1% picks on test, so the report can answer
 
 Inputs:
   data/test_features_v4.parquet
-  .scratch/preds/preds_<best_model>.npz   (from 03_sweep.py)
+  .scratch/backtest/preds_<best_model>.npz   (from _backtest_worker.py via 10_backtest.py)
+  outputs/sweep_idea1/comparison_table.csv   (used to auto-pick the headline model)
 
 Outputs:
   outputs/rigor/shap/values.parquet         per-pick SHAP values + bet_correct
@@ -41,8 +42,15 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 PRED_DIR = SCRATCH / "backtest"
 
-# Auto-pick the best model from sweep results, or hardcode here
-BEST_MODEL_DEFAULT = "random_forest"  # update to whichever wins on v4
+# Headline model for SHAP. When implemented, prefer auto-picking from
+# outputs/sweep_idea1/comparison_table.csv (see 10_backtest.py::pick_best_model_from_sweep)
+# so this stays in sync with the v4 sweep winner.
+BEST_MODEL_DEFAULT = "random_forest"  # fallback if comparison_table.csv missing
+ELIGIBLE_FOR_SHAP = [
+    "random_forest",
+    "hist_gbm",
+    "lightgbm",
+]  # tree models = TreeExplainer (fast)
 
 
 def main():

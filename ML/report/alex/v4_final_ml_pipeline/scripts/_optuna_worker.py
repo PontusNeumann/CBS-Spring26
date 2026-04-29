@@ -1,7 +1,7 @@
 """
 _optuna_worker.py — tune ONE model via Optuna TPE, save study + comparison.
 
-Used by 13_optuna_tuning.py for parallel multi-model tuning.
+Used by 05_optuna_tuning.py for parallel multi-model tuning.
 
 Usage:
     python _optuna_worker.py --model random_forest --n_trials 50
@@ -43,6 +43,11 @@ OUT_BASE = ROOT / "outputs" / "rigor" / "optuna"
 
 N_FOLDS = 5
 RANDOM_SEED = 42
+
+# v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
+TRAIN_PARQUET = "train_features_v4.parquet"
+TEST_PARQUET = "test_features_v4.parquet"
+EXPECTED_N_FEATURES = 76  # 70 v3.5 + 6 wallet
 
 
 def make_rf(params, n_jobs=4):
@@ -94,6 +99,36 @@ def hgbm_search_space(trial: optuna.Trial) -> dict:
     }
 
 
+def make_lgbm(params, n_jobs=4):
+    import lightgbm as lgb
+
+    return lgb.LGBMClassifier(
+        n_estimators=params["n_estimators"],
+        learning_rate=params["learning_rate"],
+        num_leaves=params["num_leaves"],
+        max_depth=params["max_depth"] if params["max_depth"] != "none" else -1,
+        min_child_samples=params["min_child_samples"],
+        reg_lambda=params["reg_lambda"],
+        feature_fraction=params["feature_fraction"],
+        class_weight="balanced",
+        n_jobs=n_jobs,
+        random_state=RANDOM_SEED,
+        verbosity=-1,
+    )
+
+
+def lgbm_search_space(trial: optuna.Trial) -> dict:
+    return {
+        "n_estimators": trial.suggest_int("n_estimators", 100, 500, step=50),
+        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.2, log=True),
+        "num_leaves": trial.suggest_categorical("num_leaves", [15, 31, 63, 127, 255]),
+        "max_depth": trial.suggest_categorical("max_depth", ["none", 4, 6, 8, 10]),
+        "min_child_samples": trial.suggest_int("min_child_samples", 50, 500, log=True),
+        "reg_lambda": trial.suggest_float("reg_lambda", 0.0, 2.0),
+        "feature_fraction": trial.suggest_float("feature_fraction", 0.5, 1.0),
+    }
+
+
 def cv_mean_auc(X, y, groups, factory, scale: bool, trial=None) -> float:
     gkf = GroupKFold(n_splits=N_FOLDS)
     aucs = []
@@ -120,7 +155,11 @@ def cv_mean_auc(X, y, groups, factory, scale: bool, trial=None) -> float:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True, choices=["random_forest", "hist_gbm"])
+    parser.add_argument(
+        "--model",
+        required=True,
+        choices=["random_forest", "hist_gbm", "lightgbm"],
+    )
     parser.add_argument("--n_trials", type=int, default=50)
     parser.add_argument("--storage", type=str, default=None)
     args = parser.parse_args()
@@ -130,9 +169,25 @@ def main():
     storage = args.storage or f"sqlite:///{out_dir / 'study.db'}"
 
     print(f"[{args.model}] loading data...", flush=True)
-    train = pd.read_parquet(DATA / "train_features.parquet")
-    test = pd.read_parquet(DATA / "test_features.parquet")
+
+    # --- v4 data guard ------------------------------------------------------
+    train_path = DATA / TRAIN_PARQUET
+    test_path = DATA / TEST_PARQUET
+    missing = [str(p) for p in (train_path, test_path) if not p.exists()]
+    if missing:
+        raise SystemExit(
+            f"v4 parquet(s) missing: {missing}. Pontus has not delivered, or "
+            f"Stage 0 pre-flight was skipped. Run 01_validate_schema.py first."
+        )
     fcols = json.loads((DATA / "feature_cols.json").read_text())
+    if len(fcols) != EXPECTED_N_FEATURES:
+        raise SystemExit(
+            f"feature_cols.json has {len(fcols)} features, expected "
+            f"{EXPECTED_N_FEATURES}. Run 01_validate_schema.py to update it."
+        )
+
+    train = pd.read_parquet(train_path)
+    test = pd.read_parquet(test_path)
     X_train = train[fcols].fillna(0).replace([np.inf, -np.inf], 0)
     y_train = train["bet_correct"].astype(int)
     g_train = train["market_id"].values
@@ -147,10 +202,16 @@ def main():
         space_fn = rf_search_space
         factory = lambda p: lambda: make_rf(p, n_jobs=4)
         scale = False
-    else:
+    elif args.model == "hist_gbm":
         space_fn = hgbm_search_space
         factory = lambda p: lambda: make_hgbm(p)
         scale = False
+    elif args.model == "lightgbm":
+        space_fn = lgbm_search_space
+        factory = lambda p: lambda: make_lgbm(p, n_jobs=4)
+        scale = False
+    else:
+        raise SystemExit(f"unknown model: {args.model}")
 
     def objective(trial):
         params = space_fn(trial)
