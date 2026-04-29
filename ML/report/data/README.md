@@ -4,7 +4,7 @@ Active file: `data/consolidated_modeling_data.parquet` (317.5 MB)
 
 Target: `bet_correct` (int64, binary 0/1, balanced ~50.3% positive in both train and test).
 
-**Leakage note:** all features are temporally causal (verified in `alex/scripts/06b_engineer_features.py`), but six features that the prior leakage audit dropped have been reintroduced under different names. They are listed and explained in `data-pipeline-issues.md` (2026-04-29 audit section) along with a `LEAKY_REINTRO` set you can subtract from `feature_cols` if you want to match the prior audit's exclusion. Decision deferred to modeling time.
+**Leakage note:** all features are temporally causal (verified in `alex/scripts/06b_engineer_features.py`). The team's train/test split is market-cohort-disjoint (63 train markets, 10 test markets, zero overlap), which is the leak-defence mechanism for the within-market direction-determinism channel Pontus's prior audit flagged. Five features are still excluded at modelling time — 1 structural (`wallet_funded_by_cex`, lifetime flag) and 4 low-signal CEX features. See `data-pipeline-issues.md` (2026-04-29 audit) for the full rationale. The canonical model loader is `alex/v4_final_ml_pipeline/scripts/_common.load_modeling_dataset()` (returns 77 features after exclusion).
 
 ## Load
 

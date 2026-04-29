@@ -167,20 +167,16 @@ def panel_zero_density(df: pd.DataFrame) -> pd.Series:
     clean_ax(ax)
     save_fig(fig, OUT_DIR / "01_zero_density.png")
 
-    txt = OUT_DIR / "01_zero_density.txt"
-    txt.write_text(
-        "Zero-density per feature (overall, train, test). Top 30.\n"
-        "The wallet-joined parquet has 0 NaN values. Alex's feature\n"
-        "engineering pre-fills structural missingness with 0 (or 0.5 for\n"
-        "taker_yes_share_global) at compute time. This panel proxies\n"
-        "missingness via the share of rows whose value is exactly zero.\n\n"
-        + zd_overall.head(30)
+    table = (
+        zd_overall.head(30)
             .to_frame("overall")
             .assign(train=train_zd.reindex(zd_overall.head(30).index),
                     test=test_zd.reindex(zd_overall.head(30).index))
             .round(4)
-            .to_string()
     )
+    csv_path = OUT_DIR / "01_zero_density_table.csv"
+    table.to_csv(csv_path, index_label="feature")
+    print(f"saved {csv_path.name}")
     return zd_overall
 
 
@@ -210,11 +206,9 @@ def panel_wallet_coverage(df: pd.DataFrame) -> dict:
     clean_ax(ax)
     save_fig(fig, OUT_DIR / "02_wallet_coverage.png")
 
-    out_path = OUT_DIR / "02_wallet_coverage.txt"
-    with out_path.open("w") as f:
-        f.write("wallet feature coverage by split\n\n")
-        f.write(cov.round(2).to_string())
-    print(f"saved {out_path.name}")
+    csv_path = OUT_DIR / "02_wallet_coverage_table.csv"
+    cov.round(2).to_csv(csv_path, index_label="split")
+    print(f"saved {csv_path.name}")
     return cov.to_dict("index")
 
 
@@ -257,6 +251,14 @@ def panel_class_balance(df: pd.DataFrame) -> None:
 
     fig.tight_layout()
     save_fig(fig, OUT_DIR / "03_class_balance.png")
+
+    summary = pd.DataFrame({
+        "n_trades": counts,
+        "base_rate": rates.round(4),
+    })
+    csv_path = OUT_DIR / "03_class_balance_table.csv"
+    summary.to_csv(csv_path, index_label="split")
+    print(f"saved {csv_path.name}")
 
 
 def _numeric_features(df: pd.DataFrame) -> list[str]:
@@ -434,8 +436,7 @@ def panel_market_volume(df: pd.DataFrame) -> None:
         base_rate=(TARGET, "mean"),
     ).reset_index()
 
-    fig, axes = plt.subplots(1, 2, figsize=(FIG_W_WIDE, 3.0))
-    ax = axes[0]
+    fig, ax = plt.subplots(figsize=(FIG_W, 3.4))
     for split_name, colour in (("train", COL_TRAIN), ("test", COL_TEST)):
         sub = per[per[SPLIT] == split_name]
         ax.scatter(
@@ -447,31 +448,24 @@ def panel_market_volume(df: pd.DataFrame) -> None:
     ax.set_xlabel("# trades in market (log)")
     ax.set_ylabel("base rate")
     ax.set_title("Per-market size vs base rate")
-    ax.legend(frameon=False, loc="lower right")
+    ax.legend(frameon=False, loc="upper right")
     clean_ax(ax)
-
-    ax = axes[1]
-    summary = per.groupby(SPLIT)["n"].describe()[["count", "min", "50%", "max"]]
-    summary.columns = ["n_markets", "min_trades", "median_trades", "max_trades"]
-    ax.axis("off")
-    table = ax.table(
-        cellText=summary.round(0).astype(int).values,
-        rowLabels=summary.index, colLabels=summary.columns,
-        loc="center", cellLoc="center",
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(8)
-    table.scale(1.05, 1.4)
-    ax.set_title("Cohort sizing summary")
-
     fig.tight_layout()
     save_fig(fig, OUT_DIR / "07_market_volume.png")
 
-    out_path = OUT_DIR / "07_market_volume.txt"
-    with out_path.open("w") as f:
-        f.write("per-market trade counts and base rates\n\n")
-        f.write(per.sort_values(["split", "n"], ascending=[True, False]).to_string(index=False))
-    print(f"saved {out_path.name}")
+    # Cohort sizing summary as a report-ready CSV table.
+    summary = per.groupby(SPLIT)["n"].describe()[["count", "min", "50%", "max"]]
+    summary.columns = ["n_markets", "min_trades", "median_trades", "max_trades"]
+    summary = summary.round(0).astype(int)
+    sizing_path = OUT_DIR / "07_cohort_sizing_table.csv"
+    summary.to_csv(sizing_path)
+    print(f"saved {sizing_path.name}")
+
+    # Per-market detail as a report-ready CSV table.
+    detail = per.sort_values(["split", "n"], ascending=[True, False]).round({"base_rate": 4})
+    detail_path = OUT_DIR / "07_per_market_table.csv"
+    detail.to_csv(detail_path, index=False)
+    print(f"saved {detail_path.name}")
 
 
 def panel_train_test_shift(df: pd.DataFrame) -> None:
@@ -494,12 +488,9 @@ def panel_train_test_shift(df: pd.DataFrame) -> None:
     clean_ax(ax)
     save_fig(fig, OUT_DIR / "08_train_test_shift.png")
 
-    out_path = OUT_DIR / "08_train_test_shift.txt"
-    with out_path.open("w") as f:
-        f.write("|standardised mean shift| (test − train) on numeric features\n")
-        f.write("interpretation: >0.2 small, >0.5 medium, >0.8 large (Cohen's d convention)\n\n")
-        f.write(shift.round(3).to_string())
-    print(f"saved {out_path.name}")
+    csv_path = OUT_DIR / "08_train_test_shift_table.csv"
+    shift.round(3).to_frame("abs_std_mean_shift").to_csv(csv_path, index_label="feature")
+    print(f"saved {csv_path.name}")
 
 
 # ---------------------------------------------------------------------------
@@ -562,13 +553,9 @@ def panel_late_flow(df: pd.DataFrame) -> None:
     fig.tight_layout()
     save_fig(fig, OUT_DIR / "09_late_flow.png")
 
-    out_path = OUT_DIR / "09_late_flow.txt"
-    with out_path.open("w") as f:
-        f.write("Base rate and trade share by time-to-deadline bucket\n\n")
-        f.write(
-            agg.pivot(index="_bucket", columns=SPLIT, values=["base_rate", "n"]).round(4).to_string()
-        )
-    print(f"saved {out_path.name}")
+    csv_path = OUT_DIR / "09_late_flow_table.csv"
+    agg.pivot(index="_bucket", columns=SPLIT, values=["base_rate", "n"]).round(4).to_csv(csv_path)
+    print(f"saved {csv_path.name}")
 
 
 # ---------------------------------------------------------------------------
@@ -819,20 +806,21 @@ def panel_feature_taxonomy(df: pd.DataFrame) -> None:
     fig.tight_layout()
     save_fig(fig, OUT_DIR / "14_feature_taxonomy.png")
 
-    out_path = OUT_DIR / "14_feature_taxonomy.txt"
-    with out_path.open("w") as f:
-        f.write("Feature-group membership\n\n")
-        for group, members in FEATURE_GROUPS:
-            present = [m for m in members if m in feats]
-            f.write(f"== {group} ({len(present)}) ==\n")
-            for m in present:
-                f.write(f"  {m}\n")
-            f.write("\n")
-        if rest:
-            f.write("== Other / unclassified ==\n")
-            for m in rest:
-                f.write(f"  {m}\n")
-    print(f"saved {out_path.name}")
+    rows = []
+    for group, members in FEATURE_GROUPS:
+        present = [m for m in members if m in feats]
+        for m in present:
+            rows.append({"group": group, "feature": m})
+    for m in rest:
+        rows.append({"group": "Other / unclassified", "feature": m})
+    csv_path = OUT_DIR / "14_feature_taxonomy_table.csv"
+    pd.DataFrame(rows).to_csv(csv_path, index=False)
+    print(f"saved {csv_path.name}")
+
+    counts_path = OUT_DIR / "14_feature_taxonomy_counts.csv"
+    counts = pd.DataFrame(rows).groupby("group").size().rename("n_features").to_frame()
+    counts.to_csv(counts_path, index_label="group")
+    print(f"saved {counts_path.name}")
 
 
 # ---------------------------------------------------------------------------
@@ -1013,30 +1001,131 @@ def panel_pca_wallets(df: pd.DataFrame) -> None:
     print(f"saved {out_path.name}")
 
 
+# ---------------------------------------------------------------------------
+# 18. Per-market price trajectories.
+# `pre_trade_price` is the canonical market-implied probability per trade.
+# Plot one thin line per market, coloured by split, so the cohort design is
+# visible alongside price evolution.
+# ---------------------------------------------------------------------------
+def panel_price_trajectories(df: pd.DataFrame) -> None:
+    if "pre_trade_price" not in df.columns or "timestamp" not in df.columns:
+        print("skipping price-trajectories panel, pre_trade_price or timestamp missing")
+        return
+    times = pd.to_datetime(df["timestamp"], unit="s", utc=True)
+    df2 = df.assign(_t=times)[["_t", MARKET, SPLIT, "pre_trade_price"]].dropna()
+
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 3.6), constrained_layout=True)
+    for split_name, colour in (("train", COL_TRAIN), ("test", COL_TEST)):
+        for mid, sub in df2[df2[SPLIT] == split_name].groupby(MARKET):
+            sub = sub.sort_values("_t")
+            if len(sub) > 1500:
+                sub = sub.iloc[:: max(1, len(sub) // 1500)]
+            ax.plot(
+                sub["_t"], sub["pre_trade_price"],
+                lw=0.4, alpha=0.45, color=colour,
+            )
+    # Two dummy lines for the legend so each split shows once.
+    ax.plot([], [], color=COL_TRAIN, lw=1.5, label="train")
+    ax.plot([], [], color=COL_TEST, lw=1.5, label="test")
+    ax.set_xlabel("trade time (UTC)")
+    ax.set_ylabel("pre-trade price (market-implied probability)")
+    ax.set_title("Per-market price trajectories, coloured by split")
+    ax.set_ylim(-0.02, 1.02)
+    ax.legend(frameon=False, loc="upper right")
+    ax.tick_params(axis="x", rotation=20)
+    for lbl in ax.get_xticklabels():
+        lbl.set_ha("right")
+    clean_ax(ax)
+    save_fig(fig, OUT_DIR / "18_price_trajectories.png")
+
+
+# ---------------------------------------------------------------------------
+# 19. Event timing.
+# Daily trade volume with the strike and ceasefire announcement marked. Shows
+# the cohort design in calendar time and the relative trading intensity
+# around each event.
+# ---------------------------------------------------------------------------
+def panel_event_timing(df: pd.DataFrame) -> None:
+    if "timestamp" not in df.columns:
+        print("skipping event-timing panel, timestamp missing")
+        return
+    times = pd.to_datetime(df["timestamp"], unit="s", utc=True)
+    df2 = df.assign(_t=times)
+    daily = (
+        df2.groupby([SPLIT, df2["_t"].dt.floor("D")])
+        .size()
+        .rename("n_trades")
+        .reset_index()
+    )
+
+    STRIKE = pd.Timestamp("2026-02-28T06:35:00", tz="UTC")
+    CEASEFIRE = pd.Timestamp("2026-04-07T23:59:00", tz="UTC")
+
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 3.4), constrained_layout=True)
+    for split_name, colour in (("train", COL_TRAIN), ("test", COL_TEST)):
+        sub = daily[daily[SPLIT] == split_name].sort_values("_t")
+        if sub.empty:
+            continue
+        ax.bar(sub["_t"], sub["n_trades"], width=0.9, color=colour,
+               label=split_name, alpha=0.85, edgecolor="none")
+    ax.axvline(STRIKE, color=COL_DARK, ls="--", lw=0.9)
+    ax.text(STRIKE, ax.get_ylim()[1] * 0.95, "  strike (28 Feb)",
+            ha="left", va="top", fontsize=8, color=COL_DARK)
+    ax.axvline(CEASEFIRE, color=COL_DARK, ls="--", lw=0.9)
+    ax.text(CEASEFIRE, ax.get_ylim()[1] * 0.95, "  ceasefire announcement (7 Apr)",
+            ha="left", va="top", fontsize=8, color=COL_DARK)
+    ax.set_xlabel("trade date (UTC)")
+    ax.set_ylabel("trades per day")
+    ax.set_title("Trade volume over calendar time, with key events")
+    ax.legend(frameon=False, loc="upper right")
+    ax.tick_params(axis="x", rotation=20)
+    for lbl in ax.get_xticklabels():
+        lbl.set_ha("right")
+    clean_ax(ax)
+    save_fig(fig, OUT_DIR / "19_event_timing.png")
+
+    csv_path = OUT_DIR / "19_event_timing_table.csv"
+    daily.rename(columns={"_t": "date"}).to_csv(csv_path, index=False)
+    print(f"saved {csv_path.name}")
+
+
 def write_index(out_dir: Path) -> None:
     """Cheat-sheet that maps each generated panel to what it shows."""
     items = [
         ("01_zero_density.png", "Top-20 features by share of rows where value = 0 (imputation-as-zero proxy for missingness; dataset has no NaN)."),
-        ("01_zero_density.txt", "Per-feature overall/train/test zero-density, top 30."),
+        ("01_zero_density_table.csv", "Per-feature overall/train/test zero-density, top 30. Report-ready CSV."),
         ("02_wallet_coverage.png", "% of trades with enriched wallet, by split."),
+        ("02_wallet_coverage_table.csv", "Wallet-feature coverage by split (pct_enriched, n_rows). Report-ready CSV."),
         ("03_class_balance.png", "Base rate per split + per-market base-rate spread."),
-        ("04_distributions.png", "Top-12 skewed features, KDE by bet_correct."),
-        ("04_skewness_table.csv", "All numeric features ranked by absolute skew."),
+        ("03_class_balance_table.csv", "Trade count and base rate per split. Report-ready CSV."),
+        ("04_distributions.png", "Top-12 skewed features, histogram by bet_correct (1-99 pct clipped)."),
+        ("04_skewness_table.csv", "All numeric features ranked by absolute skew. Report-ready CSV."),
         ("05_outlier_boxplots.png", "Box plots for the 8 most-skewed features."),
-        ("06_correlation_heatmap.png", "Upper-triangle Pearson heatmap, top-40 features by std."),
+        ("06_correlation_heatmap.png", "Upper-triangle Pearson heatmap, top-40 features by centrality."),
         ("06_top_correlations.txt", "Top 25 |Pearson r| feature pairs."),
         ("07_market_volume.png", "Per-market trade count vs base rate."),
-        ("08_train_test_shift.png", "Top-15 features by |Cohen's d| between train and test."),
+        ("07_cohort_sizing_table.csv", "Cohort sizing summary (n_markets, min, median, max trades) per split. Report-ready CSV."),
+        ("07_per_market_table.csv", "Per-market detail (split, market_id, n trades, base rate). Report-ready CSV."),
+        ("08_train_test_shift.png", "Top-15 features by |standardised mean shift| between train and test."),
+        ("08_train_test_shift_table.csv", "Per-feature |std mean shift| (Cohen's d). Report-ready CSV."),
         ("09_late_flow.png", "Hit rate vs time-to-deadline (Mitts & Ofir-style buckets)."),
+        ("09_late_flow_table.csv", "Per-bucket base rate and trade count by split. Report-ready CSV."),
         ("10_wallet_strata.png", "Hit rate by wallet age decile, CEX-funding, polygon nonce decile."),
         ("11_per_market_bimodality.png", "Per-market base-rate histogram (single-event resolution)."),
         ("12_feature_stability.png", "Single-feature ROC-AUC heatmap per market for top-8 features."),
         ("13_mutual_information.png", "Top-20 features by mutual information with bet_correct."),
+        ("13_mutual_information.csv", "Per-feature MI to bet_correct. Report-ready CSV."),
         ("14_feature_taxonomy.png", "How the numeric features split across feature-engineering layers."),
-        ("15_tail_diagnostics.png", "Top-15 fat-tailed features by |excess kurtosis|. CSV gives p1/p5/p95/p99 + tail-conditional means."),
+        ("14_feature_taxonomy_table.csv", "Group + feature membership for each modelling feature. Report-ready CSV."),
+        ("14_feature_taxonomy_counts.csv", "Feature count per group. Report-ready CSV."),
+        ("15_tail_diagnostics.png", "Top-15 fat-tailed features by |excess kurtosis|."),
+        ("15_tail_diagnostics.csv", "p1/p5/p95/p99 + tail-conditional means. Report-ready CSV."),
         ("16_temporal_drift.png", "Daily bet_correct base rate with 7-day rolling mean, per split."),
         ("17_pca_wallets.png", "Wallet behavioural archetypes via 2-D PCA on per-wallet aggregates, coloured by hit rate."),
         ("17_pca_wallets.txt", "PC1/PC2 explained variance + loadings for the panel-17 PCA."),
+        ("18_price_trajectories.png", "Per-market `pre_trade_price` over calendar time, coloured by split."),
+        ("19_event_timing.png", "Trades per day with the strike and ceasefire announcement marked. Cohort design visible in calendar time."),
+        ("19_event_timing_table.csv", "Trades per day per split. Report-ready CSV."),
         ("summary.txt", "Plain-text summary of dataset shape, base rates, missingness."),
     ]
     lines = ["# EDA index, wallet-joined Alex cohort", ""]
@@ -1096,6 +1185,8 @@ def main() -> None:
     panel_tail_diagnostics(df)
     panel_temporal_drift(df)
     panel_pca_wallets(df)
+    panel_price_trajectories(df)
+    panel_event_timing(df)
     write_summary(df, nulls, cov)
     write_index(OUT_DIR)
     print(f"\nEDA done, outputs in {OUT_DIR.relative_to(ROOT)}")

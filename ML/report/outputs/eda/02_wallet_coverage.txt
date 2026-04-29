@@ -1,6 +1,0 @@
-wallet feature coverage by split
-
-       pct_enriched   n_rows
-split                       
-test          100.0   257177
-train         100.0  1114003

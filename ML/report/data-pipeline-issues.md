@@ -33,40 +33,42 @@ to 0 — strictly prior, no temporal leak. `side_buy` and `outcome_yes` are
 per-row derivations from `taker_direction` / `nonusdc_side`, no temporal
 issue.
 
-**Reintroduced features (present in the parquet, previously dropped):**
+**Split-design analysis (resolved 2026-04-29 PM):** the team's train/test
+split is **market-cohort-disjoint and temporally separated**:
 
-| Feature in parquet | Previously dropped as | Audit ID | Risk |
-|---|---|---|---|
-| `side_buy`, `outcome_yes` | `side`, `outcomeIndex` (renamed) | P0-11 | Within-market direction determinism: the pair partitions trades into 4 categories that map deterministically to `bet_correct` once the market's resolution is known. If the split is by market ID (each market fully in train or fully in test), the shortcut does not transfer to test; if the split shares market IDs across train/test, the model can memorise per-market resolution. |
-| `taker_directional_purity_in_market` | `wallet_directional_purity_in_market` | P0-12 | Built from `_side_code = side_buy*2 + outcome_yes`, so re-opens the P0-11 channel via aggregation. Causal across time, but encodes the leaky pair. |
-| `taker_position_size_before_trade` | `wallet_position_size_before_trade` | P0-12 | Computed as `tanh(cumsum(sign_yes_equiv * tokens) / 1000)` where `sign_yes_equiv = (2*side_buy − 1) * (2*outcome_yes − 1)`. Same channel as P0-12. |
-| `market_buy_share_running` | same name | P0-12 | Aggregate of `side_buy` over prior trades in the market — direction-channel aggregate. |
-| `wallet_funded_by_cex` | structurally leaky lifetime flag | feature-exclusion §4 | Lifetime CEX-funding flag, not point-in-time. Redundant: `wallet_funded_by_cex_scoped` (the safe per-trade-time version) is also in the parquet. |
+- 63 train markets (Iran-strike ladder, ending 2026-02-28 06:34 UTC at the strike event)
+- 10 test markets (US-Iran-ceasefire ladder, beginning 2026-02-28 14:02 UTC)
+- **Zero market overlap.** Each test market is fresh.
 
-**Recommendation at modeling time:** decide per model family whether to
-include the reintroduced features. Conservative default that matches the
-prior exclusion list: build a `LEAKY_REINTRO` set and exclude it after
-loading.
+The P0-11 / P0-12 risk Pontus flagged is *within-market memorisation*: a
+classifier learning, for market X, that `(side_buy=1, outcome_yes=1)`
+maps to `bet_correct=1`, then re-applying that mapping to other trades
+from market X. **That channel cannot fire when no market is in both
+splits.** Pontus's audit is correct in principle but the conservative
+exclusion is unnecessary under this split design.
 
-```python
-LEAKY_REINTRO = {
-    "side_buy", "outcome_yes",
-    "taker_directional_purity_in_market",
-    "taker_position_size_before_trade",
-    "market_buy_share_running",
-    "wallet_funded_by_cex",   # keep wallet_funded_by_cex_scoped instead
-}
-META_COLS = ["split", "market_id", "ts_dt", "timestamp"]
-TARGET    = "bet_correct"
-feature_cols = [
-    c for c in df.columns
-    if c not in META_COLS + [TARGET] and c not in LEAKY_REINTRO
-]
-```
+**Resolution:** the 5 P0-11 / P0-12 features (`side_buy`, `outcome_yes`,
+`taker_directional_purity_in_market`, `taker_position_size_before_trade`,
+`market_buy_share_running`) are **retained** in the modelling feature
+set. `_common.load_modeling_dataset()` no longer excludes them.
 
-**Status:** parquet kept as-is (no rebuild). Decision deferred to modeling
-stage so each script can run an inclusion/exclusion sensitivity check and
-report the deltas.
+**Reintroduced features that ARE still excluded:**
+
+| Feature in parquet | Why excluded | Audit ID |
+|---|---|---|
+| `wallet_funded_by_cex` | Lifetime CEX-funding flag, full-history (uses post-trade events). Structurally leaky regardless of split design. The point-in-time variant `wallet_funded_by_cex_scoped` is empirically dead, see next section. | feature-exclusion §4 |
+| `wallet_funded_by_cex_scoped`, `wallet_cex_usdc_cumulative_at_t`, `wallet_log_cex_usdc_cum`, `wallet_n_cex_deposits_at_t` | Mutual information with `bet_correct` ≤ 0.0014 (panel 13 / 79-feature median 0.013) and marginal hit-rate diff ≤ 0.6 pp between zero and non-zero rows. The "recently CEX-funded wallet" hypothesis did not pan out empirically; dropped on signal grounds, not leakage. | new (low-signal, 2026-04-29) |
+
+**Final modelling feature count:** 87 columns − 5 meta − 1 target − 5 excluded = **77 features**.
+
+**Helper:** `alex/v4_final_ml_pipeline/scripts/_common.load_modeling_dataset()`
+returns `(df, train, test, fcols)` with the exclusion applied. Pass
+`drop_excluded=False` to retain all 82 features for an inclusion /
+exclusion sensitivity test.
+
+**Status:** locked in 2026-04-29 PM. Parquet unchanged; model loader
+filters at load time. Cohort-disjoint split is the leak-defence
+mechanism, documented in §5 of `project_plan.md`.
 
 ---
 

@@ -57,20 +57,34 @@ OUT = ROOT / "outputs"
 DATASET_PARQUET = "consolidated_modeling_data.parquet"
 META_COLS = ["split", "market_id", "ts_dt", "timestamp"]
 TARGET_COL = "bet_correct"
-LEAKY_REINTRO = {
-    "side_buy", "outcome_yes",
-    "taker_directional_purity_in_market",
-    "taker_position_size_before_trade",
-    "market_buy_share_running",
+# `wallet_funded_by_cex` is a lifetime flag (full-history CEX funding,
+# including events after the trade timestamp). Structurally leaky
+# regardless of split design, so excluded. The point-in-time variant
+# `wallet_funded_by_cex_scoped` lives in LOW_SIGNAL_DROP below for a
+# different reason (empirically dead).
+STRUCTURAL_LEAK = {
     "wallet_funded_by_cex",
 }
+# CEX-funded-wallet hypothesis did not materialise in the data: all four
+# scoped CEX features show MI to bet_correct <= 0.0015 (panel 13) and
+# marginal hit-rate diff <= 0.6 pp. Dropped on signal grounds, not
+# leakage. See data-pipeline-issues.md 2026-04-29.
 LOW_SIGNAL_DROP = {
     "wallet_funded_by_cex_scoped",
     "wallet_cex_usdc_cumulative_at_t",
     "wallet_log_cex_usdc_cum",
     "wallet_n_cex_deposits_at_t",
 }
-EXCLUDE = LEAKY_REINTRO | LOW_SIGNAL_DROP
+# P0-11 / P0-12 direction-determinism features (`side_buy`, `outcome_yes`,
+# `taker_directional_purity_in_market`, `taker_position_size_before_trade`,
+# `market_buy_share_running`) are RETAINED. Pontus's audit flagged the
+# within-market memorisation channel they open, but that risk does not
+# materialise under the team's market-cohort-disjoint train/test split
+# (63 train markets, 10 test markets, zero market overlap; train ends at
+# the 2026-02-28 strike event, test begins on the ceasefire ladder).
+# Each test market is fresh, so the model cannot memorise per-market
+# resolution from train and reapply it to test rows of the same market.
+EXCLUDE = STRUCTURAL_LEAK | LOW_SIGNAL_DROP
 
 
 def load_modeling_dataset(*, drop_excluded: bool = True):
