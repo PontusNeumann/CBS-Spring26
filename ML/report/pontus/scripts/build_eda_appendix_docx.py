@@ -1,9 +1,8 @@
 """Build a sidecar appendix docx for the wallet-joined EDA panels.
 
-Produces `pontus/outputs/eda_walletjoined/eda_appendix.docx` (and a
-matching .md preview). Each panel from `eda_walletjoined/` lands as a
-captioned figure, formatted to match the report's existing Appendix A
-style (A.10 onward).
+Produces `outputs/eda/eda_appendix.docx` (and a matching .md preview).
+Each panel from `outputs/eda/` lands as a captioned figure, formatted to
+match the report's existing Appendix A style (A.10 onward).
 
 This file is a STANDALONE document — it does NOT modify the submitted
 docx. Once captions and figure ordering are reviewed, hand-merge into
@@ -21,7 +20,7 @@ from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 ROOT = Path(__file__).resolve().parents[2]
-EDA_DIR = ROOT / "pontus" / "outputs" / "eda_walletjoined"
+EDA_DIR = ROOT / "outputs" / "eda"
 OUT_DOCX = EDA_DIR / "eda_appendix.docx"
 OUT_MD = EDA_DIR / "eda_appendix.md"
 

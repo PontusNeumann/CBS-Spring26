@@ -1,138 +1,152 @@
 # Missing-data policy
 
-Authoritative record for how NaN / missingness is represented in
-`consolidated_modeling_data.parquet` (the team's single modeling dataset) and
-how it should be handled downstream. Cited by `project_plan.md` §5.6 and
-referenced from the paper's methodology section.
+Authoritative record for how missingness is represented in
+`consolidated_modeling_data.parquet` (the team's single modeling dataset)
+and how it should be handled downstream. Cited by `project_plan.md` §5.6
+and referenced from the paper's methodology section.
 
-## 1. Typology
+## 1. Summary
 
-Missingness in the feature frame partitions into two classes:
+The modeling dataset contains **zero NaN values** across all 1,371,180
+rows × 87 columns. Structural missingness — cases where a feature is
+mathematically undefined given the prior history available at row time —
+is resolved by substitution at the feature-engineering stage with a
+semantically meaningful constant rather than retained as NaN. Two binary
+indicator columns mark the most informative missingness species so the
+model can still learn from the "was this row at the cold-start boundary"
+signal.
 
-**Structural missingness** — NaN on quantities that are mathematically
-undefined given the prior history available at row time. Examples:
+This represents a deliberate methodological shift from an earlier policy
+that preserved NaN and added five indicator columns (recorded in §6 below
+for traceability). The current convention is simpler to defend in the
+report and removes any need for per-model imputation logic, at the cost
+of fewer explicit indicators than the prior design.
 
-- `wallet_prior_win_rate` on a wallet's first trade (no prior labeled
-  trades to average).
-- `wallet_market_category_entropy` when the wallet has <2 prior distinct
-  markets (entropy over one or zero categories is undefined).
-- `wallet_directional_purity_in_market`, `wallet_spread_ratio`,
-  `wallet_median_gap_in_market` on the first (wallet, market) trade.
-- `size_vs_wallet_avg` on the first trade (no prior average).
+## 2. Substitution rules in the feature-engineering stage
 
-For these, **NaN is the truthful value** — there is no underlying number
-we failed to observe. Filling with a sentinel (0 or otherwise) would
-conflate "not yet defined" with a legitimate realised value. For
-`wallet_market_category_entropy`, zero is specifically a valid realised
-value meaning a wallet concentrated in exactly one category; imputing 0
-for undefined entropy would erase the distinction.
+All rules are applied in `alex/scripts/06b_engineer_features.py` before
+the parquet is written. Every fill value is a constant — none are
+learned from train statistics — so the rules are leakage-safe by
+construction.
 
-**Pipeline missingness** — NaN where the underlying quantity exists but
-was not observed. Examples:
-
-- All 12 Layer 6 on-chain columns (nine semantic features plus three log
-  variants) on rows whose wallet failed Etherscan V2 enrichment
-  (`wallet_enriched = 0`). The wallet does have an on-chain history; we
-  simply could not retrieve it — in the initial pass plus one targeted
-  retry pass, 459 of 109,080 wallets (0.42 %) remained permanently
-  non-retrievable.
-- `pct_time_elapsed` on markets missing both `resolution_ts` and
-  `end_date` metadata.
-
-For these, a 0 would be semantically wrong for most features (a real
-wallet is never zero days old on Polygon; a real market does eventually
-resolve). NaN plus the appropriate enrichment/pipeline flag is the
-faithful representation.
-
-## 2. Indicator columns in the dataset
-
-One binary indicator per missingness species. Dtype int8, values in {0, 1}.
-Added by `scripts/11b_add_missingness_flags.py` (all pre-existing
-structural flags) and `scripts/11_add_layer6.py` (Layer 6 pipeline flag).
-
-| Indicator | Covers | Added by | Defined |
+| Class of feature | Structural-missing case | Substituted value | Rationale |
 |---|---|---|---|
-| `wallet_has_prior_trades` | `wallet_prior_win_rate`, `wallet_prior_volume_usd`, `size_vs_wallet_avg` | `11b` | `wallet_prior_trades > 0` |
-| `wallet_has_prior_trades_in_market` | `wallet_directional_purity_in_market`, `wallet_spread_ratio`, `wallet_median_gap_in_market` | `11b` | `wallet_prior_trades_in_market > 0` |
-| `wallet_has_cross_market_history` | `wallet_market_category_entropy` | `11b` | entropy value is defined (structural NaN → 0; HF-absent pipeline NaN → 0) |
-| `market_timing_known` | `pct_time_elapsed` | `11b` | `pct_time_elapsed` is defined |
-| `wallet_enriched` | all 12 Layer 6 columns | `11` | Etherscan V2 enrichment succeeded |
+| Cumulative `log_*` counts and volumes (`log_taker_prior_trades_total`, `log_taker_cumvol_in_market`, `log_taker_prior_volume_total_usd`) | Wallet's first-ever trade or first trade in market | 0 | `np.log1p(0) = 0` is the correct mathematical value, not an imputation |
+| Per-(market, taker) features (`taker_directional_purity_in_market`, `taker_position_size_before_trade`, `log_taker_prior_trades_in_market`) | First trade in a market | 0 | Explicit `pos_cum.loc[first_in_mt] = 0`; first-row reset before `cumsum().shift(1)` |
+| Cross-market wallet share (`taker_yes_share_global`) | Wallet's first-ever trade | 0.5 | `fillna(0.5)` — neutral prior, no directional information |
+| Wallet on-chain features (12 columns: `wallet_polygon_age_at_t_days`, `wallet_polygon_nonce_at_t`, `wallet_n_inbound_at_t`, `wallet_n_cex_deposits_at_t`, `wallet_cex_usdc_cumulative_at_t`, `wallet_funded_by_cex`, `wallet_funded_by_cex_scoped`, `days_from_first_usdc_to_t`, plus three `log_*` variants) | Etherscan V2 enrichment failed (~0.31% of trades; 459 of 109,080 wallets remained non-retrievable after one retry pass) | 0 | The `wallet_enriched` binary indicator stays at 0 to mark these rows so the model can distinguish substituted-zero from observed-zero |
 
-Observed shares on the final 82-column frame (post Layer 6 integration +
-retry pass, 22 Apr):
+## 3. Indicator columns retained in the dataset
 
-| Indicator | share of `1` |
-|---|---|
-| `wallet_has_prior_trades` | 90.98 % |
-| `wallet_has_prior_trades_in_market` | 77.41 % |
-| `wallet_has_cross_market_history` | 91.91 % |
-| `market_timing_known` | 95.70 % |
-| `wallet_enriched` | 99.69 % |
+| Indicator | Covers | Defined as |
+|---|---|---|
+| `wallet_enriched` | all 12 wallet on-chain columns | 1 if Etherscan V2 enrichment succeeded for the wallet, 0 otherwise |
+| `taker_first_trade_in_market` | per-(market, taker) features (purity, position, in-market priors) | 1 on the wallet's first trade in this market, 0 otherwise |
 
-## 3. What the dataset stores and what it does not
+`wallet_enriched` carries the pipeline-missingness signal end-to-end.
+`taker_first_trade_in_market` carries the structural-missingness signal
+for the per-market group, which is the largest zero-density cluster in
+the data (panel `01_zero_density.png` in the EDA shows this as the
+single most-zeroed feature group).
 
-**Stores:** NaN on every numeric feature column where the value is
-structurally undefined or pipeline-unobserved. Indicator columns as
-listed above. No imputation is applied in the feature frame itself.
+What is **not** flagged with an explicit indicator:
 
-**Does not store:** imputed values, model-specific transforms, or
-per-fold statistics. Those belong in the modelling pipeline so per-split
-leakage can be avoided.
+- Wallet's first-ever trade across markets (the cold-start case for
+  `log_taker_prior_trades_total`, `log_taker_cumvol_in_market`,
+  `taker_yes_share_global`). The substituted values 0 / 0.5 are visible
+  in the data but not bracketed by a dedicated indicator. The earlier
+  policy used `wallet_has_prior_trades` for this; it is not part of the
+  current dataset.
+- The cross-market wallet history depth and the market-timing known/unknown
+  cases. The earlier policy used `wallet_has_cross_market_history` and
+  `market_timing_known`; neither is present in the current dataset.
+
+The EDA panel `01_zero_density.png` lists the 20 features with the
+highest share of exact-zero values; readers can use it to assess where
+the implicit "no information" mass concentrates.
 
 ## 4. Policy for the modelling stage
 
-Per-model imputation is deferred to `scripts/12_train_mlp.py` and its
-siblings. The indicator columns are always included as features, so
-whatever imputation value is chosen for the raw feature never silently
-destroys the "was this missing" signal.
+Because every fill value is a constant rather than a learned statistic,
+**no imputation step is required** at modelling time. The same numeric
+frame is fed to every model family.
 
-Preferred defaults per model family:
+- **Tree-based (Random Forest, HistGradientBoosting).** Pass through
+  unchanged. Tree splits handle the zero mass automatically.
+- **Linear (Logistic Regression).** Standardise on train, apply to test.
+  No imputation; no NaN to handle.
+- **MLP.** Same as linear: standardise on train, apply to test.
 
-- **Tree-based (Random Forest, HistGradientBoosting).** Accept NaN
-  natively in sklearn ≥ 1.4. Pass the raw NaN-bearing columns through
-  unchanged alongside their indicators.
-- **Linear (Logistic Regression).** Median-impute each numeric feature
-  using *train-split-only* statistics, then standardise. Keep the
-  indicator column as a separate feature.
-- **MLP.** Same as linear: median-impute on train, standardise, keep
-  indicators as features.
+The two indicator columns (`wallet_enriched`, `taker_first_trade_in_market`)
+are included as features in all model families so the model can route
+the substituted-zero cases differently from real zeros.
 
-Row dropping is not used. Sensitivity analyses (e.g. restricting to
-rows where `wallet_has_prior_trades = 1`) may appear in the Discussion
-if they sharpen a result, but the main evaluation uses the full frame.
+Row dropping is not used. Sensitivity analyses restricted to enriched
+wallets (`wallet_enriched = 1`) or to non-cold-start trades
+(`taker_first_trade_in_market = 0`) may appear in the Discussion if
+they sharpen a result.
 
 ## 5. Paper-side documentation
 
-The methodology section of `ML_final_exam_paper.docx` should contain a
-short paragraph matching this typology (see `project_plan.md` §5.6) and
-cite Rubin (1976) or Little & Rubin (2019) for the general framework,
-noting that our setting includes a structural missingness sub-type
-beyond the classic MCAR/MAR/MNAR taxonomy.
+The methodology section should contain a short paragraph matching this
+substitution table. Suggested phrasing:
+
+> *Numeric features were substituted at the feature-engineering stage with
+> constants chosen on semantic grounds. Cumulative-history features take
+> value 0 on a wallet's first trade (mathematically `log(0+1) = 0`, not an
+> imputation), per-market features take value 0 on the first trade in a
+> market, and `taker_yes_share_global` takes 0.5 in the absence of prior
+> trades. Wallets that failed Etherscan enrichment retain 0 across the 12
+> on-chain columns and are flagged by the binary indicator
+> `wallet_enriched`; the first-trade-in-market case is flagged by
+> `taker_first_trade_in_market`. Because every fill value is a constant
+> rather than a learned statistic, no train-only fit is needed and no
+> leakage is introduced (Géron, 2022, §2; Hastie, Tibshirani, & Friedman,
+> 2009, §9.6).*
+
+The earlier NaN-plus-five-indicators policy is grounded in Rubin (1976)
+and Little & Rubin (2019); the current constant-substitution policy is
+grounded in the SimpleImputer convention covered in CBS Lecture 2 and in
+Géron (2022) §2.
 
 ## 6. Change log
 
-- 2026-04-21 evening — initial policy. Introduced 4 missingness
-  indicators, re-specified `11_add_layer6.py` to emit NaN on un-enriched
-  rows rather than 0, documented the typology. Entry: Pontus N. + Claude.
-- 2026-04-29 — Data folder consolidation. The build-pipeline output
-  `03_consolidated_dataset.csv` was superseded by the team-shared
-  `data/consolidated_modeling_data.parquet` (1,371,180 rows × 87 cols, with
-  train/test in a `split` column). All five missingness indicators
-  documented here (`wallet_has_prior_trades`,
+- 2026-04-21 evening — initial policy. NaN preserved on every
+  structural / pipeline missing case; five indicator columns introduced
+  (`wallet_has_prior_trades`, `wallet_has_prior_trades_in_market`,
+  `wallet_has_cross_market_history`, `market_timing_known`,
+  `wallet_enriched`) by `scripts/11b_add_missingness_flags.py` and
+  `scripts/11_add_layer6.py`. Per-model imputation specified for the
+  modelling stage (median on train for linear/MLP, native NaN for tree
+  models). Entry: Pontus N. + Claude.
+
+- 2026-04-22 early AM — Layer 6 integration landed. Enrichment retry
+  pass recovered 7,050 of 7,509 initially-failed wallets (93.9% recovery).
+  Final wallet coverage 99.58%; trade-level Layer 6 coverage 99.69%
+  (1,206,050 of 1,209,787 rows in Pontus's pipeline). Corrected "9
+  Layer 6 features" wording to "12 Layer 6 columns (9 semantic + 3 log
+  variants)" since the integrator emits all three `log1p` variants as
+  separate columns. Bug fixed in `11_add_layer6.py`: pandas 3+ stores
+  datetimes at microsecond resolution, not nanoseconds; the int64 →
+  seconds conversion now casts to `datetime64[ns, UTC]` first so
+  `// 10**9` is always correct. Entry: Pontus N. + Claude.
+
+- 2026-04-29 — Data folder consolidation + methodology shift. The
+  build-pipeline output `03_consolidated_dataset.csv` (which carried the
+  five indicator columns described in the 2026-04-21 entry) was
+  superseded by the team-shared `data/consolidated_modeling_data.parquet`
+  (1,371,180 rows × 87 cols, train/test in a `split` column). The new
+  parquet comes from Alex's `06b_engineer_features.py` pipeline, which
+  does not preserve NaN — it substitutes at compute time with the
+  constants tabled in §2 above. As a result, three of the five prior
+  indicator columns (`wallet_has_prior_trades`,
   `wallet_has_prior_trades_in_market`, `wallet_has_cross_market_history`,
-  `market_timing_known`, `wallet_enriched`) are present in the modeling
-  parquet — they are part of the 70 core feature columns. The legacy
-  `03_consolidated_dataset.csv` is preserved at
+  `market_timing_known`) are not present in the modeling dataset. The
+  two retained indicators are `wallet_enriched` (carried over) and
+  `taker_first_trade_in_market` (new in Alex's pipeline). The
+  methodology in §§1–5 was rewritten to describe the constant-
+  substitution policy. Trade-off: simpler to write up and removes per-
+  model imputation logic; loses some explicit signal vs the prior
+  policy. The legacy `03_consolidated_dataset.csv` is preserved at
   `data/archive/pipeline/03_consolidated_dataset.csv` for traceback.
   Entry: Pontus N. + Claude.
-- 2026-04-22 early AM — Layer 6 integration landed. Enrichment retry
-  pass recovered 7,050 of 7,509 initially-failed wallets (93.9 %
-  recovery). Final wallet coverage 99.58 %; trade-level Layer 6 coverage
-  99.69 % (1,206,050 of 1,209,787 rows). `wallet_enriched` observed
-  share added to §2 table. Corrected "9 Layer 6 features" wording to
-  "12 Layer 6 columns (9 semantic + 3 log variants)" since the
-  integrator emits all three `log1p` variants as separate columns.
-  Bug found and fixed in `11_add_layer6.py`: pandas 3+ stores datetimes
-  at microsecond resolution, not nanoseconds; the int64 → seconds
-  conversion now casts to `datetime64[ns, UTC]` first so `// 10**9` is
-  always correct. Entry: Pontus N. + Claude.

@@ -1,9 +1,9 @@
 """EDA for the wallet-joined Alex cohort.
 
-Reads `pontus/data/{train,test}_features_walletjoined.parquet` (Alex's 70
-engineered features + 12 Layer-6 wallet features + meta cols), tags rows
-with split = {train, test}, and writes the report-style panels to
-`pontus/outputs/eda_walletjoined/`.
+Reads `data/consolidated_modeling_data.parquet` (Alex's 70 engineered
+features + 12 Layer-6 wallet features + meta cols, with `split = {train,
+test}` already in the frame) and writes the report-style panels to
+`outputs/eda/`.
 
 Panels that fit the joined schema:
     01  shape + dtypes + missingness                 (incl. wallet-coverage breakdown)
@@ -36,8 +36,8 @@ import pandas as pd
 import seaborn as sns
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = ROOT / "pontus" / "data"
-OUT_DIR = ROOT / "pontus" / "outputs" / "eda_walletjoined"
+DATA_DIR = ROOT / "data"
+OUT_DIR = ROOT / "outputs" / "eda"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Match the report Design.md theme (mirror of scripts/04_eda.py)
@@ -94,42 +94,62 @@ def save_fig(fig, path: Path) -> None:
 
 
 def load_joined() -> pd.DataFrame:
-    train = pd.read_parquet(DATA_DIR / "train_features_walletjoined.parquet")
-    test = pd.read_parquet(DATA_DIR / "test_features_walletjoined.parquet")
-    train[SPLIT] = "train"
-    test[SPLIT] = "test"
-    df = pd.concat([train, test], ignore_index=True)
+    df = pd.read_parquet(DATA_DIR / "consolidated_modeling_data.parquet")
     print(f"loaded joined dataset: {len(df):,} rows × {len(df.columns)} cols")
     return df
 
 
-def panel_missingness(df: pd.DataFrame) -> pd.Series:
-    nulls_overall = df.isna().mean().sort_values(ascending=False)
-    keep = nulls_overall[nulls_overall > 0].head(30)
-    if keep.empty:
-        print("no missing values found — skipping missingness panel")
-        return nulls_overall
+def panel_zero_density(df: pd.DataFrame) -> pd.Series:
+    """Share of rows where each numeric feature equals exactly zero.
 
-    nulls_by_split = (
-        df.groupby(SPLIT)[keep.index.tolist()].apply(lambda g: g.isna().mean())
-    )
+    The dataset has zero NaN: Alex's feature engineering imputes structural
+    "no prior history" cases with 0 (or 0.5 for `taker_yes_share_global`)
+    at compute time. This panel surfaces which features carry a heavy zero
+    mass, so the reader can tell whether a model is effectively seeing
+    "no information" rather than a meaningful zero.
+    """
+    META = {SPLIT, "market_id", "ts_dt", "timestamp"}
+    num_cols = [
+        c for c in df.select_dtypes("number").columns
+        if c != TARGET and c not in META
+    ]
+    zd_overall = (df[num_cols].abs() < 1e-12).mean().sort_values(ascending=False)
+    keep = zd_overall.head(20)
+
+    train_zd = (df.loc[df[SPLIT] == "train", keep.index].abs() < 1e-12).mean()
+    test_zd = (df.loc[df[SPLIT] == "test", keep.index].abs() < 1e-12).mean()
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.32 * len(keep) + 1.0))
     width = 0.4
     y = np.arange(len(keep))
-    train_pct = nulls_by_split.loc["train"].reindex(keep.index).values * 100
-    test_pct = nulls_by_split.loc["test"].reindex(keep.index).values * 100
-    ax.barh(y - width / 2, train_pct, width, color=COL_TRAIN, label="train")
-    ax.barh(y + width / 2, test_pct, width, color=COL_TEST, label="test")
+    ax.barh(y - width / 2, train_zd.reindex(keep.index).values * 100,
+            width, color=COL_TRAIN, label="train")
+    ax.barh(y + width / 2, test_zd.reindex(keep.index).values * 100,
+            width, color=COL_TEST, label="test")
     ax.set_yticks(y)
     ax.set_yticklabels(keep.index, fontsize=8)
-    ax.set_xlabel("% missing")
-    ax.set_title("Missingness by feature, split (top 30 with any missing)")
+    ax.set_xlabel("% rows where value = 0")
+    ax.set_title("Zero-density by feature (top 20). Imputation-as-zero is the dataset's NaN proxy")
     ax.invert_yaxis()
     ax.legend(loc="lower right", frameon=False)
     clean_ax(ax)
-    save_fig(fig, OUT_DIR / "01_missingness.png")
-    return nulls_overall
+    save_fig(fig, OUT_DIR / "01_zero_density.png")
+
+    txt = OUT_DIR / "01_zero_density.txt"
+    txt.write_text(
+        "Zero-density per feature (overall, train, test) — top 30.\n"
+        "The wallet-joined parquet has 0 NaN values. Alex's feature\n"
+        "engineering pre-fills structural missingness with 0 (or 0.5 for\n"
+        "taker_yes_share_global) at compute time. This panel proxies\n"
+        "missingness via the share of rows whose value is exactly zero.\n\n"
+        + zd_overall.head(30)
+            .to_frame("overall")
+            .assign(train=train_zd.reindex(zd_overall.head(30).index),
+                    test=test_zd.reindex(zd_overall.head(30).index))
+            .round(4)
+            .to_string()
+    )
+    return zd_overall
 
 
 def panel_wallet_coverage(df: pd.DataFrame) -> dict:
@@ -140,14 +160,14 @@ def panel_wallet_coverage(df: pd.DataFrame) -> dict:
     )
     cov["pct_enriched"] *= 100
 
-    fig, ax = plt.subplots(figsize=(FIG_W, 2.4))
+    fig, ax = plt.subplots(figsize=(FIG_W, 2.8))
     bars = ax.bar(
         cov.index, cov["pct_enriched"],
         color=[COL_TRAIN if s == "train" else COL_TEST for s in cov.index],
     )
     ax.set_ylabel("% trades with enriched wallet")
-    ax.set_ylim(0, 105)
-    ax.set_title("Wallet-feature coverage by split")
+    ax.set_ylim(0, 120)
+    ax.set_title("Wallet-feature coverage by split", pad=12)
     for bar, pct, n in zip(bars, cov["pct_enriched"], cov["n_rows"]):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
@@ -817,7 +837,8 @@ def panel_temporal_drift(df: pd.DataFrame) -> None:
 def write_index(out_dir: Path) -> None:
     """Cheat-sheet that maps each generated panel to what it shows."""
     items = [
-        ("01_missingness.png", "Missing-value share per column, split by train/test."),
+        ("01_zero_density.png", "Top-20 features by share of rows where value = 0 (imputation-as-zero proxy for missingness; dataset has no NaN)."),
+        ("01_zero_density.txt", "Per-feature overall/train/test zero-density, top 30."),
         ("02_wallet_coverage.png", "% of trades with enriched wallet, by split."),
         ("03_class_balance.png", "Base rate per split + per-market base-rate spread."),
         ("04_distributions.png", "Top-12 skewed features, KDE by bet_correct."),
@@ -877,7 +898,7 @@ def write_summary(df: pd.DataFrame, nulls: pd.Series, cov: dict) -> None:
 
 def main() -> None:
     df = load_joined()
-    nulls = panel_missingness(df)
+    nulls = panel_zero_density(df)
     cov = panel_wallet_coverage(df)
     panel_class_balance(df)
     skew = panel_distributions_and_skew(df)

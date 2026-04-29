@@ -1,0 +1,53 @@
+============================================================
+shape: 1,209,787 rows x 62 cols
+wallets (proxyWallet): 109,080
+markets (condition_id): 74
+timespan: 2025-12-22 16:57:07+00:00 -> 2026-04-19 08:59:06+00:00
+bet_correct mean: 0.504
+
+split sizes and target mean:
+         size   mean
+split               
+test   181486  0.522
+train  846847  0.495
+val    181454  0.523
+
+missing cells (columns with >0 nulls):
+                                           n     pct
+profileImageOptimized                1209787  100.00
+bio                                  1208886   99.93
+profileImage                         1207793   99.84
+pseudonym                            1197491   98.98
+name                                 1197425   98.98
+title                                1195147   98.79
+conditionId                          1195147   98.79
+outcome                              1195147   98.79
+eventSlug                            1195147   98.79
+icon                                 1195147   98.79
+slug_x                               1195147   98.79
+wallet_directional_purity_in_market   273278   22.59
+wallet_spread_ratio                   273278   22.59
+wallet_prior_win_rate                 109080    9.02
+size_vs_wallet_avg                    109080    9.02
+resolution_ts                          60721    5.02
+pct_time_elapsed                       52046    4.30
+market_price_vol_last_1h                1917    0.16
+size_vs_market_cumvol_pct                 74    0.01
+
+per-market correctness (top 5 + bottom 5):
+bottom 5:
+                                                            size   mean
+question                                                               
+Trump announces US x Iran ceasefire end by April 8, 2026?    131  0.466
+US strikes Iran by January 23, 2026?                       39416  0.469
+US strikes Iran by February 20, 2026?                      39070  0.469
+US strikes Iran by February 9, 2026?                       20015  0.470
+Iran x Israel/US conflict ends by March 7?                  7135  0.473
+top 5:
+                                                             size   mean
+question                                                                
+Will the US x Iran ceasefire be extended by April 18, 2026?   726  0.584
+US strikes Iran by March 13, 2026?                           1502  0.593
+US strikes Iran by February 15, 2026?                        5085  0.599
+US strikes Iran by February 14, 2026?                        4455  0.612
+US strikes Iran by December 31, 2025?                         217  0.737

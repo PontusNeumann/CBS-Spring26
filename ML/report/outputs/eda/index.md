@@ -1,6 +1,7 @@
 # EDA index — wallet-joined Alex cohort
 
-- [✓] **01_missingness.png** — Missing-value share per column, split by train/test.
+- [✓] **01_zero_density.png** — Top-20 features by share of rows where value = 0 (imputation-as-zero proxy for missingness; dataset has no NaN).
+- [✓] **01_zero_density.txt** — Per-feature overall/train/test zero-density, top 30.
 - [✓] **02_wallet_coverage.png** — % of trades with enriched wallet, by split.
 - [✓] **03_class_balance.png** — Base rate per split + per-market base-rate spread.
 - [✓] **04_distributions.png** — Top-12 skewed features, KDE by bet_correct.
