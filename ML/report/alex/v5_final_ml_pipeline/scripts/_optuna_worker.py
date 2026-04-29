@@ -30,7 +30,8 @@ import optuna
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.metrics import roc_auc_score
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import GroupKFold, GroupShuffleSplit
+from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore")
@@ -47,7 +48,7 @@ RANDOM_SEED = 42
 # v4 contract — fail fast if pointed at v3.5 parquets or pre-Stage-1 schema.
 TRAIN_PARQUET = "train_features_v4.parquet"
 TEST_PARQUET = "test_features_v4.parquet"
-EXPECTED_N_FEATURES = 80  # 69 v3.5 (post kyle_lambda drop) + 11 wallet
+EXPECTED_N_FEATURES = 64  # cleaned: 80 - 16 cohort-flip features dropped per D-042
 
 
 def make_rf(params, n_jobs=4):
@@ -129,6 +130,73 @@ def lgbm_search_space(trial: optuna.Trial) -> dict:
     }
 
 
+_MLP_ARCH_CHOICES = [
+    (64,),
+    (128,),
+    (256,),
+    (64, 32),
+    (128, 64),
+    (256, 128),
+    (128, 64, 32),
+    (256, 128, 64),
+]
+
+
+def make_mlp(params):
+    # Accept either resolved hidden_layer_sizes (tuple/list) or arch_idx into _MLP_ARCH_CHOICES
+    if "hidden_layer_sizes" in params:
+        arch = params["hidden_layer_sizes"]
+    else:
+        arch = _MLP_ARCH_CHOICES[params["arch_idx"]]
+    return MLPClassifier(
+        hidden_layer_sizes=tuple(arch),
+        activation=params["activation"],
+        alpha=params["alpha"],
+        learning_rate_init=params["learning_rate_init"],
+        batch_size=params["batch_size"],
+        max_iter=params.get("max_iter", 30),
+        early_stopping=True,
+        validation_fraction=0.15,
+        n_iter_no_change=4,
+        solver="adam",
+        random_state=RANDOM_SEED,
+    )
+
+
+def mlp_search_space(trial: optuna.Trial) -> dict:
+    return {
+        "arch_idx": trial.suggest_int("arch_idx", 0, len(_MLP_ARCH_CHOICES) - 1),
+        "activation": trial.suggest_categorical("activation", ["relu", "tanh"]),
+        "alpha": trial.suggest_float("alpha", 1e-6, 1e-2, log=True),
+        "learning_rate_init": trial.suggest_float(
+            "learning_rate_init", 1e-4, 1e-2, log=True
+        ),
+        "batch_size": trial.suggest_categorical("batch_size", [2048, 4096, 8192]),
+        "max_iter": 30,
+    }
+
+
+def holdout_auc(X, y, groups, factory, scale: bool, trial=None) -> float:
+    """Single GroupShuffleSplit holdout — much faster than 5-fold for MLP.
+
+    Drops one ~20% group-aware slice from train, fits on the rest, scores AUC
+    on the held-out slice. The selected config is later refit on full train.
+    """
+    splitter = GroupShuffleSplit(n_splits=1, test_size=0.20, random_state=RANDOM_SEED)
+    tr, va = next(splitter.split(X, y, groups))
+    if scale:
+        sc = StandardScaler()
+        X_tr = sc.fit_transform(X.iloc[tr])
+        X_va = sc.transform(X.iloc[va])
+    else:
+        X_tr = X.iloc[tr].values
+        X_va = X.iloc[va].values
+    clf = factory()
+    clf.fit(X_tr, y.iloc[tr])
+    proba = clf.predict_proba(X_va)[:, 1]
+    return float(roc_auc_score(y.iloc[va], proba))
+
+
 def cv_mean_auc(X, y, groups, factory, scale: bool, trial=None) -> float:
     gkf = GroupKFold(n_splits=N_FOLDS)
     aucs = []
@@ -158,10 +226,16 @@ def main():
     parser.add_argument(
         "--model",
         required=True,
-        choices=["random_forest", "hist_gbm", "lightgbm"],
+        choices=["random_forest", "hist_gbm", "lightgbm", "mlp_sklearn"],
     )
     parser.add_argument("--n_trials", type=int, default=50)
     parser.add_argument("--storage", type=str, default=None)
+    parser.add_argument(
+        "--n_jobs",
+        type=int,
+        default=4,
+        help="cores per trial for parallelisable models (RF / LGBM)",
+    )
     args = parser.parse_args()
 
     out_dir = OUT_BASE / args.model
@@ -198,9 +272,10 @@ def main():
         flush=True,
     )
 
+    eval_mode = "cv"  # default — switched to "holdout" for MLP
     if args.model == "random_forest":
         space_fn = rf_search_space
-        factory = lambda p: lambda: make_rf(p, n_jobs=4)
+        factory = lambda p: lambda: make_rf(p, n_jobs=args.n_jobs)
         scale = False
     elif args.model == "hist_gbm":
         space_fn = hgbm_search_space
@@ -208,13 +283,22 @@ def main():
         scale = False
     elif args.model == "lightgbm":
         space_fn = lgbm_search_space
-        factory = lambda p: lambda: make_lgbm(p, n_jobs=4)
+        factory = lambda p: lambda: make_lgbm(p, n_jobs=args.n_jobs)
         scale = False
+    elif args.model == "mlp_sklearn":
+        space_fn = mlp_search_space
+        factory = lambda p: lambda: make_mlp(p)
+        scale = True
+        eval_mode = "holdout"  # MLP 5-fold is too slow; single 80/20 group split
     else:
         raise SystemExit(f"unknown model: {args.model}")
 
     def objective(trial):
         params = space_fn(trial)
+        if eval_mode == "holdout":
+            return holdout_auc(
+                X_train, y_train, g_train, factory(params), scale=scale, trial=trial
+            )
         return cv_mean_auc(
             X_train, y_train, g_train, factory(params), scale=scale, trial=trial
         )
