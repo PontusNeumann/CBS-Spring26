@@ -429,6 +429,30 @@ RF general_ev is non-monotonic (peaks at N=5): at N=1 the per-trade volume cap i
 
 ---
 
+## D-037: Rigor additions for report drafting (2026-04-28)
+
+**Status:** Open — scoped, queued for ~90 min single-script run before report drafting
+**Decision:** Add a `13_rigor_additions.py` script that produces three standard-ML-practice additions, output to `outputs/rigor/`:
+
+1. **Bootstrap CI on test AUC + DeLong (or paired-bootstrap) test for RF vs HistGBM.** Convert point estimates into 95% CIs and a hypothesis test for the model-comparison claim. ~30 min implementation.
+2. **Permutation importance per model.** Replaces the current MDI (`clf.feature_importances_`) outputs as the headline feature-importance number. Sklearn one-liner. ~30 min.
+3. **Learning curves (AUC vs train fraction).** Tells us whether the +23.7% headline is data-bound or model-bound. ~30 min.
+
+**Justification:** All three are textbook CBS MLDP techniques and standard expectations for a quantitative ML paper. Currently we report point estimates without uncertainty, MDI without permutation, and have no learning-curve analysis. These additions elevate rigor without changing the narrative.
+
+**Deferred (Tier 2, only if drafting reveals a gap):**
+- Hyperparameter tuning via GridSearchCV on RF (~1 hr)
+- SHAP values for top picks (~1 hr)
+- Stacking ensemble RF + HistGBM + LogReg (~1-2 hr) — would change the headline narrative mid-draft, defer
+- Confusion matrix at threshold 0.5 (~10 min) — trivial inclusion, do as part of figure prep
+- Platt scaling alongside isotonic (~30 min) — robustness check, not critical
+
+**Skipped (intentionally):** MLPs / autoencoder (Pontus's territory + TF/Keras port effort), SMOTE / oversampling (no imbalance, base rate 50.4%), KNN / SVM (computational cost > value on 1.1M trades), K-means / DBSCAN (no clustering question), polynomial / interaction features (70 features plenty; trees handle interactions natively).
+
+**Implications:** Run before report drafting. Output integrates into `Results` and `Methodology` sections of the report. Don't add new headline numbers (the AUC + ROI numbers are locked); these are *qualifiers* on existing numbers.
+
+---
+
 ## Pressure-test summary (final, post-fix)
 
 Phase 1 (9 quick verifications): NO FATAL FAILURES

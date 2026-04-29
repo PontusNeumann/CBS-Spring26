@@ -192,6 +192,36 @@ Listed in rough order of expected impact-per-hour:
 
 5. **Maduro-removal markets as additional train cohort (~2 hours).** Could compress per-market AUC bimodality, broaden train regime variety. Not the highest priority unless cohort breadth becomes a discussion point.
 
+### Rigor additions for the report (D-037)
+
+Three statistical-rigor additions to elevate the report before drafting. Together ~90 min as a single `13_rigor_additions.py` script writing to `outputs/rigor/`:
+
+6. **Bootstrap CI on AUC + DeLong test (~30 min).** Convert "RF AUC 0.899" point estimate into "0.899 [lower, upper]" with 95% CI. Run a DeLong (or paired-bootstrap) test for whether RF significantly beats HistGBM (0.887). Lets the report defend "RF is the best model" rigorously instead of by point estimate alone.
+
+7. **Permutation importance (~30 min).** Currently using MDI (`clf.feature_importances_`) which is the weak version. Permutation importance is the modern standard. One sklearn call per model. Lets us claim "kyle_lambda contributes X% of test AUC" with proper backing. Outputs go alongside existing `feature_importance.json` files.
+
+8. **Learning curves — AUC vs train size (~30 min).** Plot whether more data would help (curve still rising) or the model has saturated (flatlined). Strong robustness signal: answers whether the +23.7% headline is data-bound or model-bound. Standard inclusion in a quantitative ML paper.
+
+**Tier 2 (depth, not critical — skip unless drafting reveals a gap):**
+
+9. **Hyperparameter tuning on RF + HistGBM (parked — pick a method later).** Won't move AUC much (already strong) but adds rigor for viva defense. Compute estimates on M4 Pro, ~30-45s per RF fit × 5 folds:
+   - **HalvingRandomSearchCV** (sklearn) — ~45 min. Successive halving, no new dependency. Best speed/rigor tradeoff.
+   - **Optuna TPE / Bayesian** — ~2.5 hrs for 50 trials. Modern best practice; learn-once tool.
+   - **Manual staged tuning** (depth → leaf → features) — ~30 min. Bulletproof, easy to explain.
+   - **GridSearchCV** — ~4-8 hrs for a meaningful 3-axis grid. Skip at our data scale.
+   - **Defended defaults paragraph** — 0 min compute. Justify current `n_estimators=200, max_depth=10, min_samples_leaf=200` from `√(n)` reasoning + D-026 ablation. Acceptable as the report's primary defense if time-constrained.
+   - All MUST use `GroupKFold(groups=market_id)` to preserve the cross-regime transfer claim.
+
+10. **SHAP values for top picks (~1 hr).** Explain individual predictions. Lets us write "the model's confidence on these picks is driven by features X, Y, Z" with quantitative attribution. Shows interpretability awareness.
+
+11. **Stacking ensemble (~1-2 hr).** RF + HistGBM + LogReg → meta-learner. Could push AUC slightly higher but changes the headline narrative mid-draft. Defer unless drafting hits a "best single model isn't enough" wall.
+
+12. **Confusion matrix at threshold 0.5 (~10 min).** Trivial figure addition. Standard inclusion that reviewers expect.
+
+13. **Platt scaling (calibration alternative, ~30 min).** Side-by-side with isotonic. Probably won't change anything but shows method awareness.
+
+**Skipped intentionally** (course-relevant but wrong fit): MLPs / autoencoder (Pontus's territory + TF/Keras port effort), SMOTE / oversampling (no imbalance — base rate 50.4%), KNN / SVM (computational cost > value on 1.1M trades), K-means / DBSCAN (no clustering question), polynomial / interaction features (70 features is plenty, trees handle interactions natively).
+
 ---
 
 ## Comparison points for Pontus
