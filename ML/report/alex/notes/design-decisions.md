@@ -521,6 +521,42 @@ RF general_ev is non-monotonic (peaks at N=5): at N=1 the per-trade volume cap i
 
 ---
 
+## D-041: Missing-value handling in v4 modelling (2026-04-29)
+
+**Status:** Locked for the current v4 run; flagged as a limitation / future improvement.
+
+**Decision:** The v4 modelling pipeline uses deterministic zero imputation for all model features before fitting and scoring:
+
+```python
+X_train = train[feature_cols].fillna(0).replace([np.inf, -np.inf], 0)
+X_test = test[feature_cols].fillna(0).replace([np.inf, -np.inf], 0)
+```
+
+This policy is applied consistently in `03_sweep.py`, `_optuna_worker.py`, `_backtest_worker.py`, `04_iso_forest.py`, and downstream backtest scripts. Infinite values are also mapped to zero after feature selection.
+
+**Justification:** Zero imputation keeps the v4 run deterministic, model-agnostic, and compatible with LogReg, PCA, MLP, Isolation Forest, and tree models under one shared feature matrix. It also avoids changing the feature contract mid-run after Stage 1 and Stage 2 passed on the delivered v4 parquets. Stage 1 confirmed Pontus's Layer-6 wallet columns have effectively full coverage (`wallet_polygon_age_at_t_days` NaN rate 0.000% in both train and test), so the main missingness concern is the original v3.5 rolling / first-history feature family rather than the newly joined wallet features.
+
+**Known caveat:** Zero imputation collapses some meaningful missingness states:
+
+- `log_size_vs_taker_avg = NaN` means the taker has no prior trade history; after `fillna(0)`, this is indistinguishable from "trade size equals taker average".
+- Rolling-window features with no prior activity become `0`, which can mean either "no history" or a real log/ratio baseline.
+- `pre_trade_price` is intended to default to `0.5` when no prior price is available; any later NaN converted to `0` would incorrectly encode a certain-NO market state.
+
+This is therefore acceptable as a locked v4 engineering choice, but not an ideal imputation strategy.
+
+**Alternatives considered:**
+
+| Option | Why not used in v4 |
+|---|---|
+| Family-specific imputers (`0.5` for price, medians for ratios, 0 for counts) | Better semantics but requires refactoring the feature pipeline and rerunning the full sweep. |
+| Add explicit `*_isna` indicators before imputation | Cheap and likely best v5 fix, but changes feature count and invalidates current v4 results. |
+| Native missing-value handling for tree models only | Not compatible with LogReg, PCA, MLP, and IsoForest under one shared matrix. |
+| Median imputation fit on train only | More standard for LogReg/MLP, but less meaningful for structural first-history NaNs and changes all current results. |
+
+**Implications for report:** Methodology should state that numeric missing values were deterministically imputed to zero for modelling, with infinite values also mapped to zero. Limitations should note that this may blur first-trade / no-history states, and that a future version should add missingness indicators or feature-family-specific imputation. Do not present zero imputation as a principled statistical choice; present it as a consistent engineering choice for the locked v4 run.
+
+---
+
 ## Pressure-test summary (final, post-fix)
 
 Phase 1 (9 quick verifications): NO FATAL FAILURES
