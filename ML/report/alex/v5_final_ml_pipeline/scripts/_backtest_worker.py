@@ -99,6 +99,24 @@ def make_lightgbm():
     )
 
 
+def make_xgboost():
+    import xgboost as xgb
+
+    return xgb.XGBClassifier(
+        n_estimators=400,
+        max_depth=8,
+        learning_rate=0.05,
+        min_child_weight=200,
+        objective="binary:logistic",
+        eval_metric="auc",
+        tree_method="hist",
+        scale_pos_weight=1.0,
+        n_jobs=N_JOBS_PER_WORKER,
+        random_state=RANDOM_SEED,
+        verbosity=0,
+    )
+
+
 def make_logreg_l1():
     return LogisticRegression(
         C=0.1,
@@ -162,6 +180,7 @@ MODELS = {
     "random_forest": (make_random_forest, False),
     "hist_gbm": (make_hist_gbm, False),
     "lightgbm": (make_lightgbm, False),
+    "xgboost": (make_xgboost, False),
     "pca_logreg": (make_pca_logreg, True),
     "mlp_sklearn": (make_mlp_sklearn, True),
 }
