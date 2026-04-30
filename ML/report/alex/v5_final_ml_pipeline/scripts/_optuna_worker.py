@@ -22,7 +22,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import time
 import warnings
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -35,7 +38,109 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore")
-optuna.logging.set_verbosity(optuna.logging.WARNING)
+optuna.logging.set_verbosity(optuna.logging.INFO)
+
+
+def _log(msg: str) -> None:
+    """Stdout with UTC timestamp + worker PID so multi-process logs interleave readably."""
+    ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    print(f"[{ts} pid={os.getpid()}] {msg}", flush=True)
+
+
+def _render_html(
+    study, model_name: str, html_path: Path, t0: float, target_trials: int
+) -> None:
+    """Live self-refreshing HTML dashboard for the running study."""
+    import optuna as _opt
+
+    trials = study.trials
+    n_done = sum(1 for t in trials if t.state == _opt.trial.TrialState.COMPLETE)
+    n_pruned = sum(1 for t in trials if t.state == _opt.trial.TrialState.PRUNED)
+    n_failed = sum(1 for t in trials if t.state == _opt.trial.TrialState.FAIL)
+    n_total = len(trials)
+    elapsed = time.time() - t0
+    rate = n_total / max(elapsed, 1e-6)
+    eta = (
+        (target_trials - n_total) / rate if rate > 0 and n_total < target_trials else 0
+    )
+    best = None
+    try:
+        best = study.best_trial
+    except ValueError:
+        pass
+
+    rows = []
+    for t in sorted(trials, key=lambda x: x.number, reverse=True)[:30]:
+        state = str(t.state).replace("TrialState.", "")
+        col = (
+            "#1a7f1a"
+            if state == "COMPLETE"
+            else "#b08a30"
+            if state == "PRUNED"
+            else "#b03030"
+        )
+        val = f"{t.value:.5f}" if t.value is not None else "—"
+        dur = (
+            f"{t.duration.total_seconds():.0f}s"
+            if t.duration is not None
+            else "running"
+        )
+        params_str = ", ".join(f"{k}={v}" for k, v in t.params.items())
+        rows.append(
+            f"<tr><td>{t.number}</td>"
+            f"<td style='color:{col};font-weight:600'>{state}</td>"
+            f"<td style='text-align:right'>{val}</td>"
+            f"<td style='text-align:right;color:#666'>{dur}</td>"
+            f"<td style='font-family:monospace;font-size:11px'>{params_str}</td></tr>"
+        )
+
+    best_block = ""
+    if best is not None:
+        best_params_str = "<br>".join(
+            f"<code>{k}</code>: {v}" for k, v in best.params.items()
+        )
+        best_block = f"""
+        <h2>Best so far</h2>
+        <p><strong>Trial #{best.number}</strong> &nbsp;·&nbsp; AUC <strong>{best.value:.5f}</strong></p>
+        <p>{best_params_str}</p>
+        """
+
+    html_path.write_text(f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta http-equiv="refresh" content="10">
+<title>Optuna — {model_name}</title>
+<style>
+  body {{ font-family: -apple-system, system-ui, sans-serif; max-width: 1200px; margin: 24px auto; padding: 0 16px; color: #222; }}
+  h1, h2 {{ font-weight: 600; }}
+  .stat {{ display: inline-block; margin-right: 24px; }}
+  .stat strong {{ font-size: 22px; display: block; color: #222; }}
+  .stat span {{ color: #666; font-size: 12px; }}
+  .bar {{ background: #eee; border-radius: 8px; height: 20px; overflow: hidden; margin: 12px 0; }}
+  .fill {{ background: linear-gradient(90deg, #2196f3, #00bcd4); height: 100%; transition: width 0.5s; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 12px; }}
+  th, td {{ padding: 5px 10px; border-bottom: 1px solid #eee; text-align: left; }}
+  th {{ background: #fafafa; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; }}
+  code {{ background: #f6f6f6; padding: 1px 5px; border-radius: 3px; font-size: 12px; }}
+</style></head>
+<body>
+<h1>Optuna · {model_name}</h1>
+<div class="bar"><div class="fill" style="width: {min(100, 100 * n_total / max(target_trials, 1)):.1f}%"></div></div>
+<div>
+  <div class="stat"><strong>{n_total} / {target_trials}</strong><span>trials</span></div>
+  <div class="stat"><strong>{n_done}</strong><span>complete</span></div>
+  <div class="stat"><strong>{n_pruned}</strong><span>pruned</span></div>
+  <div class="stat"><strong>{n_failed}</strong><span>failed</span></div>
+  <div class="stat"><strong>{elapsed / 60:.1f} min</strong><span>elapsed</span></div>
+  <div class="stat"><strong>{eta / 60:.1f} min</strong><span>ETA remaining</span></div>
+</div>
+{best_block}
+<h2>Recent trials</h2>
+<table>
+<tr><th>#</th><th>state</th><th>AUC</th><th>duration</th><th>params</th></tr>
+{"".join(rows)}
+</table>
+<p style="color:#666;font-size:11px">Auto-refreshes every 10s · last update {datetime.now(timezone.utc).strftime("%H:%M:%S")} UTC</p>
+</body></html>""")
+
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
@@ -77,12 +182,16 @@ def make_hgbm(params):
 
 
 def rf_search_space(trial: optuna.Trial) -> dict:
+    # Tightened 2026-04-29 23:00 — original space let trial 0 sample
+    # max_depth=None / max_features=0.5 which took 45 min/trial (60 trials =
+    # ~45 hours, infeasible overnight). Constraints below cap each trial under
+    # ~5 min while still spanning the bias/variance frontier.
     return {
         "n_estimators": trial.suggest_int("n_estimators", 100, 400, step=50),
-        "max_depth": trial.suggest_categorical("max_depth", ["none", 6, 8, 10, 12, 16]),
-        "min_samples_leaf": trial.suggest_int("min_samples_leaf", 50, 800, log=True),
+        "max_depth": trial.suggest_categorical("max_depth", [6, 8, 10, 12, 15]),
+        "min_samples_leaf": trial.suggest_int("min_samples_leaf", 100, 1000, log=True),
         "max_features": trial.suggest_categorical(
-            "max_features", ["sqrt", "log2", 0.3, 0.5, 0.7]
+            "max_features", ["sqrt", "log2", 0.3]
         ),
     }
 
@@ -311,11 +420,50 @@ def main():
         study_name=f"{args.model}_tuning",
         load_if_exists=True,
     )
-    print(
-        f"[{args.model}] starting {args.n_trials} trials (storage={storage})",
-        flush=True,
+    _log(f"[{args.model}] starting {args.n_trials} trials (storage={storage})")
+
+    # Per-trial JSONL log + live HTML dashboard. Both files are read-only for
+    # operators monitoring the run; the worker process keeps the SQLite study
+    # as the single source of truth. Multi-process safe via append-only writes.
+    trials_jsonl = out_dir / "trials.jsonl"
+    html_path = out_dir / "progress.html"
+    _t0 = time.time()
+
+    def _on_trial_complete(study_, frozen_trial):
+        rec = {
+            "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "pid": os.getpid(),
+            "trial": frozen_trial.number,
+            "state": str(frozen_trial.state).replace("TrialState.", ""),
+            "value": frozen_trial.value,
+            "params": frozen_trial.params,
+            "duration_s": (
+                frozen_trial.duration.total_seconds()
+                if frozen_trial.duration is not None
+                else None
+            ),
+        }
+        # Atomic append (line-buffered); concurrent workers can both append safely.
+        with open(trials_jsonl, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, default=str) + "\n")
+        _log(
+            f"[{args.model}] trial {frozen_trial.number:3d} {rec['state']:9s} "
+            f"value={frozen_trial.value if frozen_trial.value is not None else float('nan'):.5f} "
+            f"dur={rec['duration_s']:.0f}s "
+            f"params={frozen_trial.params}"
+        )
+        # Render an HTML snapshot of the study state. Cheap (one read of study.db).
+        try:
+            _render_html(study_, args.model, html_path, _t0, args.n_trials)
+        except Exception as e:
+            _log(f"[{args.model}] html render failed: {e}")
+
+    study.optimize(
+        objective,
+        n_trials=args.n_trials,
+        show_progress_bar=False,
+        callbacks=[_on_trial_complete],
     )
-    study.optimize(objective, n_trials=args.n_trials, show_progress_bar=False)
 
     # Save study history
     hist = study.trials_dataframe(

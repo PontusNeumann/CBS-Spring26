@@ -1,0 +1,17 @@
+{
+  "model": "random_forest",
+  "tuned": {
+    "best_oof_auc": 0.8167872613124552,
+    "test_auc_raw": 0.7750889341723444,
+    "best_params": {
+      "n_estimators": 300,
+      "max_depth": 15,
+      "min_samples_leaf": 188,
+      "max_features": 0.3
+    }
+  },
+  "default": {
+    "test_auc_raw": 0.8987236740059924
+  },
+  "delta_test_auc": -0.12363473983364803
+}
