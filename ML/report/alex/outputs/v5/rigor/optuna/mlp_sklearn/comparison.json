@@ -1,0 +1,19 @@
+{
+  "model": "mlp_sklearn",
+  "tuned": {
+    "best_oof_auc": 0.8875726983716083,
+    "test_auc_raw": 0.8047255987316764,
+    "best_params": {
+      "arch_idx": 5,
+      "activation": "relu",
+      "alpha": 0.0035974197956574233,
+      "learning_rate_init": 0.003085473344630512,
+      "batch_size": 2048
+    }
+  },
+  "default": {
+    "test_auc_raw": 0.8020532151694038,
+    "n_estimators_etc": "see _backtest_worker.py defaults"
+  },
+  "delta_test_auc": 0.0026723835622726178
+}

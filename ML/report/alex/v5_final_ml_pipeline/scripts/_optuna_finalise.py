@@ -40,7 +40,7 @@ except ImportError:
     make_lgbm = None
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRATCH = ROOT / ".scratch" / "preds"
+SCRATCH = ROOT / ".scratch" / "backtest"
 OUT = ROOT / "outputs" / "v5" / "rigor" / "optuna"
 
 FACTORIES = {
