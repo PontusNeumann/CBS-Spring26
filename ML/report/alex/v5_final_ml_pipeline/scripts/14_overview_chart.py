@@ -55,6 +55,7 @@ def main():
         "random_forest",
         "hist_gbm",
         "lightgbm",
+        "xgboost",
         "mlp_sklearn",
         "naive_consensus",
     ]

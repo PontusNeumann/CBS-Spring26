@@ -438,6 +438,7 @@ def main():
         "random_forest",
         "hist_gbm",
         "lightgbm",
+        "xgboost",
         "mlp_sklearn",
     ]
     model_data = {}

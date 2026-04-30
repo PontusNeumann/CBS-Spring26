@@ -1,4 +1,4 @@
-# v5 ML pipeline — realistic backtest expansion (RF + MLP focus)
+# v5 ML pipeline — realistic backtest expansion (RF + MLP + XGBoost focus)
 
 Built on top of v4 (Pontus's pre-consolidation structure). Kept separate from
 `v4_final_ml_pipeline/` so it does not collide with the recent main-branch
@@ -23,8 +23,10 @@ refactor that moved data under `data/archive/alex/` and introduced
      `general_ev_cheap` (`cost < 0.30`), `general_ev_late`
      (`time_to_deadline < 1d`).
 4. **`_backtest_worker.py`** — added factories for `mlp_sklearn`,
-   `decision_tree`, `logreg_l1`, `pca_logreg` (PCA k=16). v4 only had logreg_l2
-   / RF / hist_gbm / lightgbm.
+   `decision_tree`, `logreg_l1`, `pca_logreg` (PCA k=16), and `xgboost`
+   (`tree_method=hist`, n_estimators=400, max_depth=8, learning_rate=0.05,
+   min_child_weight=200, untuned defaults). v4 only had logreg_l2 / RF /
+   hist_gbm / lightgbm.
 5. **`_common.py`** — `LIQUIDITY_SCALER_DEFAULT` flipped from `0.10` to `1.0`
    (no copycats is the more honest realistic default). 0.10 retained as a
    stress test inside `fill_share_grid`.
@@ -36,24 +38,35 @@ main).
 
 ## Headline numbers — $10K, 5% bet, no copycats, 31-day cross-regime test
 
-| model       | best strategy        | 31d ROI |
-|-------------|----------------------|--------:|
-| **MLP**     | `phat_gt_0.9`        | **+20%** |
-| RF          | `phat_gt_0.9`        | +14% |
-| naive       | `phat_gt_0.9`        | +17% |
-| hist_gbm    | `top5pct_edge`       | +27% (single 601-trade cell) |
-| lightgbm    | `top1pct_phat`       | +4% |
-| logreg_l2   | `top1pct_phat`       | -2% |
+| model       | best strategy        | 31d ROI | per-market test AUC |
+|-------------|----------------------|--------:|--------------------:|
+| **MLP**     | `phat_gt_0.9`        | **+20%** | [0.06, 1.00] |
+| naive       | `phat_gt_0.9`        | +17% | — |
+| RF          | `phat_gt_0.9`        | +14% | [0.03, 1.00]¹ |
+| **XGBoost** | `phat_gt_0.9`        | **+13%** | **[0.21, 1.00]** ← tightest range |
+| hist_gbm    | `top5pct_edge`       | +27% (single 601-trade cell, fragile) | [0.00, 1.00]¹ |
+| lightgbm    | `top1pct_phat`       | +4% | [0.02, 1.00]¹ |
+| logreg_l2   | `top1pct_phat`       | -2% | — |
+
+¹ uses Apr 27 stale 80-feature cached preds — inflated raw AUC. XGBoost and MLP
+are on the cleaned 64-feature schema, fair comparison; the others should be
+retrained for an apples-to-apples baseline.
+
+**Why XGBoost is interesting**: the only model with no per-market AUC near
+random (worst market 0.21 vs others 0.00-0.06). Tightest cross-market stability
+of any tree model — the most direct evidence we have that some signal genuinely
+transfers across the 10 ceasefire markets, not just averages over a few
+favourable cohorts.
 
 See [`outputs/v5/backtest/overview.png`](../outputs/v5/backtest/overview.png) for
-the full 6-model × 10-strategy grid.
+the full 7-model × 10-strategy grid.
 
 ## Run order
 
 ```bash
 cd ML/report/alex
-# 1. (skip if cached) train predictions for all 5 models
-for m in logreg_l2 random_forest hist_gbm lightgbm mlp_sklearn; do
+# 1. (skip if cached) train predictions for all 6 models
+for m in logreg_l2 random_forest hist_gbm lightgbm xgboost mlp_sklearn; do
   python v5_final_ml_pipeline/scripts/_backtest_worker.py \
     --model $m --out .scratch/backtest/preds_$m.npz
 done
