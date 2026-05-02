@@ -99,34 +99,32 @@ def load_joined() -> pd.DataFrame:
     # cohort parquets in `data/archive/alex/` still carry it (column `taker`).
     # Lift it over by row order: the consolidated splits preserve the same
     # ordering as the raw archives, with row counts matching exactly.
-    train_taker = pd.read_parquet(
-        DATA_DIR / "archive" / "alex" / "train.parquet", columns=["taker"]
+    cols = ["taker", "usd_amount"]
+    train_raw = pd.read_parquet(
+        DATA_DIR / "archive" / "alex" / "train.parquet", columns=cols
     )
-    test_taker = pd.read_parquet(
-        DATA_DIR / "archive" / "alex" / "test.parquet", columns=["taker"]
+    test_raw = pd.read_parquet(
+        DATA_DIR / "archive" / "alex" / "test.parquet", columns=cols
     )
     n_train = (df[SPLIT] == "train").sum()
     n_test = (df[SPLIT] == "test").sum()
-    if len(train_taker) == n_train and len(test_taker) == n_test:
-        taker_col = pd.concat(
-            [train_taker["taker"].reset_index(drop=True),
-             test_taker["taker"].reset_index(drop=True)],
+    if len(train_raw) == n_train and len(test_raw) == n_test:
+        lifted = pd.concat(
+            [train_raw.reset_index(drop=True), test_raw.reset_index(drop=True)],
             ignore_index=True,
         )
-        # Sort df so train rows precede test rows, then attach taker.
-        df = df.sort_values(SPLIT, kind="stable").reset_index(drop=True)
-        # train comes after test alphabetically — flip the order to match
-        # the (train, test) lift-over above.
+        # Sort df so train rows precede test rows, then attach lifted columns.
         df = pd.concat(
             [df[df[SPLIT] == "train"].reset_index(drop=True),
              df[df[SPLIT] == "test"].reset_index(drop=True)],
             ignore_index=True,
         )
-        df["taker"] = taker_col.values
-        print(f"attached taker from archive: {df['taker'].nunique():,} unique wallets")
+        df["taker"] = lifted["taker"].values
+        df["usd_amount"] = lifted["usd_amount"].values
+        print(f"attached taker + usd_amount from archive: {df['taker'].nunique():,} unique wallets")
     else:
-        print(f"WARN: row counts mismatch ({len(train_taker)} vs {n_train}, "
-              f"{len(test_taker)} vs {n_test}); taker not attached")
+        print(f"WARN: row counts mismatch ({len(train_raw)} vs {n_train}, "
+              f"{len(test_raw)} vs {n_test}); taker/usd_amount not attached")
     print(f"loaded joined dataset: {len(df):,} rows × {len(df.columns)} cols")
     return df
 
@@ -1014,24 +1012,36 @@ def panel_price_trajectories(df: pd.DataFrame) -> None:
     times = pd.to_datetime(df["timestamp"], unit="s", utc=True)
     df2 = df.assign(_t=times)[["_t", MARKET, SPLIT, "pre_trade_price"]].dropna()
 
+    market_order = (
+        df2.groupby(MARKET)["_t"].min().sort_values().index.tolist()
+    )
+    palette = sns.color_palette("husl", len(market_order))
+    market_colour = dict(zip(market_order, palette))
+
+    train_max = df2.loc[df2[SPLIT] == "train", "_t"].max()
+
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 3.6), constrained_layout=True)
-    for split_name, colour in (("train", COL_TRAIN), ("test", COL_TEST)):
-        for mid, sub in df2[df2[SPLIT] == split_name].groupby(MARKET):
-            sub = sub.sort_values("_t")
-            if len(sub) > 1500:
-                sub = sub.iloc[:: max(1, len(sub) // 1500)]
-            ax.plot(
-                sub["_t"], sub["pre_trade_price"],
-                lw=0.4, alpha=0.45, color=colour,
-            )
-    # Two dummy lines for the legend so each split shows once.
-    ax.plot([], [], color=COL_TRAIN, lw=1.5, label="train")
-    ax.plot([], [], color=COL_TEST, lw=1.5, label="test")
+    for mid, sub in df2.groupby(MARKET):
+        sub = sub.sort_values("_t")
+        if len(sub) > 1500:
+            sub = sub.iloc[:: max(1, len(sub) // 1500)]
+        ax.plot(
+            sub["_t"], sub["pre_trade_price"],
+            lw=0.5, alpha=0.55, color=market_colour[mid],
+        )
+    if pd.notna(train_max):
+        ax.axvline(train_max, color=COL_DARK, ls="--", lw=0.8, alpha=0.7)
+        ax.text(
+            train_max, 1.01, "  train → test",
+            ha="left", va="bottom", fontsize=8, color=COL_DARK,
+        )
     ax.set_xlabel("trade time (UTC)")
     ax.set_ylabel("pre-trade price (market-implied probability)")
-    ax.set_title("Per-market price trajectories, coloured by split")
+    ax.set_title(
+        f"Per-market price trajectories, one colour per market "
+        f"(n={len(market_order)})"
+    )
     ax.set_ylim(-0.02, 1.02)
-    ax.legend(frameon=False, loc="upper right")
     ax.tick_params(axis="x", rotation=20)
     for lbl in ax.get_xticklabels():
         lbl.set_ha("right")
@@ -1089,6 +1099,105 @@ def panel_event_timing(df: pd.DataFrame) -> None:
     print(f"saved {csv_path.name}")
 
 
+# ---------------------------------------------------------------------------
+# 19b. Event-zoom panels: ±48h around strike and ceasefire, hourly trade
+# counts. Surfaces the intraday reaction that the daily bars in panel 19
+# smooth away.
+# ---------------------------------------------------------------------------
+STRIKE = pd.Timestamp("2026-02-28T06:35:00", tz="UTC")
+CEASEFIRE = pd.Timestamp("2026-04-07T23:59:00", tz="UTC")
+
+
+def panel_event_zoom(df: pd.DataFrame) -> None:
+    if "timestamp" not in df.columns:
+        print("skipping event-zoom panel, timestamp missing")
+        return
+    times = pd.to_datetime(df["timestamp"], unit="s", utc=True)
+    df2 = df.assign(_t=times)
+
+    # Only draw events that fall inside the data range. Ceasefire (7 Apr)
+    # is past the dataset's end (31 Mar) so it produces an empty axis.
+    t_min, t_max = df2["_t"].min(), df2["_t"].max()
+    events = [
+        ("strike (28 Feb 06:35 UTC)", STRIKE),
+        ("ceasefire (7 Apr 23:59 UTC)", CEASEFIRE),
+    ]
+    events = [(lbl, t) for lbl, t in events if t_min <= t <= t_max]
+    if not events:
+        print("skipping event-zoom panel, no events inside data range")
+        return
+
+    fig, axes = plt.subplots(
+        1, len(events), figsize=(FIG_W_WIDE / 2 * len(events) + 0.2, 3.4),
+        constrained_layout=True, squeeze=False,
+    )
+    for ax, (label, event_t) in zip(axes[0], events):
+        window_start = event_t - pd.Timedelta(hours=48)
+        window_end = event_t + pd.Timedelta(hours=48)
+        sub = df2[(df2["_t"] >= window_start) & (df2["_t"] <= window_end)]
+        hourly = (
+            sub.set_index("_t")
+            .assign(_n=1)["_n"]
+            .resample("1h")
+            .sum()
+        )
+        ax.bar(hourly.index, hourly.values, width=1 / 24,
+               color=COL_TRAIN, alpha=0.85, edgecolor="none")
+        ax.axvline(event_t, color=COL_DARK, ls="--", lw=0.9)
+        ax.set_xlim(window_start, window_end)
+        ax.set_xlabel("trade time (UTC)")
+        ax.set_ylabel("trades per hour")
+        ax.set_title(label)
+        ax.tick_params(axis="x", rotation=20)
+        for lbl in ax.get_xticklabels():
+            lbl.set_ha("right")
+        clean_ax(ax)
+
+    fig.suptitle("Hourly trade counts in a ±48h window around each event", y=1.04)
+    save_fig(fig, OUT_DIR / "19b_event_zoom.png")
+
+
+# ---------------------------------------------------------------------------
+# 19c. Calendar-time $-volume bars. Same axis as panel 19, but `usd_amount`
+# summed instead of trade counts: shows whether reaction is real $-flow or
+# just a count of small trades.
+# ---------------------------------------------------------------------------
+def panel_event_volume(df: pd.DataFrame) -> None:
+    if "timestamp" not in df.columns or "usd_amount" not in df.columns:
+        print("skipping event-volume panel, timestamp or usd_amount missing")
+        return
+    times = pd.to_datetime(df["timestamp"], unit="s", utc=True)
+    df2 = df.assign(_t=times)
+    daily = (
+        df2.set_index("_t")["usd_amount"]
+        .resample("1D")
+        .sum()
+        .rename("usd_total")
+        .reset_index()
+    )
+
+    t_min, t_max = df2["_t"].min(), df2["_t"].max()
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 3.4), constrained_layout=True)
+    ax.bar(daily["_t"], daily["usd_total"] / 1e6,
+           width=0.9, color=COL_TRAIN, alpha=0.85, edgecolor="none")
+    if t_min <= STRIKE <= t_max:
+        ax.axvline(STRIKE, color=COL_DARK, ls="--", lw=0.9)
+        ax.text(STRIKE, ax.get_ylim()[1] * 0.95, "  strike (28 Feb)",
+                ha="left", va="top", fontsize=8, color=COL_DARK)
+    if t_min <= CEASEFIRE <= t_max:
+        ax.axvline(CEASEFIRE, color=COL_DARK, ls="--", lw=0.9)
+        ax.text(CEASEFIRE, ax.get_ylim()[1] * 0.95, "  ceasefire (7 Apr)",
+                ha="right", va="top", fontsize=8, color=COL_DARK)
+    ax.set_xlabel("trade date (UTC)")
+    ax.set_ylabel(r"daily \$-volume (\$M)")
+    ax.set_title(r"Daily \$-volume over calendar time, with key events")
+    ax.tick_params(axis="x", rotation=20)
+    for lbl in ax.get_xticklabels():
+        lbl.set_ha("right")
+    clean_ax(ax)
+    save_fig(fig, OUT_DIR / "19c_event_volume.png")
+
+
 def write_index(out_dir: Path) -> None:
     """Cheat-sheet that maps each generated panel to what it shows."""
     items = [
@@ -1123,9 +1232,11 @@ def write_index(out_dir: Path) -> None:
         ("16_temporal_drift.png", "Daily bet_correct base rate with 7-day rolling mean, per split."),
         ("17_pca_wallets.png", "Wallet behavioural archetypes via 2-D PCA on per-wallet aggregates, coloured by hit rate."),
         ("17_pca_wallets.txt", "PC1/PC2 explained variance + loadings for the panel-17 PCA."),
-        ("18_price_trajectories.png", "Per-market `pre_trade_price` over calendar time, coloured by split."),
+        ("18_price_trajectories.png", "Per-market `pre_trade_price` over calendar time, one colour per market, with a dashed line at the train→test boundary."),
         ("19_event_timing.png", "Trades per day with the strike and ceasefire announcement marked. Cohort design visible in calendar time."),
         ("19_event_timing_table.csv", "Trades per day per split. Report-ready CSV."),
+        ("19b_event_zoom.png", "Hourly trade counts in a ±48h window around the strike and ceasefire announcements."),
+        ("19c_event_volume.png", "Daily $-volume (`usd_amount`) over calendar time, with the strike and ceasefire marked."),
         ("summary.txt", "Plain-text summary of dataset shape, base rates, missingness."),
     ]
     lines = ["# EDA index, wallet-joined Alex cohort", ""]
@@ -1187,6 +1298,8 @@ def main() -> None:
     panel_pca_wallets(df)
     panel_price_trajectories(df)
     panel_event_timing(df)
+    panel_event_zoom(df)
+    panel_event_volume(df)
     write_summary(df, nulls, cov)
     write_index(OUT_DIR)
     print(f"\nEDA done, outputs in {OUT_DIR.relative_to(ROOT)}")
