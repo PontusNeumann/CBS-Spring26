@@ -1,0 +1,15 @@
+PCA on 42,990 wallets with >=5 trades
+
+Features used: ['log_size_mean', 'purity_mean', 'yes_share_mean', 'markets_seen_max', 'prior_vol_max', 'polygon_age_mean']
+PC1 explained variance: 27.99%
+PC2 explained variance: 18.60%
+Cumulative: 46.59%
+
+Loadings:
+                    PC1    PC2
+log_size_mean     0.243 -0.283
+purity_mean       0.042 -0.596
+yes_share_mean   -0.093  0.723
+markets_seen_max  0.682  0.062
+prior_vol_max     0.682  0.170
+polygon_age_mean  0.019  0.095

@@ -1,335 +1,322 @@
-# Project Plan
+# Project Plan — Mispricing on Polymarkets
 
-**Course:** Machine Learning and Deep Learning, CBS, Spring 2026
+**Course:** Machine Learning and Deep Learning, CBS, Spring 2026 (KAN-CDSCO2004U)
 **Group:** Alejandro Laurlund Gato (161989), Alexander Myrup (160363), Pontus Neumann (185912), Linus Stamov Yu (160714)
 **Title:** *Mispricing on Polymarkets*
 **Subtitle:** *Detecting Probability Asymmetries in Iran Geopolitical Markets with Machine Learning*
-**Possible working title:** *: *
-**Document purpose:** Finalise the research question, approach, and method, and map each methodological choice to the course syllabus. Supersedes earlier options discussed in the handover and in chat.
 
-**Companion documents (read-only supporting material):**
-- `handovers/handover_<date>.md` — per-session handover covering only the most recent work done. Anything that matters long-term is folded back into this plan.
-- `docs/archive/mldp-project-overview.md` — Alex's narrower 7-sub-market proposal. Superseded by this plan; kept for history only.
+**Document purpose.** Single source of truth for the project after the 2026-05-03 clean-up. Replaces and supersedes `foundation.md`, the prior `project_plan.md`, and `data-pipeline-issues.md`. Reflects the finalized pipeline that is now hand-in-ready in `submission/`.
 
-**Ready-to-use modeling dataset (consolidated 2026-04-29):**
-
-The team is aligned on a single shared dataset. There is now exactly one `data/` folder in the repo (`ML/report/data/`); the previous `pontus/data/` and `alex/data/` folders have been merged into it. Use `data/consolidated_modeling_data.parquet` (317.5 MB, 1,371,180 rows × 87 cols), which carries train/test in a `split` column, target `bet_correct`, and 82 candidate features (70 core microstructure + 12 wallet). After the 2026-04-29 leakage / signal audit (`data-pipeline-issues.md`), the canonical model loader `alex/v4_final_ml_pipeline/scripts/_common.load_modeling_dataset()` filters to **77 modelling features** (drops 1 lifetime CEX leak and 4 low-signal CEX features). See `data/README.md` for the load snippet, column groups, and provenance.
+**Companion documents.**
+- `paper_guidelines.md` — grading rules, formatting, LLM-disclosure template, submission checklist.
+- `submission/README.md` — how to run the pipeline end-to-end.
+- `submission/data/MISSING_DATA.md` — per-feature missing-value handling.
+- `archive/` — preserved historical material (Alex pipeline, working scripts, EDA outputs, prior plans, leakage audit, .docx snapshots).
 
 ---
 
 ## 1. Summary
 
-The project studies asymmetries between market-implied probabilities and model-predicted probabilities in resolved Iran geopolitical Polymarket events. The hypothesis is that a machine learning model, trained on behavioural and market-state features available at trade time, can generate a probability estimate that systematically diverges from the contemporaneous market-implied probability, and that this gap constitutes a tradable signal in settled markets. The primary output is a trading algorithm that enters positions whenever the predicted probability and the market-implied probability differ beyond a threshold, evaluated by out-of-sample economic performance on temporally held-out markets. The pulled dataset covers all 74 resolved sub-markets across four Iran-related events (114242, 236884, 355299, 357625), comprising 1,209,787 trades across 109,080 wallets between 2025-12-22 and 2026-04-19.
+The project studies whether a machine-learning model trained on pre-trade behavioural and market-state features can produce a probability of trade success (`bet_correct`) that systematically diverges from the contemporaneous market-implied probability on resolved Iran geopolitical Polymarket events, and whether that gap supports a profitable trading rule out of sample.
 
-A secondary, out-of-scope observation is noted for the Discussion. If feature-importance analysis reveals that the signal concentrates on features resembling those associated with informed trading in the literature (abnormal bet size, pre-event timing, wallet newness, directional concentration), the report will reflect on this theoretical parallel. This does not enter the research question, scope, or evaluation. It is flagged as an avenue for future work.
+The dataset covers all 74 resolved sub-markets across four Iran-related event clusters (Polymarket events 114242, 236884, 355299, 357625), 1,371,180 trades by 109,080 wallets between 2025-12-22 and 2026-04-19. Train and test are market-cohort-disjoint and temporally separated: 63 strike-ladder markets pre-2026-02-28 for training, 10 ceasefire-ladder markets post-strike for test.
+
+The submission compares seven supervised models (logistic regression L1/L2, decision tree, random forest, histogram gradient boosting, LightGBM, PCA→LogReg, sklearn MLP) plus an Isolation Forest anomaly score, all under 5-fold GroupKFold cross-validation. Each model's raw probabilities are isotonic-calibrated against out-of-fold predictions, then evaluated on a realistic capital-aware backtest with gas, slippage, concentration limits, and a naive market-favourite baseline as the falsification control. A hyperparameter sweep with Optuna (TPE, MedianPruner) runs in parallel for Random Forest, HistGBM, and MLP.
+
+A secondary, out-of-scope observation is reserved for the Discussion: if feature-importance analysis shows the signal concentrates on features that resemble those associated with informed trading in the literature (abnormal bet size, pre-event timing, wallet newness, directional concentration), the report flags the parallel and notes it as future work.
 
 ## 2. Research Questions
 
 ### Scope and purpose
 
-This project studies the gap between Polymarket's contemporaneous market-implied probabilities and the probabilities predicted by a machine learning model on resolved Iran geopolitical markets. The scope covers all 74 resolved sub-markets under Polymarket events 114242, 236884, 355299, and 357625 (strikes, conflict-end, ceasefire announcement, ceasefire extensions), with trade correctness derived from official resolution. The purpose is to test whether systematic asymmetries between the two probability series exist in settled markets and whether a simple trading rule built on the gap produces positive risk-adjusted returns relative to naive baselines on temporally held-out data.
+This project studies the gap between Polymarket's contemporaneous market-implied probabilities and the probabilities predicted by a machine-learning model on resolved Iran geopolitical markets. The scope covers all 74 resolved sub-markets under Polymarket events 114242 (US-strikes), 236884 (Iran x Israel/US conflict ends), 355299 (US x Iran ceasefire announcement), and 357625 (US x Iran ceasefire extension). Trade correctness is derived from official resolution.
 
 ### Short form
 
-**RQ1.** Can a machine learning model trained on pre-execution market-state and behavioural features produce a probability estimate that systematically differs from the contemporaneous market-implied probability in settled Iran prediction markets, such that a trading rule acting on the gap generates positive risk-adjusted returns out of sample?
+**RQ1.** Can a machine-learning model trained on pre-execution market-state and behavioural features produce a probability estimate that systematically differs from the contemporaneous market-implied probability in settled Iran prediction markets, such that a trading rule acting on the gap generates positive risk-adjusted returns out of sample?
 
 ### Detailed form
 
-A single research question, decomposed into a predictive sub-question and an economic sub-question. Both tie to the same Results section.
+**RQ1a — Probability gap.** Does a supervised model trained on pre-execution features (market state, recent market activity, wallet history, on-chain wallet identity) produce a probability estimate `p_hat` whose residual against the contemporaneous market-implied probability `pre_yes_price_corrected` predicts `bet_correct` on a temporally held-out test set?
+*Success criterion:* ROC-AUC of `p_hat` on the test cohort is materially above 0.5, with calibrated Brier-score improvement over the market-implied null and an improved reliability diagram.
 
-**RQ1a — Probability gap.**
-Does a multilayer perceptron trained on pre-execution features (market state, recent market activity, wallet history, on-chain wallet identity, news proximity) produce a probability estimate `p_hat` whose residual against the contemporaneous market-implied probability `market_implied_prob` predicts trade correctness on a temporally held-out test set?
-
-*Scope:* all 74 resolved Iran sub-markets under Polymarket events 114242, 236884, 355299, and 357625; feature set as listed in Section 4; trade-timestamp temporal split (see Section 4); no random split within a market.
-*Success criterion:* ROC-AUC of `p_hat` residualised against `market_implied_prob` is strictly above 0.5 on the test set, with Brier-score improvement over the market-implied null and an improved calibration curve.
-
-**RQ1b — Trading rule.**
-Does a threshold-based trading rule that enters positions when `|p_hat − market_implied_prob|` exceeds a chosen cutoff generate positive cumulative PnL and Sharpe ratio out of sample, relative to (a) a naive market-implied baseline, (b) a momentum rule, and (c) random entry?
-
-*Scope:* rule parameters (gap threshold, position sizing, holding period) are tuned on the validation markets only and then frozen for the test markets.
-*Success criterion:* positive cumulative PnL on the test markets, Sharpe strictly above the three baselines, and a hit rate materially above `market_implied_prob` on entered trades.
+**RQ1b — Trading rule.** Does a portfolio of capital-aware betting strategies acting on `p_hat` (high-confidence thresholds, top-K by edge, EV-positive filters) generate positive cumulative ROI out of sample, relative to a naive market-favourite baseline that requires no model?
+*Success criterion:* positive ROI on the test cohort under realistic frictions (gas, slippage, concentration limits) on at least one strategy, and a strict ROI improvement over the naive baseline on the same strategy.
 
 ## 3. Framing Decision
 
-### Why the trading-signal framing
+The efficient-market null for Polymarket is that the market-implied price already incorporates all public information, so no pre-execution feature set should add predictive power. A systematic gap between `p_hat` and `pre_yes_price_corrected` that predicts settlement is therefore direct evidence of mispricing, and acting on the gap monetises it.
 
-The efficient-market null for Polymarket is that the market-implied price already incorporates all public information, so no pre-execution feature set should add predictive power. A systematic gap between `p_hat` and `market_implied_prob` that predicts settlement is therefore direct evidence of mispricing that can, in principle, be monetised. Framing the project around this gap makes the target observable (settlement is public), makes the evaluation economic and quantitative (PnL, Sharpe, drawdown), and avoids the labelling circularity that arises when one tries to pre-label wallets as informed.
-
-### What the framing preserves
-- The 35-feature behavioural and market-state feature set (market state, wallet history, on-chain age, news timing).
-- Data sources, target markets, and the Polygonscan extraction plan.
-- Temporal train / validation / test split by market settlement date.
-
-### What the framing changes
-- The headline deliverable is the trading rule and its out-of-sample economic performance, not a wallet-level insider detector.
-- Unsupervised anomaly detection (autoencoder, Isolation Forest) is retained from Lecture 11 as a secondary lens on trades where the gap is largest, to check whether flagged trades share structure.
-- Any resemblance between the features driving the signal and documented informed-trading traits is handled in Discussion, not in the research question.
+This framing makes the target observable (settlement is public), keeps the evaluation economic and quantitative (ROI, drawdown, hit rate), and avoids the labelling circularity of trying to pre-label wallets as informed. Any resemblance between the features driving the signal and informed-trading traits is reserved for the Discussion, not the research question.
 
 ## 4. Data
 
 | Item | Detail |
 |---|---|
-| Markets | All resolved sub-markets under Polymarket events 114242 ("US strikes Iran by ..."), 236884 ("Iran x Israel/US conflict ends by ..."), 355299 ("Trump announces US x Iran ceasefire end by ...") and 357625 ("US x Iran ceasefire extended by ..."). 74 resolved markets covering both YES and NO outcomes. |
-| Unit of analysis | One resolved trade. Realised dataset: 1,209,787 trades, 109,080 unique wallets, spanning 2025-12-22 to 2026-04-19. |
-| Data sources | **Hybrid pipeline** combining HuggingFace and Polymarket APIs. (a) Event and market metadata from Polymarket Gamma API (authoritative source of resolution status). (b) Trade history for 67 of 74 resolved markets (events 114242 and 236884) from the HuggingFace mirror `SII-WANGZJ/Polymarket_data` (on-chain CTF Exchange events, MIT licensed, ~38.7 GB), streamed over HTTPS via duckdb's httpfs and filtered server-side to the target condition_ids; full trade history preserved, no offset cap. (c) Trade history for the 7 ceasefire markets under events 355299 and 357625 (created after the HF snapshot cutoff of 2026-03-31, absent from HF) from the Polymarket Data API with side-split pagination. All 7 ceasefire markets have under 5k trades each and fit comfortably under the API's ~7k ceiling, so no data loss. (d) CLOB mid-price history for ceasefire markets only, with trade-execution price as fallback. No Polygonscan or external enrichment used. |
-| Target | `bet_correct` in {0, 1} from market resolution and the side of the trade. |
-| Benchmark at trade time | `market_implied_prob` at execution, taken from the CLOB mid-price where available, otherwise the price field of the trade itself. |
-| Features | 77 modelling features in `data/consolidated_modeling_data.parquet`, all strictly no-lookahead (every row's feature at time `t` uses only rows with `timestamp < t`, enforced via `groupby().cumsum().shift(1)` and `rolling(window, on='timestamp', closed='left')` in `alex/scripts/06b_engineer_features.py`). Eight feature groups: (1) **trade-local** — `log_size`, `side_buy` (BUY/SELL indicator), `outcome_yes` (token-side indicator), `log_payoff_if_correct`, `distance_from_boundary`, `log_n_trades_to_date`; (2) **time / cyclical** — `pct_time_elapsed`, `log_time_to_deadline_hours`, `is_within_{5min, 1h, 24h}_of_deadline`, `log_time_since_last_trade`, `hour_of_day_sin`, `day_of_week_{sin, cos}`; (3) **pre-trade price** — `pre_trade_price`, `pre_trade_price_change_{5min, 1h, 24h}`, `recent_price_mean_{5min, 1h, 24h}`, `recent_price_high_1h`, `recent_price_low_1h`, `recent_price_range_1h`; (4) **multi-window microstructure** — `log_recent_volume_{5min, 1h, 24h}`, `log_trade_count_{5min, 1h, 24h}`, `market_price_vol_last_{5min, 1h, 24h}`, `realized_vol_1h`, `jump_component_1h`, `kyle_lambda_market_static`, `implied_variance`, `signed_oi_autocorr_1h`; (5) **order flow** — `order_flow_imbalance_{5min, 1h, 24h}`, `yes_volume_share_recent_{5min, 1h}`, `yes_buy_pressure_5min`, `token_side_skew_5min`, `market_buy_share_running`, `avg_trade_size_recent_1h`, `trade_size_to_recent_volume_ratio`, `trade_size_vs_recent_avg`; (6) **behaviour derivatives** — `contrarian_score`, `contrarian_strength`, `consensus_strength`, `risk_reward_ratio_pre`, `is_long_shot_buy`, `log_same_block_trade_count`; (7) **per-taker history** (point-in-time wallet aggregates, strictly prior to the trade) — `taker_first_trade_in_market`, `log_taker_prior_trades_{total, in_market}`, `log_taker_cumvol_in_market`, `log_taker_prior_volume_total_usd`, `log_taker_unique_markets_traded`, `log_taker_burst_5min`, `log_taker_first_minutes_ago_in_market`, `log_size_vs_taker_avg`, `taker_yes_share_global`, `taker_directional_purity_in_market`, `taker_position_size_before_trade`, `taker_traded_in_event_id_before`, `log_maker_prior_trades_in_market`; (8) **on-chain wallet identity** — `wallet_polygon_age_at_t_days`, `wallet_polygon_nonce_at_t` (+ log), `wallet_n_inbound_at_t` (+ log), `days_from_first_usdc_to_t`, `wallet_enriched` (binary indicator for the ~0.31% of trades whose wallet failed Etherscan V2 enrichment). **`pre_trade_price` serves as the market-implied probability benchmark** for the trading rule and is the source from which the gap `p_hat − market_implied_prob` is computed. **Five features are excluded by `_common.load_modeling_dataset()`**: `wallet_funded_by_cex` (lifetime flag, full-history CEX funding, structurally leaky), and four low-signal CEX features (`wallet_funded_by_cex_scoped`, `wallet_cex_usdc_cumulative_at_t`, `wallet_log_cex_usdc_cum`, `wallet_n_cex_deposits_at_t`) with mutual information ≤ 0.0014 to `bet_correct` and marginal hit-rate diff ≤ 0.6 pp (panel 13 of the EDA / 2026-04-29 audit). **Direction-determinism features (`side_buy`, `outcome_yes`, `taker_directional_purity_in_market`, `taker_position_size_before_trade`, `market_buy_share_running`) are retained** because the train/test cohort split is market-disjoint, eliminating the within-market memorisation channel they would otherwise open. News proximity (GDELT) and per-wallet category-entropy features remain deferred to future work. |
-| Pre-modelling filter | Drop post-resolution close-out trades (`settlement_minus_trade_sec <= 0`, ~16.5% of rows), which execute at the locked winning-token price and carry no predictive signal. |
-| Split | **Market-cohort-disjoint, temporally separated (v4 final, 2026-04-29).** Train and test are defined at the market level with zero market overlap and strict chronology. **Train:** 63 strike-ladder markets (`US strikes Iran by [date]` family, events 114242 / 236884 / 355299), 1,114,003 post-filter trades, all with `timestamp` < 2026-02-28 06:34:59 UTC (Operation Epic Fury launch). **Test:** 10 ceasefire-ladder markets (`US x Iran ceasefire by [date]` family, events 355299 / 357625), 257,177 post-filter trades, all with `timestamp` ≥ 2026-02-28 14:02:57 UTC. Carried as the `split` column inside `data/consolidated_modeling_data.parquet`; `bet_correct` rate is 0.5031 on train and 0.5037 on test, both inside the 35–65% band so no resampling is required. Cohort-disjoint splitting is also the leak-defence mechanism for the within-market direction-determinism channel surfaced in the prior leakage audit (P0-11 / P0-12 in `data-pipeline-issues.md`): because no market is in both splits, a classifier cannot memorise per-market resolution from train rows and apply it to test rows of the same market. This protection lets the modelling feature set retain `side_buy`, `outcome_yes`, `taker_directional_purity_in_market`, `taker_position_size_before_trade`, and `market_buy_share_running` without re-opening the leak. K-fold cross-validation inside the training set uses `GroupKFold(n_splits=5)` on `market_id` so the same protection applies fold-internally. The full cohort selection logic is in `alex/scripts/build_cohorts.py`; the documented-insider-trading named cases (Maduro / Biden-pardons, plan §8) remain as an expansion path if the headline test results need a stronger benchmark. |
-| Class balance | Current `bet_correct` rate is 0.518, inside the 35 to 65 percent band, so no resampling is required up front. If imbalance develops after filtering or per split fold, apply `class_weight="balanced"` first, then SMOTE on the training fold only as a secondary option (Lecture 7). |
-| Known limitation | Previously: Polymarket Data API caps pagination offset at ~7000 trades per market (after side-split), truncating 21 of 74 markets. **Mitigated** by routing events 114242 and 236884 through the HuggingFace mirror, which carries the complete on-chain trade history for those 67 markets. Residual limitation: the HF snapshot cutoff of 2026-03-31; any market still trading or created after that date must use the API path (which applies only to the 7 ceasefire markets, each well under the ~7k ceiling). |
+| Markets | All 74 resolved sub-markets under Polymarket events 114242, 236884, 355299, 357625. 19 YES / 55 NO by end-of-market token prices. |
+| Unit of analysis | One resolved trade. Final dataset: 1,371,180 trades (1,114,003 train + 257,177 test). |
+| Sources | Hybrid pipeline: (a) market metadata via Polymarket Gamma API, (b) trade history for 67 markets via the HuggingFace mirror `SII-WANGZJ/Polymarket_data` (38.7 GB, streamed via duckdb httpfs), (c) trade history for 7 ceasefire markets via the Polymarket Data API, (d) CLOB mid-price for ceasefire markets, (e) on-chain wallet enrichment via Etherscan V2 (108,621 of 109,080 wallets enriched, 99.58% coverage). |
+| Target | `bet_correct ∈ {0, 1}` from market resolution and the side of the trade. Pos rate 50.31% train, 50.37% test (no resampling needed). |
+| Benchmark | `pre_yes_price_corrected` — pre-trade YES-token price reconstructed per-market via `compute_pre_yes_price_corrected()` (fixes the per-token vs YES-normalised price bug that previously inflated ROI by ~400×). |
+| Feature inventory | 87 columns total: 5 meta/id (`split`, `market_id`, `ts_dt`, `timestamp`, `bet_correct`) + 70 core features + 12 wallet features. The submission's `01_data_prep.py` produces a modelling feature list of **80 features** (87 minus 5 meta minus 1 target minus 1 leaky lifetime flag `wallet_funded_by_cex`). The 4 low-signal CEX features (`wallet_funded_by_cex_scoped`, `wallet_cex_usdc_cumulative_at_t`, `wallet_log_cex_usdc_cum`, `wallet_n_cex_deposits_at_t`) are kept in the feature list for inventory completeness; the 2026-04-29 audit recommended dropping them on signal grounds (mutual information ≤ 0.0014). See **§6 Open decisions**. |
+| Feature groups | (1) trade-local — `log_size`, `side_buy`, `outcome_yes`, payoff/distance/count features; (2) time/cyclical — `pct_time_elapsed`, time-to-deadline, hour-of-day sin/cos; (3) pre-trade price + price-change features at 5min/1h/24h windows; (4) microstructure — Kyle's λ, realized vol, jump component, signed OI autocorrelation; (5) order flow — imbalance at 5min/1h/24h, YES volume share, taker side skew; (6) behaviour derivatives — contrarian/consensus scores, risk-reward, long-shot indicator; (7) per-taker history — log priors, cumvol, unique markets, directional purity, position size, yes-share; (8) on-chain wallet identity — Polygon age, nonce, inbound count, USDC funding history. |
+| Pre-modelling filter | Already applied upstream: post-resolution close-out trades (`settlement_minus_trade_sec ≤ 0`, ~16.5% of raw rows) dropped before consolidation. |
+| Split | Market-cohort-disjoint and temporally separated. **Train:** 63 markets, 1,114,003 trades, all `timestamp` < 2026-02-28 06:34:59 UTC (Operation Epic Fury launch). **Test:** 10 markets, 257,177 trades, all `timestamp` ≥ 2026-02-28 14:02:57 UTC. Zero market overlap. K-fold inside train uses `GroupKFold(n_splits=5)` on `market_id`. The cohort-disjoint split is the leak-defence mechanism for the within-market direction-determinism channel previously surfaced (see §5 Leakage policy). |
+| Class balance | 0.503 positive in both splits; no resampling, no SMOTE, no `class_weight` adjustments at the data level (some sklearn estimators set `class_weight="balanced"` internally as a safety net but it has no effect on this balanced dataset). |
+| Single source of truth | `submission/data/consolidated_modeling_data.parquet` (303 MB, 1.37M × 87). The `wallet_enrichment.parquet` table (355 MB) is already joined into the consolidated parquet; it lives in `archive/` for traceback only. |
 
-### Multi-cluster data strategy
+## 5. Method
 
-The project has deliberately chosen to re-stream the 38.7 GB HF trades parquet for each additional event cluster rather than download the full file once (~39 GB on disk).
+The full pipeline lives in `submission/scripts/`. Each script is a teacher-friendly merge of the working files previously scattered across `archive/alex/v5_final_ml_pipeline/scripts/`. Source-of-truth merge tables are at the top of every script.
 
-- Each cluster build takes ~60 min network + ~15 min enrichment, producing a cluster-specific `00_hf_trades_cache.parquet` (tens of MB) and `03_consolidated_dataset.csv` (hundreds of MB to ~1 GB).
-- After N clusters are built, their `03_consolidated_dataset.csv` files are concatenated into a single consolidated dataset on disk. The concatenation must recompute two families of columns because they are cluster-local: (a) the running/prior features (`wallet_prior_trades`, `wallet_prior_volume_usd`, `wallet_prior_win_rate`, `market_trade_count_so_far`, `market_volume_so_far_usd`, `market_price_vol_last_1h`, and the `wallet_trades_in_market_last_*min` family), and (b) the `split` column, which is a trade-timestamp quantile inside the cluster and must be reissued globally on the merged dataset.
-- Rationale for repeated streams over a one-time full download: disk is tight, the cluster list is small (Iran now, potentially Maduro / Biden pardons later per §8), and the per-cluster subset parquets are the only permanent cache we need to keep.
+### 5.1 Pipeline overview (six numbered scripts + EDA)
 
-## 5. Method, Mapped to Course Lectures
+| Script | Stage | What it produces |
+|---|---|---|
+| `01_data_prep.py` | Load + leakage checks | `feature_cols.json` (80 features), `leakage_report.json` (5/5 checks pass on the bundled data) |
+| `02_features.py` | Taxonomy + scaler + Isolation Forest | `feature_taxonomy.json`, `scaler.joblib`, `iso_forest_scores.parquet` |
+| `03_train_models.py` | Train 7-8 models with 5-fold GroupKFold + complexity benchmark | `metrics.json`, `preds_oof.npy`, `preds_test.npz` per model; `comparison.csv`, `complexity.csv` |
+| `04_calibration.py` | Isotonic recalibration + reliability diagrams + bootstrap CI + permutation importance | `preds_test_cal.npz` per model; `calibration_summary.csv`, `auc_bootstrap_ci.csv`, `permutation_importance_<best>.csv`, reliability PNGs |
+| `05_backtest.py` | Capital-aware sim across 540 cells + naive baseline + headline figure | `sensitivity.csv`, `falsification.json`, `overview.png` |
+| `06_tuning_optuna.py` | Optuna TPE for RF / HistGBM / MLP | `best_params.json`, `study_history.csv`, `comparison_vs_default.json`, `preds_test_tuned.npz` per tuned model |
+| `report_tools/eda.py` | EDA (work in progress) | 19 figures + tables written directly to `submission/report_assets/figures/appendix/eda/` |
 
-### 5.1 Primary model: MLP for probability estimation (Lectures 8, 9)
+### 5.2 Models (curriculum mapping in parentheses)
 
-- Architecture: fully connected feed-forward network, two to four hidden layers, SELU activations, Glorot initialisation.
-- Regularisation: dropout in [0.2, 0.4] on dense layers (Lecture 9 rule of thumb), batch normalisation after each hidden layer.
-- Loss: binary cross-entropy. Optimiser: Adam with learning-rate scheduling.
-- Input: standardised behavioural and market-state features. `market_implied_prob` is withheld from the feature set so that `p_hat` is an independent probability estimate, directly comparable to the market.
-- Output: predicted probability of settlement in favour of the trade, `p_hat`. The gap `p_hat − market_implied_prob` is the trading signal.
+- **Logistic regression L2** (Lecture 4) — linear anchor.
+- **Logistic regression L1** (Lecture 4) — sparse / feature selection.
+- **Decision Tree** (Lecture 5) — interpretable single tree.
+- **Random Forest** (Lecture 5) — bagged ensemble.
+- **Histogram Gradient Boosting** (Lecture 5) — fast boosting.
+- **LightGBM** — alternative gradient-boosting library; included if installed.
+- **PCA(K = elbow) → Logistic Regression** (Lectures 4 + 5) — dimensionality reduction. K is chosen by the geometric-elbow method on the cumulative variance curve, not a magic 0.95 threshold.
+- **MLP (sklearn)** (Lectures 8, 9) — `(64, 32)` ReLU, Adam, early stopping. The Keras MLP previously planned was swapped for sklearn after `model.fit` deadlocked on the local stack; the architecture and regularisation strength are equivalent for this 80-feature input.
+- **Isolation Forest** (Lecture 7) — UNSUPERVISED. Score is added as one extra feature in `02_features.py`; not a stand-alone classifier in the headline table.
 
-### 5.2 Trading rule — two strategies evaluated side by side
+### 5.3 Cross-validation and calibration
 
-For a candidate trade at market price `P_market`, the per-token edge is `edge = P_model - P_market` (with sign flipped for SELL-side trades).
+5-fold `GroupKFold(market_id)` so no market spans train and val of any fold. The same group constraint is also the leak-defence rationale for the train/test split (no market in both sides), making fold-internal validation directly representative of test-time generalisation.
 
-| Strategy | Gate | Sizing | Primary metric |
-|---|---|---|---|
-| **General +EV** | `edge > 0.02` | flat $100 per trigger | total PnL, Sharpe |
-| **Home-run** (primary for geopolitical markets) | `edge > 0.20` AND `time_to_settlement < 6h` AND `price < 0.30` | larger per trigger | precision@k, PnL concentration |
+Per model the script saves:
+- `preds_oof.npy` — out-of-fold predictions on train rows.
+- `preds_test.npz` — raw test predictions from the full-train refit.
 
-The two-strategy design reflects the shape of the underlying phenomenon. The Columbia paper (Mitts and Ofir 2026) documents that informed flow in Iran markets is **bursty and late-concentrated**, not diffuse. A general +EV rule catches the long tail; a home-run rule concentrates capital on the pattern the documented cases fit (short time-to-deadline, low implied probability, large edge). The home-run rule is the primary trading evaluation; the general rule is the robustness check.
+`04_calibration.py` then fits `IsotonicRegression(out_of_bounds="clip")` on (oof, y_train) and applies it to raw test predictions, producing `preds_test_cal.npz`. Reliability diagrams (raw vs calibrated vs perfect-calibration line) are saved per model and combined into one figure for the report.
 
-**Cutoff-date sweep.** Run the streaming backtest with `N in {14, 7, 3, 1}` days before each deadline and plot PnL vs N. Expected shape: the home-run curve rises sharply as N shrinks, confirming that informed flow concentrates near the deadline.
+### 5.4 Backtest
 
-**Calibration.** After training, isotonic regression on the held-out calibration slice. Report Brier score and ECE. Calibration matters because the edge math only works if `P_model = 0.8` actually means right 80 percent of the time.
+`05_backtest.py` simulates ten betting strategies across a parameter grid:
 
-**Frozen for test.** Gate thresholds, sizing, and any calibrator parameters are tuned on the validation slice and frozen before touching the test slice.
+- **Confidence thresholds:** `phat_gt_0.99`, `phat_gt_0.95`, `phat_gt_0.9`.
+- **Top-K by score:** `top1pct_phat`, `top1pct_edge`, `top5pct_edge`.
+- **Expected-value rules:** `general_ev` (edge > 2 cents), `general_ev_late` (+ near-deadline), `general_ev_cheap` (+ low cost).
+- **Home run:** high edge, low cost, near deadline (asymmetric-information hypothesis).
 
-### 5.3 Unsupervised arm: autoencoder anomaly detection (Lecture 11)
+Each (model × strategy) cell is run across the grid `initial_capital ∈ {1k, 10k, 100k}` × `max_bet_pct ∈ {1%, 5%, 10%}` × `liquidity_scaler ∈ {1.0, 0.10}` (no copycats vs. 10× copycats sharing fill), giving 18 scenarios per cell. The execution loop applies a 5% cost floor (caps payoff at 19×), $0.50 gas per trade, 5% slippage above the 25%-of-trade-volume threshold, a 20% concentration cap per market, and chronological capital release on resolution.
 
-- Undercomplete stacked autoencoder trained on all trade feature vectors, SELU activations, MSE loss.
-- Anomaly score: per-trade reconstruction error.
-- Purpose: a parallel, unsupervised lens on the data that does not use the correctness target. Cross-check whether trades with the largest `|p_hat − market_implied_prob|` gap also carry high reconstruction error.
+A **naive consensus baseline** (`p_hat` = market-implied probability) runs the same strategies and is compared in `falsification.json`. Each ML model must beat this free heuristic for the strategy to count as model-driven alpha.
 
-### 5.4 Baselines (Lectures 4, 5, 6, 7)
+The headline figure `overview.png` is the heatmap of ROI per (strategy, model) at the headline scenario ($10K, 5% bet, no copycats).
 
-- Logistic regression on the same features, producing a baseline `p_hat` for the same trading rule.
-- Random forest, producing a baseline `p_hat` and feeding the feature-importance ranking used in Discussion.
-- Isolation Forest as an unsupervised anomaly baseline against the autoencoder.
-- Naive market baseline: trading rule with `p_hat = market_implied_prob`, which by construction produces zero gap and zero signal. This is the efficient-market null.
+### 5.5 Hyperparameter tuning
 
-### 5.5 Class imbalance and data issues (Lecture 7)
+`06_tuning_optuna.py` runs Optuna TPE with `MedianPruner` for Random Forest, HistGBM, and the sklearn MLP. RF and HistGBM use 5-fold GroupKFold; MLP uses a single `GroupShuffleSplit` (80/20) holdout because per-fold MLP fit time made full KFold infeasible overnight. Per model the script saves `best_params.json`, `study_history.csv`, `comparison_vs_default.json`, and `preds_test_tuned.npz`.
 
-- Compute per-market outcome balance. If the overall `bet_correct` rate falls outside the 35 to 65 percent band, apply sklearn `class_weight="balanced"` first.
-- If still degenerate, apply SMOTE to the training fold only, never to validation or test.
-- Outlier handling before training: winsorise `trade_value_usd` and `wallet_total_volume_usd` at the 1st and 99th percentiles. No whole-row removal, since extreme trades are part of the phenomenon of interest.
+The 2026-04-30 tuning run produced (test AUC, raw):
+- **Random Forest:** tuned 0.7751 vs default 0.8987 → **−0.124** (the default's AUC of 0.899 is suspicious; the tuned run is the more honest number).
+- **MLP (sklearn):** tuned 0.8047 vs default 0.8021 → **+0.0027** (effectively a wash).
+- **Backtest:** tuned RF is worse than default on 8 of 10 strategies; tuned MLP is worse on high-confidence strategies but better on broad-net strategies (`general_ev_cheap` +59.8pp, `general_ev` +45.6pp), consistent with the missing isotonic refit on tuned predictions shifting probability mass.
+- Per the team agreement, the **default** model is the headline; the tuned overview is presented as a side-by-side artifact in `submission/report_assets/figures/main/overview_tuned.png`.
 
-### 5.6 Missing-data typology and handling
+### 5.6 Complexity benchmark
 
-The modelling dataset (`data/consolidated_modeling_data.parquet`) contains zero NaN cells across all 1,371,180 rows × 87 columns. Structural missingness, the cases where a feature would otherwise be mathematically undefined given the prior history available at row time, is resolved by substitution with semantically meaningful constants at the feature-engineering stage in `alex/scripts/06b_engineer_features.py` rather than retained as NaN. The substitution rules are:
+Required by the guidelines. `03_train_models.py:benchmark_complexity()` measures wall-clock fit time, predict time per 1,000 rows (median over 3 runs), and a parameter-count proxy per model (coefficient size for linear, total leaf count for forests, parameter count for MLP). Output: `outputs/metrics/complexity.csv`.
 
-- **Cumulative `log_*` counts and volumes** (`log_taker_prior_trades_total`, `log_taker_cumvol_in_market`, `log_taker_prior_volume_total_usd`) take value 0 on a wallet's first-ever trade. This is `np.log1p(0) = 0`, the correct mathematical value, not an imputation.
-- **Per-(market, taker) features** (`taker_directional_purity_in_market`, `taker_position_size_before_trade`, `log_taker_prior_trades_in_market`) take value 0 on the first trade in a market via an explicit first-row reset before `cumsum().shift(1)`.
-- **Cross-market wallet share** (`taker_yes_share_global`) takes 0.5 in the absence of prior trades, a neutral prior with no directional information.
-- **Wallet on-chain features** (`wallet_polygon_age_at_t_days`, `wallet_polygon_nonce_at_t`, `wallet_n_inbound_at_t`, `days_from_first_usdc_to_t`, plus log variants) take value 0 on rows whose wallet failed Etherscan V2 enrichment (459 of 109,080 wallets remained non-retrievable after one retry pass; ~0.31% of trades).
+## 6. Leakage and safety policy
 
-Two binary indicator columns mark the most informative missingness species so the model can route substituted-zero cases differently from observed-zero cases: `wallet_enriched` (1 if Etherscan enrichment succeeded for the wallet, 0 otherwise) and `taker_first_trade_in_market` (1 on the wallet's first trade in this market, 0 otherwise). The latter covers the largest zero-density cluster in the data, surfaced in EDA panel `01_zero_density.png`.
+Consolidated from the 2026-04-29 leakage audit (full historical log preserved in `archive/data-pipeline-issues.md`). The submission's `01_data_prep.py` enforces the policy in code; this section documents the rationale.
 
-Because every fill value is a constant chosen on semantic grounds rather than a learned statistic, no imputation step is required at modelling time and no train-only fit is needed. The same numeric frame is fed to every model family. The convention is the constant strategy in `sklearn.impute.SimpleImputer` taught in the CBS course (Lecture 2 preprocessing) and documented for ML deployment in Géron (2022, §2) and Hastie, Tibshirani, & Friedman (2009, §9.6); the framework remains compatible with Rubin (1976) and Little & Rubin (2019), with the "no information yet" cases treated as a structural sub-type beyond the classic MCAR/MAR/MNAR taxonomy. Row dropping is not used. Per-column substitution rules, indicator definitions, and the change log are maintained in `data/MISSING_DATA.md`.
+### 6.1 Cohort-disjoint split as the headline defence
 
-### 5.7 Validation strategy
+The train/test split is by market cohort, not by trade timestamp inside a market. With 63 train markets and 10 test markets and zero overlap, no classifier can memorise per-market resolution from train rows and apply it to test rows of the same market. This protection lets the modelling feature set retain `side_buy`, `outcome_yes`, `taker_directional_purity_in_market`, `taker_position_size_before_trade`, and `market_buy_share_running` — features that would otherwise re-open the within-market direction-determinism leak (the previous P0-11 / P0-12 channels). Fold-internal validation uses `GroupKFold(market_id)` so the same protection applies during CV.
 
-Three layers, all on held-out data:
+### 6.2 Hard-excluded forbidden columns
 
-1. **Statistical.** ROC-AUC and calibration of `p_hat` and of the residualised gap against `bet_correct` on the validation and test slices. Brier-score improvement over the market-implied null.
-2. **Economic.** Cumulative PnL, Sharpe ratio, hit rate, maximum drawdown, and precision@k of each trading rule on the test slice only, against the baselines in Section 5.4. Streaming event-replay protocol — at each event, the decision uses only state strictly before the event timestamp.
-3. **Named-case sanity check.** Magamyman (the Columbia paper's primary documented Iran-strike insider, ~$553K entering at 17 percent implied probability 71 minutes before news) serves as a named validation anchor. Pull the wallet address from the paper appendix or the `pselamy/polymarket-insider-tracker` GitHub repo and check: does the MLP assign high `p_hat` to his documented trades, do the home-run triggers fire on them, and which feature values does the model find most salient? This is an illustrative anecdote in the Discussion, not a Results target — labelling off a single wallet would introduce selection bias if used for model selection.
+`01_data_prep.py:FORBIDDEN_LEAKY_COLS` excludes four columns from every modelling feature list:
 
-## 6. Evaluation Metrics
-
-| Layer | Metrics |
+| Column | Why excluded |
 |---|---|
-| Probability quality | ROC-AUC, PR-AUC, Brier score, calibration curve of `p_hat`. |
-| Gap quality | ROC-AUC of the residual `p_hat − market_implied_prob` for predicting `bet_correct`. |
-| Trading rule | Cumulative PnL, annualised Sharpe, hit rate, maximum drawdown, turnover, trade count. |
-| Unsupervised arm | Overlap between top-decile gap trades and top-decile reconstruction-error trades, benchmarked against a random-overlap null. |
-| Complexity | Training wall time and inference latency per 1k trades, relative to logistic regression (mandatory per the project guidelines). |
+| `kyle_lambda_market_static` | Definitional leak — fit on each market's first half and broadcast to all rows; trades in the first half see post-trade information from the same market. |
+| `wallet_funded_by_cex` | Lifetime CEX-funding flag; uses post-trade events. The point-in-time variant `wallet_funded_by_cex_scoped` is causally clean and retained. |
+| `n_tokentx` | Lifetime transaction total; peeks at post-trade activity. |
+| `wallet_prior_win_rate` | Naive cumulative mean over priors regardless of resolution time. The causal variant `wallet_prior_win_rate_causal` (only priors with `resolution_ts < t`) is retained. Empirical leak component on train: Pearson r = 0.367 (leaky) vs 0.236 (causal), a +0.131 leak-driven component on the strongest single linear correlate. |
 
-## 7. Interpretability and Ethics
+### 6.3 Causality checks (`01_data_prep.py`)
 
-Lecture 14 treats XAI at a conceptual level rather than as specific techniques. The report will therefore rely on:
+- **S1** — train + test row counts match the released contract (1,114,003 + 257,177).
+- **S2** — class balance inside the 35-65% band (no resampling needed).
+- **C1** — no train trade is timestamped after the strike event; no test trade is timestamped after the ceasefire announcement.
+- **F3** — none of the four forbidden columns is allowed into the feature list (they may exist in the parquet for traceback completeness, but get filtered out at load time).
+- **D1** — `pre_trade_price` matches `price.shift(1)` per market on > 99.5% of rows (verifies the upstream one-bar shift is correct).
 
-- Feature-importance rankings from the random forest baseline and permutation importance on the MLP validation set.
-- Partial-dependence plots for the top three features driving the gap.
-- A brief XAI framing paragraph using the traceability, accuracy, and understanding pillars from Lecture 14.
+All five checks pass on the bundled dataset.
 
-The ethical consideration section is anchored on a concrete policy tension documented in early 2026. In November 2025, Polymarket CEO Shayne Coplan described insider edge on *60 Minutes* as "a good thing" and "an inevitability." Four months later, on 23 March 2026, Polymarket announced explicit rules prohibiting (1) trading on stolen confidential information, (2) trading on illegal tips, and (3) trading by anyone in a position of authority over the event outcome. That pivot frames the section.
+### 6.4 Per-token vs YES-normalised price (D-029)
 
-Concretely, the section will cover:
-- **Privacy.** Pseudonymous on-chain wallets are persistent; pattern-linking is de-anonymising. Features are aggregated and no individual wallet list is published. The Magamyman case in the Discussion uses information already public in the Columbia paper.
-- **Dual use.** A trained model could help regulators detect manipulation or help platforms surveil users. The Coplan quote versus the March-2026 rule change is the real policy tension.
-- **Label validity.** "Informed trading" versus "skill" versus "luck" is genuinely ambiguous. `bet_correct` is a probabilistic signal, not a legal determination.
-- **Enforcement gap.** Despite public documentation of Magamyman, Burdensome-Mix, and the Biden-pardons wallets, no publicly disclosed wallet has been banned and no profits clawed back as of the cut-off date. Detection without consequence is the current equilibrium; the work's policy relevance depends on whether that equilibrium shifts.
+The HF `price` field is per-token (each token has its own price), not YES-normalised. The naive `pre_trade_price = price.shift(1)` would give the previous trade's per-token price, which could be either side of the market. `compute_pre_yes_price_corrected()` in `05_backtest.py` tracks last-seen token1 and token2 prices separately, shifts to exclude the current trade, and reconstructs YES probability as `last_t1` (else `1 - last_t2`, else 0.5). Discovered 2026-04-28 as the cause of a ~400× ROI inflation in the previous backtest.
+
+### 6.5 Open decisions
+
+- **Feature count: 80 vs 77.** The submission keeps 80 features; the 2026-04-29 audit recommended dropping 4 additional low-signal CEX features (mutual information ≤ 0.0014, marginal hit-rate diff ≤ 0.6 pp). Either is defensible. Drop them if the report wants a single tighter feature inventory.
+- **`market_implied_prob` source asymmetry.** 100% of HF rows fall back to the trade's execution price (no CLOB history pulled for events 114242 and 236884); only 3% of API rows match `price` (the rest use CLOB mid). Not a feature leak (the column is excluded from features), but the trading-rule benchmark is the trade's own execution price on HF rows. To cite as a methodology limitation; or fetch CLOB history for the 67 HF markets (~1 h network) for a rigorous fix.
+
+## 7. Missing-data policy
+
+The modelling parquet contains zero NaN cells across all 1,371,180 rows × 87 columns. Structural missingness — features that would otherwise be mathematically undefined given the prior history available at row time — is resolved by substitution with semantically meaningful constants at the feature-engineering stage rather than retained as NaN. The substitution rules:
+
+- **Cumulative `log_*` counts and volumes** take value 0 on a wallet's first-ever trade (`np.log1p(0) = 0` is the correct mathematical value).
+- **Per-(market, taker) features** (`taker_directional_purity_in_market`, `taker_position_size_before_trade`, `log_taker_prior_trades_in_market`) take value 0 on the first trade in a market via an explicit first-row reset before `cumsum().shift(1)`.
+- **Cross-market wallet share** (`taker_yes_share_global`) takes 0.5 in the absence of prior trades — a neutral prior with no directional information.
+- **Wallet on-chain features** (Polygon age, nonce, inbound count, USDC funding) take value 0 on rows whose wallet failed Etherscan V2 enrichment (459 of 109,080 wallets, ~0.31% of trades).
+
+Two binary indicator columns mark the most informative missingness species so the model can route substituted-zero cases differently from observed-zero cases: `wallet_enriched` (1 if Etherscan enrichment succeeded) and `taker_first_trade_in_market` (1 on a wallet's first trade in this market). Per-feature substitution rules and the change log live in `submission/data/MISSING_DATA.md`.
+
+The convention is the constant strategy in `sklearn.impute.SimpleImputer` taught in the course (Lecture 2 preprocessing) and documented in Géron (2022, §2). The framework remains compatible with Rubin (1976) and Little & Rubin (2019), with the "no information yet" cases treated as a structural sub-type beyond the classic MCAR/MAR/MNAR taxonomy.
+
+## 8. Evaluation Metrics
+
+| Layer | Metrics | Where |
+|---|---|---|
+| Probability quality | ROC-AUC, Brier score, Expected Calibration Error (ECE) — raw and calibrated | `outputs/models/<m>/metrics.json`, `outputs/metrics/calibration_summary.csv` |
+| Confidence intervals | 1,000-resample bootstrap 95% CI on test AUC | `outputs/metrics/auc_bootstrap_ci.csv` |
+| Reliability | Per-model and combined reliability diagrams | `outputs/metrics/reliability_*.png` |
+| Feature attribution | sklearn permutation importance (top-15) for the best model | `outputs/metrics/permutation_importance_<best>.csv` |
+| Trading rule | Per cell: number of signals, number executed, final capital, ROI, max drawdown | `outputs/backtest/sensitivity.csv` |
+| Falsification | Best ML model vs. naive market-favourite baseline per strategy | `outputs/backtest/falsification.json` |
+| Headline | ROI heatmap (strategy × model) at $10K bankroll, 5% max bet, no copycats | `outputs/backtest/overview.png` |
+| Complexity | Fit time, predict time per 1,000 rows, parameter count proxy | `outputs/metrics/complexity.csv` |
+
+## 9. Interpretability and Ethics
+
+Lecture 14 treats XAI conceptually rather than as specific techniques. The report uses:
+- Permutation-importance ranking on the best calibrated model (`04_calibration.py`).
+- The reliability diagrams from §8 as the calibration / "does 0.8 mean 80%" check.
+- A traceability + accuracy + understanding framing paragraph from Lecture 14.
+
+The ethics section anchors on a concrete policy tension. In November 2025 Polymarket CEO Shayne Coplan described insider edge on *60 Minutes* as "a good thing" and "an inevitability." On 23 March 2026 Polymarket announced explicit rules prohibiting (1) trading on stolen confidential information, (2) trading on illegal tips, and (3) trading by anyone in a position of authority over the event outcome. The section covers:
+
+- **Privacy.** Pseudonymous on-chain wallets are persistent; pattern-linking is de-anonymising. Features are aggregated and no individual wallet list is published. The Magamyman case in Discussion uses information already public in the Columbia paper (Mitts and Ofir 2026).
+- **Dual use.** A trained model could help regulators detect manipulation or help platforms surveil users.
+- **Label validity.** "Informed trading" vs "skill" vs "luck" is genuinely ambiguous. `bet_correct` is a probabilistic signal, not a legal determination.
+- **Enforcement gap.** Despite public documentation of Magamyman, Burdensome-Mix, and the Biden-pardons wallets, no publicly disclosed wallet has been banned and no profits clawed back as of the cut-off date.
 - **Dataset bias.** Selected markets are high-volume English-language geopolitical contracts on a specific event cluster; findings do not necessarily generalise.
-- **Platform surveillance context.** Polymarket's own ML detection stack ("Vergence", Palantir + TWG AI) launched 10 March 2026 but is scoped to sports markets. Geopolitical markets — the domain of this project — have no publicly disclosed ML surveillance, which is one reason the work is worth doing.
-- **LLM usage disclosure.** Required by the exam brief. The Contribution and LLM Usage Disclosure section of the report documents which parts of the pipeline were co-authored with Claude.
+- **Platform surveillance context.** Polymarket's own ML detection stack ("Vergence", Palantir + TWG AI) launched 2026-03-10 but is scoped to sports markets. Geopolitical markets — the domain of this project — have no publicly disclosed ML surveillance, which is one reason the work is worth doing.
+- **LLM usage disclosure.** Required by the exam brief. The Contribution and LLM Usage Disclosure section of the report documents which parts of the pipeline were co-authored with Claude. Template in `paper_guidelines.md`.
 
-## 8. Out of Scope — Reserved for Discussion and Future Work
+## 10. Out of Scope — Reserved for Discussion and Future Work
 
-The following observation is explicitly *outside* the research question and the evaluation. It is reserved for the Discussion and theory sections of the report and may be extended in future work.
-
-- **Feature-importance parallel to informed-trading traits.** If the features driving the `p_hat − market_implied_prob` gap resemble those documented in the informed-trading literature (within-trader bet size, cross-sectional bet size, pre-event timing, directional concentration, wallet newness; see Mitts and Ofir 2026), the Discussion will flag the parallel and note that the signal may be partially picking up informed flow. The Magamyman sanity check in Section 5.7 feeds this discussion.
-- **Documented-case anecdotes** (Burdensome-Mix on Maduro, Biden-pardons wallets) are illustrative rather than evaluation targets. The Iran ceasefire cluster, by contrast, is part of the main evaluation scope via events 355299 and 357625.
+- **Feature-importance parallel to informed-trading traits.** If features driving the gap resemble those documented in the informed-trading literature (within-trader bet size, pre-event timing, directional concentration, wallet newness; see Mitts and Ofir 2026), Discussion flags the parallel and notes the signal may be partially picking up informed flow.
+- **Documented-case anecdotes** (Burdensome-Mix on Maduro, Biden-pardons wallets) are illustrative, not evaluation targets.
 - **Cross-market sibling-price injection.** A second-order arbitrage feature layer using prices of related sub-markets (e.g. "by Feb 14" price as a feature for the "by Feb 28" market) is deferred.
 - **Cross-event-family pooling** with non-Iran clusters (Maduro, Biden pardons, Taylor Swift) is deferred.
-- **Orderfilled event-level analysis.** The HF mirror also exposes `orderfilled_part1-4.parquet` (raw on-chain OrderFilled logs, ~125 GB combined). Not used here — the derived `trades.parquet` carries the aggregated per-trade records we need. Reserved for future work that needs maker/taker attribution at order level.
+- **GDELT news-timing enrichment** is deferred.
+- **Orderfilled event-level analysis.** The HF mirror also exposes `orderfilled_part1-4.parquet` (raw on-chain OrderFilled logs, ~125 GB combined). The derived `trades.parquet` carries the aggregated per-trade records the project needs; raw orderfilled is reserved for future maker/taker attribution at order level.
+- **Magamyman sanity check** — pull Magamyman's wallet from the Columbia appendix or `pselamy/polymarket-insider-tracker`, check whether the best model assigns high `p_hat` to his documented trades. Illustrative anecdote in Discussion only, not a Results target.
+- **CLOB history for HF markets** — would resolve the `market_implied_prob` source asymmetry noted in §6.5.
 
-## 9. Report Outline Alignment
-
-The docx at `ML/report/ML_final_exam_paper.docx` follows the new extended guidelines and has been synced with this plan (cover, motivation, dataset, data extraction, features, and limitations updated 19 April). Subsection headings inside *Methodology → Data Analytics: Modelling, Methods and Tools*:
-
-- H3: *Primary model — MLP for probability estimation*
-- H3: *Trading rule on the probability gap*
-- H3: *Unsupervised arm — autoencoder and Isolation Forest*
-- H3: *Baselines and the market-implied benchmark*
-
-The economic evaluation of the trading rule sits under Results. The informed-trading parallel, if observed, sits under Discussion.
-
-## 10. Deliverables and Next Steps
-
-| # | Task | Status | Depends on |
-|---|---|---|---|
-| 1 | Polymarket Gamma + CLOB + Data API fetcher with side-split and trade-price fallback | done (19 Apr) | — |
-| 2 | Full trade extraction across four target events (API-only, v1) | done (19 Apr) | 1 |
-| 3 | True resolution-timestamp derivation (`resolution_ts`) and `settlement_minus_trade_sec` | done (19 Apr) | 2 |
-| 4 | Running market and wallet features (market-state, wallet-global) | done (19 Apr) | 2 |
-| 5 | Expanded six-layer feature set — time, log_size, wallet-in-market bursting, directional purity, position-aware, interactions | done (19 Apr, Alex-adoption pass) | 2 |
-| 6 | Trade-timestamp temporal split column in `03_consolidated_dataset.csv` | done (19 Apr, Alex-adoption pass) | 5 |
-| 7 | Hybrid HF + API build script (`scripts/02_build_dataset.py`), rewritten 20 Apr to use pyarrow + fsspec chunked row-group reads with retry + reopen (duckdb httpfs hit Snappy decompression errors mid-stream on the 38.7 GB file) | done (20 Apr) | 5 |
-| 8 | Run the hybrid build end-to-end for the Iran cluster (events 114242, 236884, 355299, 357625). Output: `data/03_consolidated_dataset.csv`, 1,209,787 rows × 57 cols, 806 MB; 67 HF markets + 7 API markets; no market truncated. HF stream took ~64 min; enrichment ~13 min | done (20 Apr) | 7 |
-| 9 | Post-resolution filter applied (`settlement_minus_trade_sec > 0`) in modelling | open | 3 |
-| 10 | Polygonscan on-chain wallet enrichment (Layer 6 collection, `scripts/03_enrich_wallets.py`) — Etherscan V2 multichain free tier, 3 keys × 6 workers (18 total). Initial pass 21 Apr evening reached 109,080 wallets with 6.88 % NOTOK failure rate (Etherscan server-side rejection on specific addresses, non-retryable inside the 5-retry budget). **Retry pass 22 Apr early AM re-attempted the 7,509 failed wallets; 7,050 recovered (93.9 % recovery rate).** Final: 108,621 ok / 459 permanent failures (0.42 %). | done (22 Apr early AM) | 2 |
-| 10b | Layer 6 integration (`scripts/11_add_layer6.py`) — bisect per-wallet timestamp arrays onto each trade. **Emits 12 columns** (nine semantic features: `wallet_polygon_age_at_t_days`, `wallet_polygon_nonce_at_t`, `wallet_n_inbound_at_t`, `wallet_n_cex_deposits_at_t`, `wallet_cex_usdc_cumulative_at_t`, `days_from_first_usdc_to_t`, `wallet_funded_by_cex`, `wallet_funded_by_cex_scoped`, `wallet_enriched`; plus three log variants: `wallet_log_polygon_nonce_at_t`, `wallet_log_n_inbound_at_t`, `wallet_log_cex_usdc_cum`). In-place CSV patch with `.pre11.csv` backup. Pandas-3 datetime-unit gotcha (storage is `[us]` not `[ns]`; cast to `datetime64[ns, UTC]` before `// 10**9`). | done (22 Apr early AM) | 10 |
-| 10c | Cross-market category-entropy feature (`scripts/10_wallet_category_entropy.py`) — stream HF mirror for 109K wallets' full Polymarket history, bucket event slugs into 8 categories, expanding entropy per wallet, +1 col | done (21 Apr evening) | 2 |
-| 10d | Missing-data policy + indicator columns (`scripts/11b_add_missingness_flags.py`, `data/MISSING_DATA.md`) — 4 binary indicators + typology doc; §5.6 policy landed | done (21 Apr evening) | 10c |
-| 10e | Preserve per-market `outcomes` array through `enrich_trades` and derive trade-level `is_yes` column (`scripts/01_polymarket_api.py` patch). Backfill for current CSV via `scripts/15_backfill_is_yes.py`. Fixes a missing YES/NO label (outcomes-array had been dropped during the meta→trade join, so downstream cohort picking had no reliable way to map `winning_outcome_index` to a YES/NO label). Backfill result on current CSV: 19 YES / 55 NO markets, 0 mismatches vs meta source; all 7 ceasefire markets resolved NO. | done (22 Apr, PR #6) | 8 |
-| 10f | Experiment-cohort builder (`scripts/14_build_experiment_splits.py`) — slices small, self-contained parquets for train / val / test per the §4 split definition, loads in <1s instead of re-reading the 1 GB CSV each run | open | 10e |
-| 11 | GDELT news-timing enrichment | deferred (free API, awaits feature-definition design) | 2 |
-| 12 | EDA script following repository Design.md conventions; figures and tables inserted into report Appendix with cross-references from the EDA body | done (20 Apr) | 8 |
-| 13 | MLP training and baselines (logistic regression, random forest, isolation forest, naive market, autoencoder) | open | 6 |
-| 14 | Isotonic calibration on validation slice | open | 13 |
-| 15 | Streaming event-replay backtest — general +EV and home-run, cutoff-date sweep | open | 14 |
-| 16 | Out-of-sample trading-rule evaluation on the test slice | open | 15 |
-| 17 | Feature-importance and permutation importance for Discussion | open | 13 |
-| 18 | Magamyman sanity check | open | 13 |
-| 19 | Report drafting in the CBS docx template | all | 12 to 18 |
-
-## 11. Open Decisions
-
-- Exact edge thresholds for the general +EV rule (currently 0.02) and the home-run rule (currently 0.20) — may shift after validation tuning.
-- Position-sizing rule for the home-run strategy: flat larger stake versus Kelly-scaled.
-- Whether to model trade value in USD as a feature (already included via `trade_value_usd` and `log_size`) or additionally as a sample weight during training.
-- *Resolved 2026-04-29.* Train / val / test split strategy. After two earlier revisions (trade-timestamp quantile, then a 4-market narrow-window design), the v4 final pipeline locks in a market-cohort-disjoint split with temporal separation: 63 strike-ladder markets pre-2026-02-28 strike for train (1,114,003 trades), 10 ceasefire-ladder markets post-strike for test (257,177 trades), zero market overlap. K-fold inside the training set uses `GroupKFold(n_splits=5)` on `market_id`. This split is also the leak-defence mechanism for the within-market direction-determinism channel; see §4 → Split row and `data-pipeline-issues.md` (2026-04-29 audit) for the full rationale.
-- *Resolved 2026-04-29.* Missing-data policy switched from preserved-NaN-with-five-indicators to constant-substitution-with-two-indicators at the feature-engineering stage (see §5.6). Trade-off: simpler to defend in 1–2 paragraphs and removes per-model imputation logic; loses three of the original five indicator columns. The two retained indicators (`wallet_enriched`, `taker_first_trade_in_market`) cover the largest pipeline-missingness and structural-missingness species in the data. Full per-feature substitution rules and prior-policy change log in `data/MISSING_DATA.md`.
-- Burst-detection thresholds: number of trades `K` in a rolling window `N` minutes that triggers `wallet_is_burst`. Default `K=3, N=10min`.
-- Whale threshold for `wallet_is_whale_in_market`: default 95th percentile of per-market cumulative wallet volume.
-- *Investigated and closed as non-issue, 22 Apr.* Data-integrity audit of `bet_correct` across all 74 markets. A consistency check during the `is_yes` backfill initially flagged the 7 API-path ceasefire markets as potentially corrupt — all 7 had `winning_outcome_index=1` while the per-trade `outcome` column (populated only for API-path trades) disagreed with `wi` for 3 of them. Follow-up investigation showed **no corruption**: the per-trade `outcome` column is not market resolution, it is `outcomeIndex == 0` (i.e. "is this trade on the Yes-side token"), so its disagreement with `wi` was expected and harmless. Independent verification: (a) price-tail convergence to 1.0 / 0.0 per outcomeIndex confirms `winning_outcome_index` is correct for all 7 ceasefire markets (outcomeIndex=1 tail price ≈ 0.995 vs outcomeIndex=0 ≈ 0.005); (b) `bet_correct` internal-consistency invariant — within each market, all BUY trades on one outcomeIndex have mean `bet_correct` ≈ 1 and the other ≈ 0 — holds for 74/74 markets, so the training target is reliable throughout. The only persistent artefact of the original confusion was the "55 YES / 19 NO" framing in the 21 Apr handover, now corrected to 19 YES / 55 NO (see §10 row 10e). Worth keeping the invariant check in a unit test to catch genuine label-corruption if it appears in a future rebuild.
-- *Resolved 22 Apr early AM.* Initial Layer 6 pass produced 6.88 % NOTOK wallet failures (vs ~1 % originally estimated). A targeted retry pass on the 7,509 failed wallets recovered 7,050 of them (93.9 % recovery) — consistent with the "intermittent server-side latency" diagnosis rather than permanent address rejection. Final parquet state: 108,621 / 109,080 wallets enriched (99.58 %), 459 permanent failures (0.42 %). Trade-level Layer 6 coverage: 1,206,050 / 1,209,787 rows (99.69 %); residual 3,737 trades carry `wallet_enriched=0` and NaN Layer 6 per §5.6. To be noted in Methodology → Known Limitations as a ~0.4 % non-coverage fraction.
-
-## 12. Repository Layout
-
-Everything lives under `ML/report/`. Current folder layout:
+## 11. Repository Layout
 
 ```
-report/
-├── ML_final_exam_paper.docx                 # The paper. Updated as the project progresses.
-├── project_plan.md                          # This file. Source of truth. Read first.
-├── Design.md                                # Naming and code-style conventions for scripts.
-├── .env.example                             # Template for Etherscan V2 keys (copy to .env).
+ML/report/
+├── KAN-CDSCO2004U_*.docx, .pdf       <- the actual hand-in document
+├── paper_guidelines.md                <- grading rules + LLM disclosure template
+├── project_plan.md                    <- this file (single source of truth)
+├── Design.md                          <- script naming + code-style conventions
+├── .env.example                       <- template for Etherscan V2 keys
 │
-├── alex_updates_before_incorporation/       # Reference-only: Alex's narrower-scope material.
-│   ├── design-decisions.md                  # Framing, features, baselines — we adopted the pre-EDA parts only.
-│   ├── mldp-project-overview.md             # His 7-sub-market proposal (superseded for our scope).
-│   └── SESSION-HANDOVER.md                  # Alex's end-state handover after the v2/v3 runs.
+├── submission/                        <- the code+data hand-in bundle
+│   ├── README.md                      run instructions + script-merge map
+│   ├── requirements.txt               pinned dependencies
+│   ├── data/                          single source of truth (303 MB)
+│   │   ├── consolidated_modeling_data.parquet
+│   │   ├── consolidated_modeling_data.info.json
+│   │   ├── README.md, MISSING_DATA.md, release-manifest-2026-04-29.md
+│   ├── scripts/
+│   │   ├── config.py                  central paths + seeds + N_FOLDS
+│   │   ├── 01_data_prep.py            load + leakage checks + feature list
+│   │   ├── 02_features.py             taxonomy + scaler + Isolation Forest score
+│   │   ├── 03_train_models.py         7-8 models + GroupKFold + complexity benchmark
+│   │   ├── 04_calibration.py          isotonic + reliability + bootstrap CI + permutation importance
+│   │   ├── 05_backtest.py             realistic backtest + naive baseline + headline figure
+│   │   └── 06_tuning_optuna.py        Optuna TPE for RF / HistGBM / MLP
+│   ├── outputs/                       regenerated when scripts re-run (gitignored upstream)
+│   │   └── data/, models/, metrics/, backtest/, tuning/
+│   └── report_assets/                 frozen artefacts cited in the .docx
+│       ├── figures/main/              overview_baseline.png, overview_tuned.png, capital_curves.png
+│       ├── figures/appendix/eda/      19 EDA figures + tables + eda_appendix.docx
+│       └── tables/                    tuning_summary.md, backtest_sensitivity.csv, tuned_*.json
 │
-├── archive/                                 # Older checkpoints preserved just in case.
-│   └── ML_final_exam_paper.pre08.docx       # Pre-Alex-incorporation snapshot of the paper.
+├── report_tools/                      <- live docx automation (NOT graded)
+│   ├── README.md                      what each script does + run order
+│   ├── eda.py                         regenerate EDA into submission/report_assets/
+│   ├── build_eda_appendix.py          pack EDA figures into eda_appendix.docx
+│   ├── 28_finalise_report.py          finalise pass over the .docx body
+│   ├── 29_pin_appendix_tables.py      pin appendix tables
+│   ├── 30_us_spelling_and_table_fix.py US spelling + table-cell fixes
+│   ├── 31_fix_page_total.py           page-total field fix
+│   ├── 36_remove_stray_logo.py        remove a stray logo from one body page
+│   └── backup/                        .pre_*.docx rollback snapshots
 │
-├── assets/                                  # Static image assets used inside the docx.
-│   ├── cbs_paper_image_{1,2,3}.png          # CBS cover/branding images.
-│   └── trading_image.jpg                    # Motivation-section illustration.
-│
-├── data/                                    # SINGLE source of truth for all team modeling data (consolidated 2026-04-29).
-│   ├── consolidated_modeling_data.parquet   # ← USE THIS for modeling (317.5 MB, 1,371,180 rows × 87 cols, train/test in `split` column).
-│   ├── consolidated_modeling_data.info.json # Row/column counts, build timestamp, full wallet feature list.
-│   ├── wallet_enrichment.parquet            # Layer 6 Etherscan enrichment output; joined into modeling file.
-│   ├── README.md                            # Load snippet + folder layout + provenance.
-│   ├── MISSING_DATA.md                      # NaN handling and indicator-column policy; cited by §5.6.
-│   └── archive/                             # Frozen traceback only — not needed for modeling.
-│       ├── train_features_walletjoined.parquet
-│       ├── test_features_walletjoined.parquet
-│       ├── pipeline/                        # Upstream raw + intermediate files (00_*, 01_*, 02_*, 03_consolidated_dataset.csv, iran_strike_labeled_v2.parquet).
-│       └── alex/                            # Alex's pre-wallet-join pipeline outputs (train/test/markets_subset/feature_cols).
-│
-├── guidelines/                              # CBS course materials and reference exemplars.
-│   ├── 01_Project_Guidelines_original.pdf
-│   ├── 02_Project_Guidelines_extended.pdf   # Newer instructions — the one we follow.
-│   ├── 03_CBS_GenAI_Guidelines.pdf
-│   └── 04_Sample_Report_Face_Mask_Detection.pdf
-│
-├── handovers/                               # Per-session handovers; newest at top level.
-│   └── handover_21_apr.md                   # Evening 21 Apr: Bucket 2 entropy done, Layer 6 enrichment in flight.
-│
-├── outputs/                                 # Generated artefacts from scripts.
-│   └── eda/                                 # Figures (01–09), skewness table, top-correlations list, summary.txt.
-│
-└── scripts/                                 # Data pipeline + modelling code.
-    ├── 01_polymarket_api.py                 # Gamma / CLOB / Data API client + feature-enrichment library.
-    ├── 02_build_dataset.py                  # Primary entry point. Hybrid HF + API builder; writes 03_consolidated_dataset.csv.
-    ├── 02_build_dataset_legacy.py           # API-only builder, superseded; kept for reference.
-    ├── 03_enrich_wallets.py                 # Etherscan V2 on-chain enrichment (Layer 6 collection).
-    ├── 03b_enrichment_dashboard.py          # Live HTML progress dashboard for long enrichment runs.
-    ├── 04_eda.py                            # Writes EDA figures + tables to outputs/eda/.
-    ├── 05_docx_fix_text.py                  # One-shot: align docx body text with project state.
-    ├── 06_docx_insert_eda.py                # One-shot: insert EDA narrative + appendix into the docx.
-    ├── 07_docx_restructure.py               # One-shot: page-break / References / headroom / inline-table fixes.
-    ├── 08_docx_incorporate_alex.py          # One-shot: 14 pre-EDA text edits adopting Alex's sharper framing.
-    ├── 09_patch_new_features.py             # One-shot Bucket 1 patcher: 3 Layer-5 features in-place.
-    ├── 10_wallet_category_entropy.py        # Bucket 2 #4: HF-stream + duckdb bucketed entropy → +1 col.
-    ├── 11_add_layer6.py                     # Bucket 2 #5: bisect-based Layer 6 integrator → +12 cols (NaN-aware).
-    ├── 11b_add_missingness_flags.py         # Adds 4 binary missingness indicator columns per §5.6 policy.
-    ├── 12_train_mlp.py                      # MLP + LogReg + RF baselines + isotonic calibration (scaffolded).
-    ├── 14_build_experiment_splits.py        # Slices train/val/test cohort parquets per §4 split definition.
-    └── 15_backfill_is_yes.py                # One-shot: adds outcomes + is_yes columns to existing CSV (obsolete after next rebuild).
+└── archive/                           <- preserved historical material
+    ├── data-pipeline-issues.md        full P0/P1/P2 log + 2026-04-29 audit (folded into §6)
+    ├── foundation.md                  pre-clean-up shared foundation (folded into §1-3, §9)
+    ├── alex/                          full v5 pipeline + tuning + EDA scripts
+    ├── scripts/                       docx-postprocessing scripts (.py)
+    ├── outputs/                       v2/v3/v4 backtests, leakage diagnostics, EDA dumps
+    ├── data_old/                      original data folder including wallet_enrichment.parquet (355 MB)
+    ├── backup/, assets/, notes/, handovers/, guidelines/
+    └── ML_final_exam_paper.pre*.docx  13 historical .docx snapshots
 ```
 
-**Reproduction workflow.** From `report/`:
+## 12. Reproduction workflow
 
-1. **Pipeline build (first run or full rebuild):**
-   - `python scripts/02_build_dataset.py` — streams HF + pulls ceasefire markets via API, writes `data/03_consolidated_dataset.csv` at the base feature set with train/val/test labels.
-   - `python scripts/09_patch_new_features.py` — in-place Bucket 1 Layer 5 patch (+3 cols).
-2. **Enrichment + feature expansion (needs `.env` with Etherscan V2 keys):**
-   - `python scripts/10_wallet_category_entropy.py` — HF-stream cross-market history → duckdb bucketed entropy → +1 col. Resumable.
-   - `python scripts/11b_add_missingness_flags.py` — derives 4 binary missingness indicators from the running/expanding feature columns → +4 cols. Fast (~1 min).
-   - `python scripts/03_enrich_wallets.py` — Etherscan V2 tokentx per wallet → `data/wallet_enrichment.parquet`. Resumable via 500-wallet checkpoints.
-   - `python scripts/11_add_layer6.py` — bisect per-trade Layer 6 features → +12 cols; NaN on un-enriched rows per §5.6 policy.
-3. **EDA:**
-   - `python scripts/04_eda.py` — writes plots and summaries into `outputs/eda/`. Figures then flow from there into the docx.
-4. **Experiment cohorts (market-cohort split per §4):**
-   - `python scripts/14_build_experiment_splits.py` — derives `is_yes` (or trusts column if already present from the patched 01 pipeline) and slices `data/experiments/{train,val,test_no,test_yes}.parquet` per the §4 market-cohort definition. Output parquets are tiny (~few MB each) and load in <1s.
-5. **Modelling (scaffolded, pending data completion):**
-   - `python scripts/12_train_mlp.py` — LogReg + RF + MLP + isotonic calibration on the cohort parquets from step 4. Outputs per-model `metrics.json`, `feature_list.json`, MLP `loss_curve.png` into `outputs/modelling/<model>/`.
-6. **Report integration:**
-   - `ML_final_exam_paper.docx` consumes figures from `outputs/eda/` (already wired) and will consume modelling outputs next.
+From `ML/report/`:
 
-The one-shot `05–09_docx_*` scripts were run once during the pre-EDA restructure pass; they are not part of the routine rebuild loop but remain in-tree as evidence of the edits applied.
+```bash
+pip install -r submission/requirements.txt
+cd submission/scripts/
+python 01_data_prep.py            # ~30 s   leakage + feature list
+python 02_features.py             # ~5 min  IsoForest + scaler
+python 03_train_models.py         # ~60 min CV + complexity benchmark
+python 04_calibration.py          # ~10 min calibration + bootstrap CI + permutation importance
+python 05_backtest.py             # ~5 min  capital-aware sim
+python 06_tuning_optuna.py        # ~120 min Optuna TPE for RF + HistGBM (MLP optional)
+```
+
+Scripts can be run independently after `01_data_prep.py` produces `feature_cols.json`. `06_tuning_optuna.py` is optional and the report uses the side-by-side baseline-vs-tuned figure already in `submission/report_assets/figures/main/`.
+
+## 13. Status as of 2026-05-03
+
+- **Data pipeline:** done. Single consolidated parquet shipped; row counts and target balance verified by `01_data_prep.py`.
+- **Modelling pipeline:** done. Six numbered scripts in `submission/scripts/`, all teacher-friendly and verified by syntax + import checks. `01_data_prep.py` runtime-verified end-to-end against the bundled data.
+- **Headline figures:** ready in `submission/report_assets/figures/main/` (baseline overview, tuned overview, capital curves).
+- **EDA:** 19 figures + tables in `submission/report_assets/figures/appendix/eda/`, eda_appendix.docx generated.
+- **Tuning:** 30-trial RF + 30-trial MLP runs completed 2026-04-30; baseline kept as headline per team agreement.
+- **Report:** `KAN-CDSCO2004U_*.docx` exists; final integration of `submission/report_assets/` figures and tables is the open item.
+- **LLM disclosure:** template in `paper_guidelines.md` §7; needs filling in with actual percentages and validation notes per the extended guidelines.
+
+## 14. Open Decisions
+
+- **Feature count: 80 vs 77.** See §6.5.
+- **Headline model.** Default RF leads on baseline test AUC (0.899) but the number is suspiciously high; tuned RF drops to 0.775. The MLP baseline (0.802) is the more honest headline if the report wants to cite a single number. Decision: present both, lead with the multi-model comparison table.
+- **Market-implied benchmark fix.** Whether to fetch CLOB history for the 67 HF markets (~1 h network) before submission, or document the asymmetry as a methodology limitation. Recommendation: document; cost-benefit doesn't justify the rebuild this close to deadline.
+- **Tuned predictions in headline backtest.** Tuned RF and MLP predictions exist (`outputs/v5/rigor/optuna/`) but are not currently isotonic-recalibrated, so threshold-based strategy results are not directly comparable to baseline. Either re-run `04_calibration.py + 05_backtest.py` against tuned predictions, or keep the side-by-side framing already in `submission/report_assets/figures/main/`.
+
+## 15. References
+
+- Mitts, J. & Ofir, A. (2026). *Informed Trading on Polymarket: Iran Geopolitical Markets*. Columbia Business School working paper.
+- Géron, A. (2022). *Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow*, 3rd ed., O'Reilly. ISBN 978-1098125974.
+- Hastie, T., Tibshirani, R., & Friedman, J. (2009). *The Elements of Statistical Learning*, 2nd ed., Springer.
+- Little, R. J. A. & Rubin, D. B. (2019). *Statistical Analysis with Missing Data*, 3rd ed., Wiley.
+- Rubin, D. B. (1976). Inference and missing data. *Biometrika*, 63(3), 581-592.
+- Akiba, T., Sano, S., Yanase, T., Ohta, T. & Koyama, M. (2019). Optuna: A Next-Generation Hyperparameter Optimization Framework. *KDD*.

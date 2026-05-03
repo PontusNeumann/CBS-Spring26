@@ -1,0 +1,8 @@
+group,n_features
+Edge / payoff,6
+Market-state rolling,18
+Price / vol microstructure,16
+Taker (HF within-cohort),13
+Time-to-deadline,9
+Trade-level,8
+Wallet on-chain (Layer 6),9

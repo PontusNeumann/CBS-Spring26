@@ -1,0 +1,27 @@
+top 25 |Pearson r| feature pairs (lower-triangle scan)
+
+distance_from_boundary      consensus_strength              1.000
+token_side_skew_5min        yes_volume_share_recent_5min    1.000
+is_within_1h_of_deadline    is_within_5min_of_deadline      0.997
+implied_variance            distance_from_boundary          0.975
+                            consensus_strength              0.975
+jump_component_1h           realized_vol_1h                 0.974
+recent_price_range_1h       recent_price_low_1h             0.963
+                            recent_price_high_1h            0.960
+market_price_vol_last_24h   distance_from_boundary          0.941
+                            consensus_strength              0.941
+                            implied_variance                0.930
+recent_price_range_1h       distance_from_boundary          0.930
+                            consensus_strength              0.930
+is_within_24h_of_deadline   is_within_1h_of_deadline        0.930
+log_time_to_deadline_hours  is_within_24h_of_deadline       0.929
+is_within_24h_of_deadline   is_within_5min_of_deadline      0.928
+recent_price_high_1h        distance_from_boundary          0.918
+                            consensus_strength              0.918
+log_time_to_deadline_hours  pct_time_elapsed                0.914
+recent_price_range_1h       market_price_vol_last_1h        0.914
+log_recent_volume_24h       log_trade_count_24h             0.913
+recent_price_range_1h       market_price_vol_last_24h       0.913
+log_time_to_deadline_hours  is_within_1h_of_deadline        0.909
+                            is_within_5min_of_deadline      0.907
+recent_price_range_1h       implied_variance                0.906

@@ -1,0 +1,34 @@
+# EDA index, wallet-joined Alex cohort
+
+- [✓] **01_zero_density.png**: Top-20 features by share of rows where value = 0 (imputation-as-zero proxy for missingness; dataset has no NaN).
+- [✓] **01_zero_density_table.csv**: Per-feature overall/train/test zero-density, top 30. Report-ready CSV.
+- [✓] **02_wallet_coverage.png**: % of trades with enriched wallet, by split.
+- [✓] **02_wallet_coverage_table.csv**: Wallet-feature coverage by split (pct_enriched, n_rows). Report-ready CSV.
+- [✓] **03_class_balance.png**: Base rate per split + per-market base-rate spread.
+- [✓] **03_class_balance_table.csv**: Trade count and base rate per split. Report-ready CSV.
+- [✓] **04_distributions.png**: Top-12 skewed features, histogram by bet_correct (1-99 pct clipped).
+- [✓] **04_skewness_table.csv**: All numeric features ranked by absolute skew. Report-ready CSV.
+- [✓] **05_outlier_boxplots.png**: Box plots for the 8 most-skewed features.
+- [✓] **06_correlation_heatmap.png**: Upper-triangle Pearson heatmap, top-40 features by centrality.
+- [✓] **06_top_correlations.txt**: Top 25 |Pearson r| feature pairs.
+- [✓] **07_market_volume.png**: Per-market trade count vs base rate.
+- [✓] **07_cohort_sizing_table.csv**: Cohort sizing summary (n_markets, min, median, max trades) per split. Report-ready CSV.
+- [✓] **07_per_market_table.csv**: Per-market detail (split, market_id, n trades, base rate). Report-ready CSV.
+- [✓] **08_train_test_shift.png**: Top-15 features by |standardised mean shift| between train and test.
+- [✓] **08_train_test_shift_table.csv**: Per-feature |std mean shift| (Cohen's d). Report-ready CSV.
+- [✓] **09_late_flow.png**: Hit rate vs time-to-deadline (Mitts & Ofir-style buckets).
+- [✓] **09_late_flow_table.csv**: Per-bucket base rate and trade count by split. Report-ready CSV.
+- [✓] **10_wallet_strata.png**: Hit rate by wallet age decile, CEX-funding, polygon nonce decile.
+- [✓] **11_per_market_bimodality.png**: Per-market base-rate histogram (single-event resolution).
+- [✓] **12_feature_stability.png**: Single-feature ROC-AUC heatmap per market for top-8 features.
+- [✓] **13_mutual_information.png**: Top-20 features by mutual information with bet_correct.
+- [✓] **13_mutual_information.csv**: Per-feature MI to bet_correct. Report-ready CSV.
+- [✓] **14_feature_taxonomy.png**: How the numeric features split across feature-engineering layers.
+- [✓] **14_feature_taxonomy_table.csv**: Group + feature membership for each modelling feature. Report-ready CSV.
+- [✓] **14_feature_taxonomy_counts.csv**: Feature count per group. Report-ready CSV.
+- [✓] **15_tail_diagnostics.png**: Top-15 fat-tailed features by |excess kurtosis|.
+- [✓] **15_tail_diagnostics.csv**: p1/p5/p95/p99 + tail-conditional means. Report-ready CSV.
+- [✓] **16_temporal_drift.png**: Daily bet_correct base rate with 7-day rolling mean, per split.
+- [✓] **17_pca_wallets.png**: Wallet behavioural archetypes via 2-D PCA on per-wallet aggregates, coloured by hit rate.
+- [✓] **17_pca_wallets.txt**: PC1/PC2 explained variance + loadings for the panel-17 PCA.
+- [✓] **summary.txt**: Plain-text summary of dataset shape, base rates, missingness.

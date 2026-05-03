@@ -1,0 +1,45 @@
+{
+  "checks": [
+    {
+      "name": "S1_row_counts",
+      "pass": true,
+      "train_rows": 1114003,
+      "test_rows": 257177,
+      "expected_train": 1114003,
+      "expected_test": 257177
+    },
+    {
+      "name": "S2_class_balance",
+      "pass": true,
+      "train_pos_rate": 0.5030929001088866,
+      "test_pos_rate": 0.503734781881739
+    },
+    {
+      "name": "C1_no_post_event_trades",
+      "pass": true,
+      "train_max_iso": "2026-02-28 06:34:59+00:00",
+      "test_max_iso": "2026-03-31 14:22:03+00:00"
+    },
+    {
+      "name": "F3_forbidden_cols_excluded_from_features",
+      "pass": true,
+      "present_in_data_but_excluded": [
+        "kyle_lambda_market_static",
+        "wallet_funded_by_cex"
+      ],
+      "would_leak_into_features": [],
+      "forbidden_set": [
+        "kyle_lambda_market_static",
+        "n_tokentx",
+        "wallet_funded_by_cex",
+        "wallet_prior_win_rate"
+      ]
+    },
+    {
+      "name": "D1_pre_trade_price",
+      "pass": true,
+      "skipped": "raw price column not in dataset"
+    }
+  ],
+  "n_pass": 5
+}

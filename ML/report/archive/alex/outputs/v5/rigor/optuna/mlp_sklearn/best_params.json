@@ -1,0 +1,13 @@
+{
+  "best_value_oof_auc": 0.8875726983716083,
+  "best_params": {
+    "arch_idx": 5,
+    "activation": "relu",
+    "alpha": 0.0035974197956574233,
+    "learning_rate_init": 0.003085473344630512,
+    "batch_size": 2048
+  },
+  "n_trials": 30,
+  "n_pruned": 0,
+  "n_completed": 30
+}
