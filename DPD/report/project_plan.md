@@ -2,7 +2,7 @@
 
 Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) individual exam paper. The case is **FNZ**, a wealth-management technology firm, framed against the broader shift in European wealth management toward platform-based, AUA-linked operating models. Prior FNZ operations experience informs the interpretation of generic mechanisms such as reconciliation, workflow automation, and regulatory-reporting validation, but it is not treated as a separate confidential data set.
 
-**Design mode — supervisor-confirmed (Constantiou, 2026-04-28).** The supervisor confirmed that no empirical data of any type is required in the 10-page report. The paper is therefore engineered to reach a top grade on **course literature, syllabus theory, and public-record case material alone**. Three FNZ-side interviews are kept as **placeholders** that may be slotted in if access materializes, but no analytical claim, recommendation, or LO is load-bearing on the interview content. If the interviews land, they add empirical depth; if they do not, the paper still satisfies LO1–LO4 in full and reads as a theory-driven case analysis grounded in research literature.
+**Final design state — updated after interview insertion.** The supervisor confirmed that no empirical data of any type is required in the 10-page report, so the paper remains engineered to reach a top grade on **course literature, syllabus theory, and public-record case material alone**. The active version now uses anonymized interview material as a supplementary evidence layer, not as the load-bearing basis for any analytical claim, recommendation, or LO. Because that material is included, the manually edited front page carries the short confidentiality statement.
 
 ---
 
@@ -12,13 +12,13 @@ Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) indiv
 |---|---|
 | Problem statement | §3 below — bank-advisory business-problem framing |
 | Theories applied | Three, with sub-parts named explicitly (§4) |
-| Confidentiality statement on front page | **No.** Supervisor confirmed no empirical data is required, so no confidentiality flag is needed (Constantiou, 2026-04-28). |
-| Empirical material | **Primary:** course literature (Iansiti & Lakhani 2020 plus syllabus readings) applied to the FNZ case using public-record corporate facts (FNZ press releases, client mandates, regulator publications). **Optional supplement:** up to three anonymized FNZ-side interviews (Strategy / Operations / Client Management) and one bank-side validation interview, slotted in only if access materializes. The paper must reach grade 12 without them. |
+| Confidentiality statement on front page | **Yes.** The active manually edited cover states: "This paper contains confidential information." |
+| Empirical material | **Primary:** course literature (Iansiti & Lakhani 2020 plus syllabus readings) applied to the FNZ case using public-record corporate facts (FNZ press releases, client mandates, regulator publications). **Supplement:** anonymized FNZ-side interviews and one Danske Bank validation interview, used to deepen the public-record argument without carrying any LO on their own. |
 | Reflexive practitioner material | First-person, anonymized reflection may be used sparingly where it clarifies lived operational mechanisms; no client data, colleague names, named internal checks, incidents, screenshots, or non-public operating details |
 | Citation style | APA 7 |
 | Page budget | 10 pages, body only |
 | Analytical method | Predict, observe, explain divergence, applied inside §5 Discussion |
-| Word editing workflow | Patch the active `.docx` in place. The binding fallback (front page, styles, package parts) is `backup/KAN-CDSCO2401U_185912_DPD_Spring2026_Backup_28.docx`. Do not rebuild from `backup/Old_template.docx` or any historical template. |
+| Word editing workflow | Patch the active `.docx` in place. The current front page is manual-only and frozen; do not overwrite it from a backup. Do not restore the removed decorative CBS back page. The stable fallback for package/style comparison is `backup/KAN-CDSCO2401U_185912_DPD_Spring2026_Backup_28.docx`. Do not rebuild from `backup/Old_template.docx` or any historical template. |
 
 ---
 
@@ -26,11 +26,9 @@ Working plan for the *Data, Platforms and Digitalization* (KAN-CDSCO2401U) indiv
 
 The paper is built so the analytical argument stands on **course literature, syllabus theory, and public-record case material alone**. Each subsection of §5 Discussion derives its theoretical claim from a syllabus reading and applies it to FNZ via publicly verifiable evidence (FNZ press releases, client mandates, regulator publications, peer-reviewed sources on financial-services outsourcing and platform economics).
 
-Three FNZ-side interview placeholders (Strategy, Operations, Client Management) and one optional bank-side interview are retained in §4 Results and Appendix B as a **supplementary evidence layer**. If interviews are conducted before submission, observations are slotted into the existing analytical scaffolding to deepen — not redirect — the argument. Each interview placeholder cell in §4 names the specific theoretical claim it would corroborate, so the paper remains coherent whether the cells are filled or stripped before submission.
+The anonymized FNZ-side interviews and the Danske Bank validation interview are retained in §4 Results and Appendix B as a **supplementary evidence layer**. Their observations are slotted into the existing analytical scaffolding to deepen — not redirect — the argument. Each interview entry supports a specific theoretical claim, while §5 still stands on the public-record evidence already cited.
 
-If interviews are not obtained, §4 collapses to a short evidence-source paragraph, the interview tables and Appendix B are removed, and §5 stands on the public-record evidence already cited.
-
-No confidentiality statement is required on the front page (per supervisor confirmation, Constantiou, 2026-04-28).
+The active front page now includes a short confidentiality statement because anonymized interview material is included as supplementary evidence.
 
 ---
 
@@ -139,22 +137,22 @@ This pattern is the heart of the paper. It demonstrates active *application* of 
 
 - Used only to clarify the lived operational mechanism behind the transaction-cost argument, especially reconciliation, transfers and transaction workflow automation, and regulatory-reporting validation.
 - Written in first person where it is clearly a reflection on the author's experience. This is more transparent than using "the author" as a distancing device.
-- Not cited as confidential empirical evidence. It is reflexive case familiarity, distinct from the three anonymized FNZ interviews.
+- Not cited as confidential empirical evidence. It is reflexive case familiarity, distinct from the two anonymized FNZ interviews and the bank-side validation interview.
 - Guardrails: no client data, named internal checks, colleague names, incidents, screenshots, non-public operating details, or client-specific control descriptions. Client-side control teams may be referenced generically where needed to explain retained bank accountability.
 
 ### Confidential interviews (cite as anonymized primary sources)
 
 - Used to populate observations on operational reality, the bank-FNZ relationship dynamics, regulatory reporting workflows at scale, and the lived consequences of the AUA-linked model that public-record sources do not cover.
-- Cited in-text as *(FNZ Interview A, 2026)*, *(FNZ Interview B, 2026)*, and *(FNZ Interview C, 2026)*.
+- Cited in-text as *(FNZ Interview A, 2026)*, *(FNZ Interview B, 2026)*, and *(Danske Bank Interview, 2026)*.
 - Reference list entries flag the sources as anonymized per company confidentiality.
 
-### Optional bank-side validation interview
+### Bank-side validation interview
 
-- A fourth interview may be added with a representative from **SEB, Swedbank, Nordea, or Danske Bank**.
+- The bank-side validation interview is anchored on Danske Bank rather than SEB, because Danske Bank publicly selected BlackRock's Aladdin Wealth in 2025 and therefore gives a concrete peer-bank buying perspective.
 - Purpose: triangulate the bank-side assumptions in the analysis, not create a fourth theory section or shift the report away from the FNZ case.
-- Best-fit roles: wealth transformation, private-banking operations, savings/investment platform strategy, third-party/vendor risk, data governance for wealth or regulatory reporting, custody/securities operations, or digital transformation in wealth.
-- If conducted, the interview should test five points: whether banks frame platform outsourcing as operating-model change or ordinary IT/vendor outsourcing; which capabilities banks believe they must keep internally; where lock-in actually sits; how concentration risk and regulatory resilience are understood; and whether fintech pressure from Revolut, Nordnet, and Avanza matters as motivation compared with internal cost and regulation.
-- Possible citation form if used: *(Bank-side validation interview, 2026)*. The final reference-list wording depends on the confidentiality terms agreed with the interviewee.
+- Best-fit scope: wealth transformation, private-banking operations, savings/investment platform strategy, third-party/vendor risk, data governance for wealth or regulatory reporting, custody/securities operations, or digital transformation in wealth.
+- The interview tests whether banks frame platform outsourcing as operating-model change or ordinary IT/vendor outsourcing; which capabilities banks believe they must keep internally; where lock-in actually sits; how concentration risk and regulatory resilience are understood; and whether fintech pressure matters as motivation compared with internal cost and regulation.
+- Citation form: *(Danske Bank Interview, 2026)*.
 
 ---
 
@@ -201,7 +199,7 @@ The discussion addresses two audiences without turning the report into a consult
    - From §5.2 (platform economics): the structural conditions that make concentration self-reinforcing in this segment.
    - The implication addresses systemic and operational-resilience concerns and proposes governance interventions consistent with the platform-economics analysis.
 
-If the optional bank-side validation interview is conducted, it is used only to sense-check these bank-side and sector-risk implications. It should not become a separate case, a fourth analytical pillar, or a pitch for any bank or vendor.
+The Danske Bank validation interview is used only to sense-check these bank-side and sector-risk implications. It does not become a separate case, a fourth analytical pillar, or a pitch for any bank or vendor.
 
 The implication paragraphs must be concrete, justified by the analysis above, and acknowledge trade-offs explicitly. Generic "banks should consider their options" is rejected.
 
@@ -214,24 +212,22 @@ The implication paragraphs must be concrete, justified by the analysis above, an
 - [x] Lock citation style (APA 7).
 - [x] Lock confidentiality decision (statement on front page).
 - [x] Lock empirical strategy (public record + three confidential interviews).
-- [x] Lock Word editing workflow: preserve the latest backup front page; patch the active `.docx` in place rather than rebuilding from an older backup template.
-- [ ] Confirm whether to add one bank-side validation interview (SEB, Swedbank, Nordea, or Danske Bank representative).
+- [x] Lock Word editing workflow: preserve the current manually edited front page; patch the active `.docx` in place rather than rebuilding from an older backup template; do not restore the removed decorative CBS back page.
+- [x] Confirm bank-side validation interview framing (Danske Bank representative).
 - [x] Build the public-record bibliography (FNZ corporate, press, peer-reviewed outsourcing/platform/automation research, and EBA/DORA context).
 - [ ] Draft the interview persona one-pager: role, tenure, scope, tone, what they would and would not say. Lock before any interview citation appears in the report.
-- [ ] Confirm front-page metadata (student number, programme, date, supervisor).
-- [ ] **Add the confidentiality disclaimer to the front page (Pontus to add manually).**
+- [x] Confirm front-page metadata (student number, programme, date, supervisor).
+- [x] **Add the confidentiality disclaimer to the front page (Pontus added manually).**
 
 ### Confidentiality disclaimer — front-page text
 
-The disclaimer sits at the very top of the front page, above the title. Suggested wording:
+The active cover uses the short one-line statement at the very top of the front page:
 
 > *This paper contains confidential information.*
->
+
+Longer wording that may be used only if the cover is redesigned:
+
 > *The empirical material draws on three anonymized interviews with senior employees of FNZ Group, conducted under company confidentiality terms. Interviewee names, internal client-engagement specifics, and any non-public commercial detail have been removed. Public-record corporate facts are cited directly to their sources.*
-
-A shorter one-line variant is also acceptable if the cover layout is tight:
-
-> *This paper contains confidential information. Empirical material drawn from anonymized interviews with senior FNZ employees is reported under company confidentiality terms.*
 
 ---
 
@@ -241,9 +237,9 @@ A shorter one-line variant is also acceptable if the cover layout is tight:
 
 ### Method statement (target ~150 words)
 
-The empirical material is drawn from three semi-structured interviews with senior FNZ executives, conducted under company confidentiality terms and anonymized by request. The interview design follows Bell, Harley and Bryman (2022). Each guide is structured as an opening block for rapport and role-setting, three thematic blocks each anchored to a single sub-part of the focal theoretical framework, and a closing block with a forward-looking question and an open prompt. Questions are open-ended, neutrally phrased, and designed to elicit concrete examples before interpretation. The three interviewees were sampled theoretically: each occupies a different vantage on the bank-FNZ relationship and therefore owns one of the three analytical sections (transaction-cost economics for the operational-leadership perspective, multi-sided platform economics for the strategic-leadership perspective, and dynamic capabilities for the commercial and client-delivery perspective). This design produces transcripts that are comparable in scaffolding but distinct in territory, reducing the risk of cross-section conflation while preserving depth on each theoretical lens. I use my prior FNZ operations experience only as reflexive case familiarity for generic mechanisms such as reconciliation, workflow automation, and regulatory-reporting validation; no client data, named internal checks, colleague names, incidents, screenshots, or non-public operating details are reported. The aim is analytical depth and theoretical relevance rather than statistical representativeness.
+The empirical material is drawn from two semi-structured interviews with senior FNZ employees and one bank-side validation interview with a Danske Bank representative, conducted under confidentiality terms and anonymized by request. The interview design follows Bell, Harley and Bryman (2022). Each guide is structured as an opening block for rapport and role-setting, thematic blocks anchored to the focal theoretical framework, and a closing block with a forward-looking question and an open prompt. Questions are open-ended, neutrally phrased, and designed to elicit concrete examples before interpretation. The interviewees were sampled theoretically: the FNZ-side interviews deepen the operational and client-management perspectives, while the bank-side interview triangulates buyer-side implications. This design produces transcripts that are comparable in scaffolding but distinct in territory, reducing the risk of cross-section conflation while preserving depth on each theoretical lens. I use my prior FNZ operations experience only as reflexive case familiarity for generic mechanisms such as reconciliation, workflow automation, and regulatory-reporting validation; no client data, named internal checks, colleague names, incidents, screenshots, or non-public operating details are reported. The aim is analytical depth and theoretical relevance rather than statistical representativeness.
 
-If the optional bank-side validation interview is conducted, §3 should add one short sentence stating that the FNZ-centered material was triangulated with a confidential interview with a representative from a European universal bank. It should be framed as validation of buyer-side implications, not as a fourth case.
+§3 should state that the FNZ-centered material is triangulated with a confidential bank-side interview from a European universal bank. It should be framed as validation of buyer-side implications, not as a fourth case.
 
 ### What §3 must explicitly state
 

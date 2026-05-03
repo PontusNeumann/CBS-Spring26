@@ -1,6 +1,22 @@
 """
 patch_docx_round3.py
 
+FROZEN SNAPSHOT — DO NOT RUN.
+
+This script reflects a pinpoint formatting fix from 2026-04-27 (page-break
+overrides on body H1s, References Heading pageBreakBefore restoration, and
+Appendix B re-anchoring before the back-page break). Its anchor texts are
+specific to the docx state at that date and no longer match the current
+file. Re-running it now would either no-op or move paragraphs that are not
+in the positions it expects.
+
+The current canonical patcher is scripts/patch_docx_round6.py.
+
+To re-enable for forensic use, comment out the SystemExit guard below.
+"""
+import sys
+sys.exit("patch_docx_round3.py is a frozen snapshot — do not run. Use patch_docx_round6.py.")
+"""
 Third surgical pass. Fixes three issues caught in round-2 verification:
 
   1. Body Heading 1 paragraphs (Background, Method, Results, Discussion,
@@ -24,7 +40,8 @@ Third surgical pass. Fixes three issues caught in round-2 verification:
   Appendix H1 keeps its style-level pageBreakBefore (no change needed).
   Back-page Normal blank with pageBreakBefore is left untouched.
 """
-from __future__ import annotations
+# `from __future__ import annotations` removed because this script is hard-
+# disabled at the top of the file; it never executes past the sys.exit guard.
 
 import shutil
 from datetime import datetime

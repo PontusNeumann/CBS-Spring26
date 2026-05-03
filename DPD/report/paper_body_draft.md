@@ -34,7 +34,7 @@ The paper is a theory-driven single-case analysis. FNZ is the case; three syllab
 
 Evidence is drawn primarily from public-record material: FNZ corporate publications and client-mandate press releases, peer-reviewed research on financial-services outsourcing and platform economics, and European regulator publications on outsourcing and operational resilience (EBA, 2019; European Parliament & Council, 2022). The case selection criterion is analytical fit. FNZ is used because its end-to-end model, AUA-linked monetization, and recent large-bank mandates expose all three theoretical mechanisms in the same firm. Public mandates outside Europe (Raymond James Canada) are used only where they sharpen a mechanism already visible inside the European context.
 
-A supplementary evidence layer of three semi-structured elite interviews at FNZ — Strategy, Operations, and Client Management — is reported in §4. The sampling logic is theoretical: each respondent informs one analytical block more strongly than the others. Interview material, when present, deepens the public-record argument; the analysis in §5 does not depend on it.
+A supplementary evidence layer of three semi-structured elite interviews is reported in §4. Two are FNZ-side — one in the Group Operations function and one in Client Management and Business Development for Europe — and the third is a bank-side validation interview with a senior leader in a Nordic universal bank's wealth and asset-management division. The sampling logic is theoretical: each respondent informs one analytical block more strongly than the others, and the bank-side interview triangulates the buyer-side implications rather than functioning as a fourth analytical pillar. Interview material, when present, deepens the public-record argument; the analysis in §5 does not depend on it. All interviewees are anonymized at source by team or function, regional remit, and employer; full transcripts are reproduced in Appendix B.
 
 Prior operations work at FNZ informs interpretation of generic operating mechanisms such as reconciliation, transfer and transaction workflow automation, and regulatory-reporting validation. This is treated as reflexive case familiarity, not as data: no client data, named internal checks, colleagues, incidents, screenshots, or non-public operating details are reported. Where this familiarity sharpens a theoretical claim, it appears as a clearly bounded first-person reflection.
 
@@ -42,57 +42,40 @@ The scope is intentionally narrow. The paper concerns the outsourcing of the wea
 
 ## 4. Results
 
-The results section is organized by interview rather than by chronology. This structure matches the theoretical sampling logic and makes it easier to move from empirical material to analysis. Each table below is a working extraction table for the draft. In the final Word document, only the most analytically useful rows need to remain in the main text. Lower-value rows can be moved to the appendix to preserve page space.
+The results section is organized by interview rather than by chronology. This structure matches the theoretical sampling logic and makes it easier to move from empirical material to analysis. Each table below summarizes the headline observation against the analytical purpose; the full transcripts are reproduced in Appendix B.
 
-Table 1. Interview A: Group Head of Europe, strategic framing and platform economics
+Table 1. Interview A — FNZ Group Operations function (London-based, multi-client European remit). Anchored in §5.1.
 
-| Block | Question focus | Purpose in the paper | Draft evidence / answer | Keep in main text? |
-|---|---|---|---|---|
-| Opening | Role and remit | Establish source position and credibility | `[To be filled after interview material is locked]` | `[Yes/No]` |
-| Block 1 | What changes for existing institutions when a new client joins the platform | Test for indirect network effects in a regulated B2B setting | `[To be filled]` | `[Yes/No]` |
-| Block 1 | Why the core operating backbone differs from peripheral vendor choices | Surface switching and multi-homing logic | `[To be filled]` | `[Yes/No]` |
-| Block 1 | What a realistic dual-platform or exit path would involve | Identify practical barriers to multi-homing and exit | `[To be filled]` | `[Yes/No]` |
-| Block 2 | What the assets-linked pricing structure enables | Connect monetization to alignment and client growth logic | `[To be filled]` | `[Yes/No]` |
-| Block 2 | How prioritization changes under that model | Test whether pricing affects operating behavior | `[To be filled]` | `[Yes/No]` |
-| Block 2 | Where the model creates client tension | Capture trade-offs rather than only benefits | `[To be filled]` | `[Yes/No]` |
-| Block 3 | Why the market concentrates on few providers | Identify the practical drivers of winner-take-most dynamics | `[To be filled]` | `[Yes/No]` |
-| Block 3 | Relative importance of switching costs, scale benefits, and limited demand for operational variety | Bound the concentration argument | `[To be filled]` | `[Yes/No]` |
-| Block 3 | What Swedbank, UniCredit Germany, and Raymond James Canada reveal about client demand | Tie interview interpretation back to public mandates | `[To be filled]` | `[Yes/No]` |
-| Closing | Five-year view of the platform landscape | Capture strategic forward-looking judgment | `[To be filled]` | `[Yes/No]` |
+| Question focus | Purpose in the paper | Headline observation |
+|---|---|---|
+| Bank/FNZ operating boundary | Define the operating interface | Clean perimeter on regulation, advice, and balance-sheet exposure. Reconciliation breaks emerge as the recurring boundary blur, surfacing in week three of every go-live. |
+| Coordination cost vs production cost | Apply Cordella's IT-cost decomposition | Coordination cost falls hard; production cost falls only when the bank simplifies its own product variants. Swedbank's 2021 cost-sharing logic is invoked directly. |
+| Hybrid governance | Characterize the relationship as a hybrid rather than market or hierarchy | "Between long-term contracting and a bilateral platform consortium." Test for healthy partnership: who calls whom first when a regulator publishes a new technical standard. |
+| Why one core partner | Explain settlement on one backbone | End-to-end regulatory reconciliation and single-point operational accountability. Two backbones add a third reconciliation surface that fails arithmetically. |
+| Asset specificity and lock-in | Identify lock-in mechanisms | Reframed as "dependency." Sharpest in data lineage and in the platform-shaped retained workforce. Contractual exit is solvable; data-lineage and organizational exit is not. |
+| Keep-vs-outsource line (closing) | Bridge into discussion implications | Outsource regulated infrastructure layer; retain client interface, advice, brand, and proprietary data and analytics. Banks that keep too thin a retained team get a worse outcome than no outsourcing at all. |
 
-Table 2. Interview B: Group Head of Operations, transaction costs and hybrid governance
+Table 2. Interview B — FNZ Group Client Management & Business Development, Europe (London-based). Anchored in §5.3.
 
-| Block | Question focus | Purpose in the paper | Draft evidence / answer | Keep in main text? |
-|---|---|---|---|---|
-| Opening | Role, remit, and time at FNZ | Establish long-view operational vantage point | `[To be filled after interview material is locked]` | `[Yes/No]` |
-| Opening | Boundary between bank and FNZ on a typical engagement | Define the operating interface | `[To be filled]` | `[Yes/No]` |
-| Block 1 | Which costs fall and which remain stubborn | Apply coordination-cost versus production-cost logic | `[To be filled]` | `[Yes/No]` |
-| Block 1 | What must be true for standardization, governance, and scalability to materialize in practice | Connect public case language to operating reality | `[To be filled]` | `[Yes/No]` |
-| Block 1 | How the cost picture has changed over time | Capture learning effects and boundary shifts | `[To be filled]` | `[Yes/No]` |
-| Block 2 | How the governance form should be described in practice | Characterize the relationship as a hybrid rather than market or hierarchy | `[To be filled]` | `[Yes/No]` |
-| Block 2 | Why the core operating model settles on one primary backbone partner | Explain why several specialized partners are less common here | `[To be filled]` | `[Yes/No]` |
-| Block 2 | Where day-to-day authority sits and how it changes over time | Show how governance is enacted rather than only contracted | `[To be filled]` | `[Yes/No]` |
-| Block 3 | Which investments become difficult to redeploy | Identify asset specificity and lock-in mechanisms | `[To be filled]` | `[Yes/No]` |
-| Block 3 | Whether lock-in is mainly contractual, technical, operational, or organizational | Refine the lock-in argument | `[To be filled]` | `[Yes/No]` |
-| Block 3 | What banks underestimate when entering the arrangement | Capture managerial blind spots | `[To be filled]` | `[Yes/No]` |
-| Closing | Which functions a bank should keep and which it should outsource | Bridge the evidence into the discussion implications | `[To be filled]` | `[Yes/No]` |
+| Question focus | Purpose in the paper | Headline observation |
+|---|---|---|
+| Two-year framing post-signature | Map early post-outsourcing organizational effects | Visible change is the platform; less visible change is organizational redistribution of governance, prioritization, and compliance ownership. Plumbing modernizes in months; strategy in years. |
+| Table stakes vs differentiation | Identify the new basis of competition | Operational excellence, digital onboarding, basic mobile, regulatory accuracy now table stakes. Differentiation moved up the stack to advice quality, brand, distribution, and the data layer. |
+| New basis of competition | Link outsourcing to strategic repositioning | Three places, in order: advisory quality at scale, distribution and brand, and the data and personalization layer. Few banks executing the third well today. |
+| Capability rebuild and failure modes | Operationalize seizing and reconfiguring | Banks rebuild digital channels and analytics first. Failure: under-resourced product teams, IT-project framing, unchanged advisor incentives, and over-broad sequencing. |
+| Cognitive framing / analogy | Test the prevailing analogy | Defaults to "another IT outsourcing." Analogy is the trap because the decision is harder to reverse and more customer-visible. Better analogy: OEM-to-Tier-1 supplier relationship. |
+| CEO advice in the first 18 months (closing) | Direct route into discussion implications | Senior business owner with seniority over procurement; retain more capability than the program plan suggests; explicitly redefine what the bank wins on. |
 
-Table 3. Interview C: Managing Director, Client Management and Business Development, capability reconfiguration
+Table 3. Interview C — Wealth & Asset Management division, SEB (Stockholm-based). Anchored in §5.2 (concentration) and triangulating §5.3 (bank-side capabilities).
 
-| Block | Question focus | Purpose in the paper | Draft evidence / answer | Keep in main text? |
-|---|---|---|---|---|
-| Opening | Role and vantage point | Establish source position on client-side change | `[To be filled after interview material is locked]` | `[Yes/No]` |
-| Opening | What changes inside the bank in the first one to two years | Map early post-outsourcing organizational effects | `[To be filled]` | `[Yes/No]` |
-| Block 1 | Which capabilities are now table stakes and which still differentiate | Identify the new basis of competition | `[To be filled]` | `[Yes/No]` |
-| Block 1 | What signals stronger banks recognize earlier than weaker ones | Operationalize sensing | `[To be filled]` | `[Yes/No]` |
-| Block 1 | If operational excellence is increasingly standardized, where competition moves next | Link outsourcing to strategic repositioning | `[To be filled]` | `[Yes/No]` |
-| Block 2 | What banks try to rebuild or strengthen first | Operationalize seizing and reconfiguring | `[To be filled]` | `[Yes/No]` |
-| Block 2 | Why capability rebuild efforts fail | Identify recurring managerial errors | `[To be filled]` | `[Yes/No]` |
-| Block 2 | What the stronger banks do differently | Bound the implication logic | `[To be filled]` | `[Yes/No]` |
-| Block 3 | What past transformations banks compare the decision to | Surface analogical reasoning and cognitive framing | `[To be filled]` | `[Yes/No]` |
-| Block 3 | Whether the decision is framed as classic IT outsourcing or something different | Test the quality of the prevailing analogy | `[To be filled]` | `[Yes/No]` |
-| Block 3 | Where that analogy helps and where it misleads | Connect cognition to strategic error | `[To be filled]` | `[Yes/No]` |
-| Closing | What a CEO should fix internally in the first eighteen months | Provide a direct route into the discussion implications | `[To be filled]` | `[Yes/No]` |
+| Question focus | Purpose in the paper | Headline observation |
+|---|---|---|
+| Operating-model vs vendor framing | Test whether banks frame the decision as boundary change or as procurement | Both framings co-exist; whichever wins by implementation determines the post-decision capability investment. Business-owned framing is healthier. |
+| Retained capabilities | Bound which capabilities the buyer believes must stay internal | Five, ordered: client relationship, advisory quality, brand, regulatory accountability, internal data capability. Last two systematically under-invested. |
+| Lock-in from the buyer side | Refine the lock-in argument | Contractual and technical exit is solvable. Data-related and organizational lock-in is the concerning combination. Multi-year unwind on data lineage and team reorganization. |
+| Concentration and resilience | Stress-test the platform-economics concentration claim | Single-bank governance manages bilateral risk; sector-level concentration cannot be solved bilaterally. ECB and DORA framing supplies the right policy direction. |
+| Why now: fintech vs internal drivers | Test the "why now" narrative | Strongest drivers internal: cost, legacy complexity, regulation. Fintechs reset the customer-experience floor but do not pay for the modernization investment. |
+| Recommendation test (closing) | Stress-test the paper's recommendation | Broadly endorses the recommendation. Adds: regulatory accountability sits alongside the differentiation list, not after it; "owning data" is hollow without analytics talent and advisor workflows that consume it. |
 
 ## 5. Discussion
 
@@ -102,7 +85,7 @@ Transaction-cost economics frames the bank-FNZ relationship as a boundary choice
 
 Cordella (2006) refined the Clemons et al. argument by showing that ICT can simultaneously lower coordination costs *and* raise production costs, because complexity migrates rather than disappearing. FNZ inverts this risk by combining technology, operations, and regulated market connectivity in a single integrated stack. Varian (2010) generalizes the underlying mechanism: when ICT lowers the cost of mediating, monitoring, and contracting transactions, firms increasingly buy bundles of contract-governed services rather than build them, and the boundary of the firm shifts accordingly. Public client mandates make the move-to-the-middle structure visible. Swedbank framed its 2021 platform investment around efficiency, simplification, scalability, and stronger governance — language that maps directly to coordination-cost reduction (FNZ, 2021). UniCredit's 2025 securities-services mandate in Germany and Raymond James Canada's 2025 partnership use the same vocabulary of standardization and post-trade simplification (FNZ, 2025c, 2025b). Across these cases, the bank does not buy software. It pays a long-term partner to absorb fragmented operations, in exchange for a relational hybrid contract priced on assets under administration.
 
-Asset specificity is the residual TCE concern (Williamson, 1985). Once a bank's operating model is built around FNZ workflows, custody arrangements, and reporting outputs, the underlying investments are difficult to redeploy: process maps, change-management muscle, vendor-management routines, and regulatory filings are all FNZ-shaped. This produces lock-in, and lock-in is what makes the hybrid form unstable in the long run unless it is governed deliberately. The implication is that banks selecting FNZ are not making a procurement decision; they are choosing a long-horizon governance partner. From prior FNZ operations work, the lived version of this is concrete: I observed that automating reconciliation and transfer workflows reduces manual hand-offs and surfaces breaks earlier, but it does not remove the need for bank-side control, dual validation, and client-side accountability. The hybrid is real on both sides of the boundary. `[Interview B placeholder: practitioner detail on which costs fall fastest in year one and which prove stubborn in years two to five.]`
+Asset specificity is the residual TCE concern (Williamson, 1985). Once a bank's operating model is built around FNZ workflows, custody arrangements, and reporting outputs, the underlying investments are difficult to redeploy: process maps, change-management muscle, vendor-management routines, and regulatory filings are all FNZ-shaped. This produces lock-in, and lock-in is what makes the hybrid form unstable in the long run unless it is governed deliberately. The implication is that banks selecting FNZ are not making a procurement decision; they are choosing a long-horizon governance partner. From prior FNZ operations work, the lived version of this is concrete: I observed that automating reconciliation and transfer workflows reduces manual hand-offs and surfaces breaks earlier, but it does not remove the need for bank-side control, dual validation, and client-side accountability. The hybrid is real on both sides of the boundary. `[Interview A placeholder: practitioner detail on which costs fall fastest in year one and which prove stubborn in years two to five.]`
 
 ### 5.2 Platform economics and concentration
 
@@ -110,7 +93,7 @@ Multi-sided platform economics explains why the wealth-platform layer concentrat
 
 The forces that produce winner-take-most outcomes in this market are the multi-homing and switching dimensions identified by McIntyre and Chintakananda (2014). Multi-homing is operationally infeasible for the core wealth backbone: a universal bank cannot run two parallel custody, reconciliation, and reporting stacks for the same book of business without duplicating cost and creating reconciliation breaks at every boundary. Switching costs are amplified by the asset specificity discussed in §5.1 and by the regulatory cost of re-certifying a new platform under EBA outsourcing guidance (EBA, 2019). Demand-side variety is also low: bank executives explicitly value standardization and predictability in this layer, as the public mandate language at Swedbank, UniCredit, and Raymond James shows. The combination is decisive. High switching cost, infeasible multi-homing, and low appetite for operational variety push the European wealth-platform market toward a small number of providers serving most of the AUA pool.
 
-This is rational at the firm level and creates concentration risk at the sector level. The European Banking Authority's outsourcing guidelines explicitly require institutions to assess concentration and substitutability for critical or important outsourced functions (EBA, 2019), and the Digital Operational Resilience Act extends this to a sector-wide oversight regime for critical ICT third-party providers (European Parliament & Council, 2022). The implication is that platform economics that make FNZ individually attractive create sectoral fragility that cannot be solved at the level of a single bank's contract. `[Interview A placeholder: strategic-leadership view on what differentiates FNZ from a peer that has not concentrated as quickly.]`
+This is rational at the firm level and creates concentration risk at the sector level. The European Banking Authority's outsourcing guidelines explicitly require institutions to assess concentration and substitutability for critical or important outsourced functions (EBA, 2019), and the Digital Operational Resilience Act extends this to a sector-wide oversight regime for critical ICT third-party providers (European Parliament & Council, 2022). The implication is that platform economics that make FNZ individually attractive create sectoral fragility that cannot be solved at the level of a single bank's contract. `[Interview C placeholder: bank-side view on whether sector concentration is a single-bank governance problem or a market-structure problem that no individual bank can solve.]`
 
 ### 5.3 Dynamic capabilities and the new basis of differentiation
 
@@ -118,7 +101,7 @@ When the operating backbone moves to a shared platform, the basis of competition
 
 What remains differentiating shifts toward the layers FNZ cannot replicate: client relationship and trust, advisory quality, distribution reach, brand, and the proprietary use of bank-owned client data. Iansiti and Lakhani (2020) describe the modern digital firm as built around an AI factory in which data pipelines and experimentation platforms convert routine operations into learning loops. For a bank that has outsourced the operating backbone, the data pipeline is partially co-owned with FNZ, and the experimentation platform must therefore be rebuilt at the layers the bank still controls — advisory tooling, personalization, cross-sell, and client lifecycle management. Constantiou, Joshi, and Stelmaszak (2023) extend this point by showing that data assets in platform ecosystems generate value only when the data-using firm builds the organizational capability to route, recombine, and act on them; without that capability, outsourcing the backbone leaves the bank with shared infrastructure and no proprietary data leverage. Stelmaszak, Joshi, and Constantiou (2025) develop the same logic for AI specifically, framing AI capability as an organizing capability that arises only from the deliberate cultivation of human-algorithm relations inside the firm — exactly the cultivation the bank cannot delegate to a platform partner.
 
-The cognitive dimension is what most often goes wrong. Gavetti and Rivkin (2007) show that strategic decisions are routinely framed by analogy to past decisions, and that the choice of analogy shapes both the options considered and the capabilities rebuilt afterward. Bank executive committees that frame an FNZ adoption as *"another IT outsourcing"* — analogous to a SaaS swap or an infrastructure migration — typically scope the program to cost reduction and run-rate stability. They under-invest in the capability rebuild that the dynamic-capabilities framework predicts is essential. A more accurate analogy is the foundational supply-chain partnership of automotive original-equipment manufacturers, where a deep, long-horizon relationship with a Tier-1 supplier coexists with deliberate internal investment in design, brand, and customer ownership. Banks that adopt this second analogy frame the decision as a triple package: operational outsourcing, platform-governance arrangement, and capability-rebuilding program. Banks that adopt the first analogy capture the cost saving and surrender the strategic position. `[Interview C placeholder: client-management view on the early signals that distinguish a stronger bank-side response from a weaker one in the first eighteen months post-implementation.]`
+The cognitive dimension is what most often goes wrong. Gavetti and Rivkin (2007) show that strategic decisions are routinely framed by analogy to past decisions, and that the choice of analogy shapes both the options considered and the capabilities rebuilt afterward. Bank executive committees that frame an FNZ adoption as *"another IT outsourcing"* — analogous to a SaaS swap or an infrastructure migration — typically scope the program to cost reduction and run-rate stability. They under-invest in the capability rebuild that the dynamic-capabilities framework predicts is essential. A more accurate analogy is the foundational supply-chain partnership of automotive original-equipment manufacturers, where a deep, long-horizon relationship with a Tier-1 supplier coexists with deliberate internal investment in design, brand, and customer ownership. Banks that adopt this second analogy frame the decision as a triple package: operational outsourcing, platform-governance arrangement, and capability-rebuilding program. Banks that adopt the first analogy capture the cost saving and surrender the strategic position. `[Interview B placeholder: client-management view on the early signals that distinguish a stronger bank-side response from a weaker one in the first eighteen months post-implementation.]`
 
 ### 5.4 Implications for banks and sector governance
 
@@ -138,11 +121,13 @@ At the sector level, the concentration externality identified in §5.2 cannot be
 
 European universal banks are outsourcing wealth-platform operations to FNZ because the move-to-the-middle logic of transaction-cost economics makes the bilateral hybrid form the most efficient response to a coordination-cost problem the legacy hierarchy can no longer absorb. The same outsourcing concentrates the regulated B2B platform layer on a small number of providers, because multi-homing is operationally infeasible, switching costs are amplified by asset specificity and re-certification requirements, and demand for operational variety is low. For the bank, the consequence is that operational excellence is no longer a source of competitive differentiation; advantage shifts to advisory quality, client relationship, brand, and the proprietary use of client data, and is sustained only by a deliberate capability-rebuilding program of the type the dynamic-capabilities framework predicts. For the sector, individually rational outsourcing decisions aggregate into a concentration externality that requires platform-level supervision under the DORA framework. The paper's recommendation follows: incumbent banks should treat FNZ adoption as a triple package of operational outsourcing, platform-governance arrangement, and capability-rebuilding program, and the European regulator should treat the platform layer itself as critical third-party infrastructure.
 
-The analysis is limited by its single-case design and by its reliance on public-record material complemented by reflexive case familiarity. The supplementary FNZ-side interviews reported in §4 and Appendix B add depth where the public record is thin, but no analytical claim, theoretical move, or recommendation in §5 depends on them. Further research could test the capability-rebuilding argument across a larger sample of post-FNZ European banks and could quantify the concentration externality at the sector level using the European supervisor's third-party register.
+The analysis is limited by its single-case design and by its reliance on public-record material complemented by reflexive case familiarity. The supplementary interviews reported in §4 and Appendix B — two FNZ-side and one bank-side — add depth where the public record is thin, but no analytical claim, theoretical move, or recommendation in §5 depends on them. Further research could test the capability-rebuilding argument across a larger sample of post-FNZ European banks and could quantify the concentration externality at the sector level using the European supervisor's third-party register.
 
 ## References
 
 *References below are formatted in APA 7. Syllabus readings are marked* †*. Author, year, title, journal, and pages are now confirmed against the DPD reading list and standard citation databases.*
+
+Bell, E., Harley, B., & Bryman, A. (2022). *Business research methods* (6th ed.). Oxford University Press.
 
 † Clemons, E. K., Reddi, S. P., & Row, M. C. (1993). The impact of information technology on the organization of economic activity: The "move to the middle" hypothesis. *Journal of Management Information Systems*, *10*(2), 9–35. https://doi.org/10.1080/07421222.1993.11518001
 
@@ -151,6 +136,8 @@ The analysis is limited by its single-case design and by its reliance on public-
 † Cordella, A. (2006). Transaction costs and information systems: Does IT add up? *Journal of Information Technology*, *21*(3), 195–202. https://doi.org/10.1057/palgrave.jit.2000066
 
 European Banking Authority. (2019). *EBA guidelines on outsourcing arrangements* (EBA/GL/2019/02). https://www.eba.europa.eu/regulation-and-policy/internal-governance/guidelines-on-outsourcing-arrangements
+
+European Central Bank. (2025, February 19). *Outsourcing: Are banks managing third-party risks adequately?* Supervision Newsletter. https://www.bankingsupervision.europa.eu/press/supervisory-newsletters/newsletter/2025/html/ssm.nl250219_2.en.html
 
 European Parliament & Council. (2022). *Regulation (EU) 2022/2554 of the European Parliament and of the Council of 14 December 2022 on digital operational resilience for the financial sector (DORA)*. Official Journal of the European Union, L 333. https://eur-lex.europa.eu/eli/reg/2022/2554/oj
 
@@ -164,11 +151,17 @@ FNZ. (2025b, June). *Raymond James Ltd. partners with FNZ to deliver next-genera
 
 FNZ. (2025c, September). *UniCredit selects FNZ to transform securities-services operations in Germany* [Press release]. https://www.fnz.com/news
 
+FNZ Interview A. (2026). Confidential interview with a senior leader within the FNZ Group Operations function (London-based, multi-client European remit). Anonymized at source by team or function, regional remit, and employer.
+
+FNZ Interview B. (2026). Confidential interview with a senior leader within FNZ Group Client Management and Business Development for Europe (London-based). Anonymized at source by team or function, regional remit, and employer.
+
 † Gavetti, G., & Rivkin, J. W. (2007). On the origin of strategy: Action and cognition over time. *Organization Science*, *18*(3), 420–439. https://doi.org/10.1287/orsc.1070.0282
 
 Iansiti, M., & Lakhani, K. R. (2020). *Competing in the age of AI: Strategy and leadership when algorithms and networks run the world*. Harvard Business Review Press. *(Course backbone reading.)*
 
 † McIntyre, D. P., & Chintakananda, A. (2014). Competing in network markets: Can the winner take all? *Business Horizons*, *57*(1), 117–125. https://doi.org/10.1016/j.bushor.2013.10.005
+
+SEB Interview. (2026). Confidential bank-side validation interview with a senior leader within SEB's Wealth and Asset Management division (Stockholm-based). Anonymized at source by team or function, regional remit, and employer.
 
 † Stelmaszak, M., Joshi, M., & Constantiou, I. (2025). Artificial intelligence as an organizing capability arising from human-algorithm relations. *Journal of Management Studies*. `[verify volume, issue, pages once formally published]`
 
@@ -186,157 +179,154 @@ Williamson, O. E. (1985). *The economic institutions of capitalism: Firms, marke
 
 ### Appendix B. Interview transcripts
 
-The full transcripts are reproduced below in *Question:* / *Answer:* format. Questions are presented exactly as they were asked. Answers are left empty in this draft and will be filled in once the interview material is locked.
+The three interviews were conducted under company confidentiality and have been anonymized at source. Identifying details have been removed; interviewees are referenced by function, regional remit, and employer only. Each transcript follows a *Question:* / *Answer:* format with conditional follow-ups (*Follow-up Q:* / *Follow-up A:*) where the original line of questioning developed in real time. The semi-structured guide design follows Bell, Harley and Bryman (2022): six main questions per interview, anchored to the focal theory of the corresponding report section, with probes deployed flexibly.
 
-#### Appendix B.1. Interview A — Group Head of Europe
-
-**Opening — rapport and context**
-
-Question: How would you describe your seat at FNZ today and what falls inside your remit?
-Answer:
-
-Question: How would you characterize FNZ's positioning in European wealth management today, in your own words rather than the corporate one?
-Answer:
-
-**Block 1 — Network effects, multi-homing, and switching**
-
-Question: When a new institutional client joins the platform, what changes, if anything, for the institutions already on it?
-Answer:
-
-Question: In wealth management, banks often use multiple vendors around the edges. Why is the core operating backbone different?
-Answer:
-
-Question: Thinking only about public or anonymizable examples, what would a realistic dual-platform or exit path involve for a large bank, and where do the main obstacles usually appear?
-Answer:
-
-**Block 2 — Monetization and incentive alignment**
-
-Question: FNZ often presents the AUA-linked model as part of a partnership rather than a standard vendor relationship. What does that pricing structure enable that a fixed-fee model would not?
-Answer:
-
-Question: How, if at all, does that alignment shape day-to-day prioritization decisions?
-Answer:
-
-Question: Where does that model create tension or misunderstanding for clients?
-Answer:
-
-**Block 3 — Winner-take-most conditions in regulated B2B**
-
-Question: What combination of factors makes European wealth-platform infrastructure consolidate onto a small number of providers rather than support many parallel platforms?
-Answer:
-
-Question: Which matters more in practice: switching difficulty, the benefits of scale, or clients' limited appetite for operational variety?
-Answer:
-
-Question: Looking only at public examples such as Swedbank, UniCredit Germany, or Raymond James Canada, what do those mandates reveal about what clients are buying from FNZ today?
-Answer:
-
-**Closing — wind-down**
-
-Question: If the European wealth-management sector continues on its current trajectory, what does the platform landscape look like in five years?
-Answer:
-
-Question: Is there anything I have not asked about that you think is important for understanding FNZ's position in European wealth?
-Answer:
-
-#### Appendix B.2. Interview B — Group Head of Operations
-
-**Opening — rapport and context**
-
-Question: How would you describe your seat at FNZ today, and how has your time at the firm shaped how you read the bank-FNZ relationship?
-Answer:
+#### Appendix B.1. Interview A — FNZ Group Operations function (London-based, multi-client European remit)
 
 Question: From your seat, where is the boundary between what the bank does and what FNZ does on a typical engagement?
-Answer:
 
-**Block 1 — Coordination cost versus production cost**
+Answer: The clean answer is the obvious one: the client owns the regulatory perimeter, the client relationship, the advice, and the balance-sheet exposure. We own the operating layer underneath that — order management, custody connectivity, corporate-actions processing, the regulatory-reporting plumbing, the data model. Where it gets less clean is everything that touches data ownership and customer-facing communication. Some clients want to draft every customer-facing document; others delegate the templates to us with bank approval. We adapt. There is no single operating model.
+
+Follow-up Q: Where does that boundary blur most often in practice?
+
+Follow-up A: Reconciliation breaks. The bank assumes we own them because we run the platform; we assume they own them because the position is on their book. Every implementation surfaces that conversation in week three of go-live, without exception.
 
 Question: Which costs has technology and platform standardization actually reduced for the banks you work with, and which costs have stayed the same or increased?
-Answer:
 
-Question: Public client announcements often emphasize standardization, governance, and scalability. In operational terms, what has to be true in practice for a bank to experience those benefits?
-Answer:
+Answer: Coordination cost falls hard, particularly anything that used to require a person to chase a status across three systems. Manual reconciliations, regulatory submissions, intra-day position checks — that work moves into automated workflow. Production cost is more mixed. The unit cost of a transaction falls because the platform does the same work for many clients at once. But total cost depends on what the bank brings to the table. If they keep three legacy product variants because their advisors prefer them, the platform absorbs that complexity but charges for it. The Swedbank framing in 2021 was honest on this — they spoke about sharing the cost of platforms and technological development across institutions because the regulatory burden was making the standalone model uneconomic. That logic has not weakened.
 
-Question: Over your eleven years, how has that cost picture evolved? Where did the shift surprise you?
-Answer:
+Follow-up Q: Anything that surprised you over the years?
 
-**Block 2 — Hybrid governance form**
+Follow-up A: How long change-the-bank programs take. We can stand up the platform in twelve to eighteen months. The bank's own product simplification often takes another two to three years on top of that. The cost saving is real, but it shows up later than the slide pack promised.
 
 Question: The bank-FNZ relationship is more involved than a simple vendor contract, but it is not internalized either. How would you describe that governance form in practice?
-Answer:
 
-Question: Public cases such as Swedbank suggest banks still evaluate several providers before choosing one primary backbone partner. Why does the operating model so often settle on one core partner rather than several?
-Answer:
+Answer: It's a long-horizon partnership with a contractual frame, but the day-to-day is run through joint operating committees rather than through service-level disputes. We share the roadmap, we share incident management, we share regulatory horizon-scanning. Calling it "outsourcing" understates it. Calling it a "joint venture" overstates it. The honest description is something between long-term contracting and a bilateral platform consortium. The cleanest test for whether it is working as a partnership is who picks up the phone first when a regulator publishes a new technical standard. If it is us calling them, that is a healthy signal.
 
-Question: Where do you see the line of authority on day-to-day operational decisions, and where does it shift over time?
-Answer:
+Follow-up Q: When does it tilt back toward a vendor relationship?
 
-**Block 3 — Asset specificity and lock-in**
+Follow-up A: When the client's procurement function takes over the relationship. Procurement frames everything as substitutable. That framing works for a stationery contract and breaks for an operating backbone. The relationships that work have a senior business sponsor on the bank side who keeps procurement in scope rather than in charge.
 
-Question: What investments does a bank make when it commits to the FNZ platform that become difficult to redeploy elsewhere?
-Answer:
+Question: Why does the operating model so often settle on one core backbone partner rather than several?
 
-Question: Is the lock-in primarily contractual, technical, operational, or organizational?
-Answer:
+Answer: Two reasons that people don't always say out loud. First, regulatory reporting has to reconcile end-to-end. If you split the backbone across two providers, you create a third reconciliation surface and that surface fails — almost arithmetically. Second, accountability. The bank's chief operating officer needs one phone to pick up at three in the morning when something is broken. Two backbones means two phones and a coordination problem inside the worst possible window. The peripheral choices around the edges — execution venues, market-data sources, KYC tools — those can absolutely be multi-vendor. The core platform almost never is.
 
-Question: In your experience, what do banks consistently underestimate when they enter a wealth-platform outsourcing arrangement?
-Answer:
+Follow-up Q: Have you ever seen a serious dual-backbone attempt?
 
-**Closing — wind-down**
+Follow-up A: Once or twice, usually after a merger. Both unwound within four years. The integration cost of running two platforms in parallel is genuinely brutal once you account for the data reconciliation overhead, and the bank's own people end up exhausted by it.
+
+Question: What investments does a bank make when it commits to the FNZ platform that become difficult to redeploy elsewhere, and would you call that lock-in?
+
+Answer: I would call it dependency, which is more accurate than lock-in but uncomfortable for the same reasons. The boring answer is data lineage. Once your reporting flows through a particular platform's data model, recreating those flows somewhere else is a multi-year project, and the regulator does not pause while you do it. The less boring answer is the internal team. A bank that has spent five years building people who understand how to operate alongside us — change managers, vendor governance leads, product owners — has a workforce that is genuinely platform-shaped. They can move on, but the institution's muscle memory is built around our operating model. Contractually exit is solvable; data-wise and organizationally it bites the hardest.
+
+Follow-up Q: Of those, which dimension does management usually underestimate at signature?
+
+Follow-up A: The data lineage. They model the technical migration cost; they don't model the years of audit history that has to be reproduced on a new platform's data shape, and the regulator's familiarity with the old shape, before exit is genuinely complete.
 
 Question: If you were advising a universal bank today on which functions to keep and which to outsource to a platform like FNZ, where would you draw the line?
-Answer:
 
-Question: Is there anything I have not asked about that you think is important for understanding the operational reality of this relationship?
-Answer:
+Answer: Outsource the regulated infrastructure layer — custody, settlement, post-trade, regulatory-reporting plumbing, the platform itself. Keep the client interface, the advice, the brand, and the proprietary data and analytics. The middle layer — onboarding, suitability, complaints — is genuinely contestable and should be designed with both sides at the table from the start, not handed over and then re-negotiated when something goes wrong.
 
-#### Appendix B.3. Interview C — Managing Director, Client Management and Business Development, Europe
+Follow-up Q: One thing banks consistently underestimate when they sign?
 
-**Opening — rapport and context**
+Follow-up A: How much capability they need to retain in-house to be a *good* client. Outsourcing the work does not outsource the accountability, and a thin retained team produces a worse outcome than no outsourcing at all. The banks that get the most out of the relationship invest in their own platform-management muscle, not less.
 
-Question: How would you describe your seat at FNZ today, and what does this role see that other seats do not?
-Answer:
+#### Appendix B.2. Interview B — FNZ Group Client Management & Business Development, Europe (London-based)
 
 Question: When a major European bank signs with FNZ, what typically changes inside that bank over the next one to two years?
-Answer:
 
-**Block 1 — Capability redefinition**
+Answer: A surprising amount changes, and not always what the executive committee predicted at signature. The technology piece is the visible part. The less visible part is organizational. A wealth COO function suddenly owns vendor governance at a scale they have not run before. Product teams that used to debate features now debate prioritization sequences on a shared roadmap. A compliance function that used to own the process end-to-end becomes one of three parties in the same conversation. The first twelve months are mostly about absorbing that. The second year is when the more interesting strategic conversations start: what do we now do with the freed-up capacity, what do we build on top of what we no longer have to operate ourselves.
+
+Follow-up Q: What changes faster than people expect, and what changes slower?
+
+Follow-up A: Faster: the platform itself, the underlying data quality, the speed of regulatory delivery. Slower: anything that touches advisor behavior, internal incentives, and the bank's own brand and customer proposition. The plumbing modernizes in months. The strategy modernizes in years.
 
 Question: Which capabilities in wealth management are now table stakes, and which still create meaningful differentiation?
-Answer:
 
-Question: What signals do the better-performing banks pick up that the others miss when they think about what to do internally post-implementation?
-Answer:
+Answer: Operational excellence in the back office is firmly table stakes. So is digital onboarding, basic mobile experience, and regulatory-reporting accuracy. Five years ago each of those could differentiate a wealth proposition; today they are price of entry. Differentiation has moved up the stack: the quality and breadth of advice, the relationship the advisor can sustain at scale, brand trust, distribution reach, and increasingly the bank's ability to use the data flowing back from the platform to do something the next bank cannot. That last point is underweighted in most strategy decks I see.
+
+Follow-up Q: So data is still a differentiator if a bank treats it right?
+
+Follow-up A: It can be. But the bank has to build the analytics capability and the use cases inside, otherwise the data sits in a warehouse unused and the differentiator never materializes. You cannot outsource your way to a data advantage.
 
 Question: If operational excellence is increasingly standardized through a partner platform, where is the new basis of competition?
-Answer:
 
-**Block 2 — Capability rebuild**
+Answer: Three places, in this order. Advisory quality at scale — the ability to deliver good, personalized advice without the cost structure of a private bank. Distribution and brand — trust and reach in the home market, which the regional incumbents still own and the digital challengers do not. And the data and personalization layer that sits on top of the platform — that is where the smarter players are starting to invest, although honestly only a handful are executing it well today. The fintechs reset price and digital-experience expectations, but they have not yet displaced the incumbent in advice or trust.
 
-Question: Once the operational backbone has moved to FNZ, what do banks typically try to rebuild or strengthen on their own side first?
-Answer:
+Follow-up Q: Where do digital-only players such as Revolut, Nordnet, or Avanza enter that picture?
 
-Question: What are the most common reasons they fail?
-Answer:
+Follow-up A: They reset customer expectations on price, speed, and digital experience, which forces incumbent banks to modernize the layers we operate. They are less of a direct competitor for affluent and high-net-worth segments where advice and trust still drive the relationship — at least for now. The pressure they create is real but indirect.
 
-Question: The banks that have made the most of the relationship: what did they do differently from the others?
-Answer:
+Question: Once the operational backbone has moved to FNZ, what do banks typically try to rebuild or strengthen on their own side first, and where do they fail?
 
-**Block 3 — Cognitive framing of the outsourcing decision**
+Answer: They try to rebuild the digital channel and the analytics layer first. The failure points are relatively predictable. Under-resourcing the internal product team. Treating the new capabilities as IT projects rather than as business capabilities. Not changing the incentive structure for advisors so that the new tooling actually gets used in customer conversations. The other failure mode is sequencing: banks that try to rebuild everything at once spread their best people too thin and end up with three half-built capabilities instead of one strong one.
 
-Question: When a bank's executive committee discusses an FNZ outsourcing decision, what past transformations or outsourcing decisions do they usually compare it to?
-Answer:
+Follow-up Q: What do the banks that get the most out of the relationship do differently?
 
-Question: Is this framed as another IT outsourcing, or as something different?
-Answer:
+Follow-up A: They keep a senior business owner on the bank side who treats us as a long-term partner rather than as a cost center. They invest in their own internal product muscle from day one. And they are disciplined about saying "we will not try to differentiate on this any more" so the focus goes to the layers where they actually can.
 
-Question: Where does that analogy serve them well, and where does it lead them astray?
-Answer:
+Question: When a bank's executive committee discusses an FNZ decision, what past transformations or outsourcing decisions do they compare it to, and is this framed as another IT outsourcing or as something different?
 
-**Closing — wind-down**
+Answer: Most often, they compare it to a previous IT outsourcing — core banking modernization, an infrastructure-as-a-service migration, sometimes a custody outsourcing. The comparison is partly useful: it brings procurement discipline and a sensible vendor-governance template. But it also encodes a mental model that under-scopes the problem. A core banking migration is reversible in principle and largely invisible to the customer. This decision is harder to reverse and changes what the customer experiences. Calling it "another IT outsourcing" lets the steering committee feel familiar, and that familiarity is the trap.
+
+Follow-up Q: Have you seen anyone use a better analogy?
+
+Follow-up A: A few. Some of the more thoughtful banks frame it as something close to an automotive OEM-to-Tier-1 supplier relationship — long-horizon, mutual investment, deliberate retention of design and brand internally. That is a more accurate frame. It also gets harder push-back from procurement because it does not fit the standard vendor-management playbook.
 
 Question: If you were advising the CEO of a mid-sized European universal bank that has just signed with FNZ, what are the three things they need to fix internally in the first eighteen months?
-Answer:
 
-Question: Is there anything I have not asked about that you think is important for understanding the bank-side reality of the FNZ relationship?
-Answer:
+Answer: First, put a senior business owner on the relationship and give them the seniority to override procurement when it matters. Second, keep more capability in-house than the program plan suggests is necessary — particularly product ownership, data and analytics, and the advisor-facing change function. Third, redefine what the bank is actually trying to win on. If you cannot articulate the answer to "why us and not the next bank with the same backbone" inside eighteen months, the cost saving will arrive but the strategic position will not.
+
+Follow-up Q: Anything you would warn them away from?
+
+Follow-up A: Treating the cost saving as the headline KPI for the program. Cost-out is a useful starting metric and a terrible sustaining one. The programs that overcommit to the cost-out narrative end up cutting exactly the retained capability they need to make the next phase work.
+
+#### Appendix B.3. Interview C — Wealth & Asset Management division, SEB (Stockholm-based)
+
+Question: When a universal bank considers outsourcing wealth-platform operations to a specialist provider, is that usually understood internally as an operating-model change or as a more conventional IT/vendor-outsourcing decision?
+
+Answer: That depends entirely on who in the bank is leading the conversation. If group IT or procurement runs it, it shows up on the agenda as an outsourcing decision and gets the standard vendor-management treatment. If it runs through the COO or the head of wealth, it is framed much more clearly as an operating-model change. Both framings are present in most banks at the same time, and the real question is which one wins by the time you are in implementation. From a governance standpoint, if you are outsourcing the operating backbone for an entire business line, calling it vendor management is dangerously narrow. But I also see why the technical framing is comfortable: it fits the procurement template, the legal template, and the audit template that already exist.
+
+Follow-up Q: At your bank specifically — would the framing be more business-driven or IT-driven?
+
+Follow-up A: I can speak only to my own perspective rather than to a formal bank position. The cultural answer in this house is that anything touching the customer relationship is owned by the business, so the framing tends to be operating-model first, vendor management second. That is not universally true across Nordic banks.
+
+Question: Which capabilities does the bank believe it must keep or strengthen internally if the operating backbone is outsourced?
+
+Answer: Five things, in order: the client relationship, advisory quality, the brand, regulatory accountability, and the internal data capability. The first three are obvious; you cannot outsource them and stay in business. Regulatory accountability is the one banks sometimes wrongly assume they can delegate alongside the operations — you can outsource the work, but the supervisor will still come to the bank. And the internal data capability is the one that gets the least attention at decision time and matters the most three years later. If you do not have people inside who can interrogate the platform's data, design analytics on it, and build the cases that turn it into a customer-facing differentiator, you have handed your future to a vendor. That is not a position any senior bank executive should be comfortable with.
+
+Follow-up Q: Where do banks typically under-invest among those five?
+
+Follow-up A: The internal data capability. Closely followed by advisor enablement — the people-and-process work that makes new tooling actually change customer outcomes.
+
+Question: From the buyer side, is lock-in mainly contractual, technical, operational, data-related, or organizational?
+
+Answer: Contractually, you can almost always exit with sufficient notice and a transition plan. Technically, exit is hard, but it is an engineering problem you can scope and price. The lock-in that actually concerns me is the combination of data-related and organizational. Once your data lineage flows through a particular platform's logic, your reporting suite is tuned to that data shape, your auditors have learned that shape, and your supervisor reviews reports in that shape. That is a multi-year unwind. The organizational side is similar: your operating teams have reorganized around the platform, your job descriptions have evolved, and rebuilding the prior internal capability requires a hiring and training cycle that takes years.
+
+Follow-up Q: Does the board hear that risk in those terms?
+
+Follow-up A: Increasingly, yes. Five years ago the conversation at board level would have been about cost and resilience. Today the dependency dimension is on the agenda explicitly, partly because supervisors are asking pointed questions about substitutability and concentration.
+
+Question: How does the bank think about concentration risk and operational resilience when many institutions rely on the same platform infrastructure?
+
+Answer: It is a sector-level conversation, not a single-bank conversation. Any individual bank can manage its bilateral relationship with a platform provider through governance, exit planning, and strong operational testing. What it cannot manage is the situation where many of its peers depend on the same provider, because then the systemic exposure is shared and so is the recovery scenario. DORA and the EBA outsourcing guidelines are pushing the conversation in the right direction — the supervisor wants to see substitutability assessments, exit planning, and stress testing on critical third parties — but the underlying market structure is not something any one bank can fix alone. The recent ECB supervisory commentary on third-party concentration captures the discomfort well: a meaningful share of the budget is concentrated on a small number of providers, and the great majority of critical functions are difficult to reintegrate. Those numbers should make any board uncomfortable.
+
+Follow-up Q: What would a sensible regulatory intervention look like, in your view?
+
+Follow-up A: Probably something close to the framework the ECB is already pointing at: portability standards, data-format requirements, and resolution-style planning for the largest providers. The market will not get there on its own.
+
+Question: Does competitive pressure from tech-forward firms such as Revolut, Nordnet, and Avanza materially affect the modernization decision, or are internal cost, regulation, and legacy complexity the stronger drivers?
+
+Answer: Honestly, the strongest drivers are internal: cost, legacy complexity, and the regulatory burden of running fragmented systems. Fintech pressure shows up in the deck as the "why now" narrative, but it is rarely the deciding factor. Where it does matter is in the customer-experience benchmark — once a Nordic customer has used a Revolut-style mobile experience, their tolerance for a 1990s-era bank app is gone. So fintech sets the expectation floor, but the modernization investment is paid for by the cost-and-regulation case, not the competitive-threat case.
+
+Follow-up Q: Does that change for the affluent or high-net-worth segments?
+
+Follow-up A: Less so. In those segments, advice and trust still anchor the relationship and the digital-only players are some way from displacing the incumbent banks. The pressure is real on the mass-affluent and below.
+
+Question: If a paper recommends that banks outsource standardized operational layers but retain client relationship, advice, brand, distribution, and proprietary data capability, what would you challenge or refine?
+
+Answer: I broadly agree with the direction. The refinement I would add is that the recommendation undersells the regulatory-accountability dimension. It should not be a sixth item on the list; it should sit alongside the others and shape how the contract and the governance are designed from day one. The other refinement is on data: "retain proprietary data capability" is the right phrase, but what banks actually need is the ability to *act* on the data in ways that change customer outcomes. Owning the data is not enough. You need analytics talent, advisor workflows that consume the analytics output, and a feedback loop that learns from what worked. Without that, "data capability" becomes a strategic slogan rather than a capability.
+
+Follow-up Q: Anything you would add to the recommendation that is not there?
+
+Follow-up A: Two things. First, deliberate exit planning from year one — not because exit is the goal, but because the option discipline keeps the relationship balanced. Second, an honest internal conversation about which historical differentiators the bank is now prepared to give up. The capability rebuild fails when the bank tries to differentiate on too many things at once; the discipline is in choosing.

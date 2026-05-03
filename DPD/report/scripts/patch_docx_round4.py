@@ -1,6 +1,31 @@
 """
 patch_docx_round4.py
 
+FROZEN SNAPSHOT — DO NOT RUN.
+
+This script holds the body content (Introduction, Background, Method, all
+of section 5 Discussion, Conclusion and limitations, and the References
+list) as it stood on 2026-04-29, BEFORE the 2026-05-03 interview redesign.
+Re-running it would revert: (a) the section 3 Method interview paragraph
+to the stale three-FNZ-personas wording, (b) the section 5 paragraphs to
+the round-4 prose without the round-6 in-text citations to FNZ Interview
+A/B, Danske Bank Interview, ECB (2025), and Bell Harley & Bryman (2022),
+(c) the Conclusion and limitations paragraph to the pre-Danske wording,
+and (d) the references list to the pre-Bell, pre-ECB, pre-Danske state.
+
+The current canonical patcher is scripts/patch_docx_round6.py.
+
+If the docx ever needs to be rebuilt from a clean template, this file's
+content remains the source of truth for the body text scaffolding, and
+should be brought back online only after its METHOD_PARAS, DISC_5_x_PARAS,
+CONCLUSION_PARAS, and REFERENCES_ENTRIES are re-synchronized with the
+2026-05-03+ state.
+
+To re-enable for that scenario, comment out the SystemExit guard below.
+"""
+import sys
+sys.exit("patch_docx_round4.py is a frozen snapshot — do not run. Use patch_docx_round6.py.")
+"""
 Round-4 surgical patch. Replaces the body content of the active .docx with
 the substantively rewritten and syllabus-aligned content from
 paper_body_draft.md (as of 2026-04-29).
@@ -32,7 +57,8 @@ The patcher:
   - Em-dashes are stripped from inserted text per the in-class instruction
     "No use of m-dash" (course_overview.md).
 """
-from __future__ import annotations
+# `from __future__ import annotations` removed because this script is hard-
+# disabled at the top of the file; it never executes past the sys.exit guard.
 
 import re
 import shutil

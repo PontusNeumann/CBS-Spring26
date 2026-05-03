@@ -21,17 +21,18 @@ From `../../ML/report/Design.md`:
 - Word output pipeline, paragraph-spacing rules, and keep-together rules (zero auto spacing, blank `Normal` paragraphs as separators, `cantSplit` and `keepNext` on tables and figure captions).
 - Caption format in Word: *Figure N. Descriptive caption text.* and *Table N. Descriptive caption text.*
 
-## 1.1. DPD-Specific Template Rules — Typography, Cover, and Back Page
+## 1.1. DPD-Specific Template Rules — Typography and Cover
 
-The DPD docx is built from the CBS branded template at `report/KAN-CDSCO2401U_185912_DPD_Spring2026.docx`. The first page of that template (the front page wrapped in a `<w:sdt>` block) carries the CBS logo, the cover image, and the accent-colour background shape. **Those elements are not moved or modified by any build step.** The same applies to the back-page block.
+The DPD docx is built from the CBS branded template at `report/KAN-CDSCO2401U_185912_DPD_Spring2026.docx`. The first page of that template (the front page wrapped in a `<w:sdt>` block) carries the CBS logo, the cover image, and the accent-colour background shape. **Those elements are not moved or modified by any build step.** The decorative CBS back page has been intentionally removed from the active final and must not be recreated by automation.
 
 **Active document base and editing rule**
 
 - The active Word document is `KAN-CDSCO2401U_185912_DPD_Spring2026.docx` in this report folder.
-- The binding fallback (front page, styles, package parts) is the latest backup snapshot: `backup/KAN-CDSCO2401U_185912_DPD_Spring2026_Backup_28.docx`. If a content patch or restore is needed, preserve or restore the front page from this snapshot.
+- The binding fallback for styles and package-part comparison is the latest stable backup snapshot: `backup/KAN-CDSCO2401U_185912_DPD_Spring2026_Backup_28.docx`. Do not overwrite the current manually edited cover from this snapshot unless the user explicitly asks for a one-off cover restore.
 - Do **not** rebuild the final document from `backup/Old_template.docx` (the historical pre-content template) or any older backup. That path silently drops later template and formatting choices.
-- Content-only edits to the final Word file should patch the existing `.docx` in place and leave cover, header, footer, styles, media, and back-page parts untouched. The safest automated route is to replace only `word/document.xml` text content while preserving all other `.docx` package parts.
-- The first page is not edited by automation. Front-page metadata and confidentiality wording are added manually unless the user explicitly asks otherwise.
+- Content-only edits to the final Word file should patch the existing `.docx` in place and leave cover, header, footer, styles, and media untouched. The safest automated route is to replace only non-cover `word/document.xml` text content while preserving all other `.docx` package parts.
+- The first page is frozen and manual-only. Front-page metadata, confidentiality wording, character count, page count, image/logo placement, and visually blank cover rows are not edited by automation. Some blank cover paragraphs carry drawing anchors.
+- The final hand-in has no decorative CBS back page. Do not restore the back page or its page-break machinery.
 
 **Body text**
 
@@ -50,20 +51,18 @@ The DPD docx is built from the CBS branded template at `report/KAN-CDSCO2401U_18
   - `Cover - Title`: **42 pt**
   - `Cover - Subtitle`: **14 pt**
   - `Cover - Text`: **9 pt / 11 pt**, per template
-- Back page:
-  - `Back - Text`: **CBS Serif, 9 pt**
 - References:
   - `Reference Text`: **CBS Serif, 9.5 pt**
 
 **Rule of thumb**
 
 - Only paragraphs in the built-in `Normal` style are forced to **11 pt**.
-- Paragraphs using CBS template-specific styles such as `Cover - *`, `Back - Text`, `Reference Text`, and `Reference Heading` keep their template-defined sizes.
+- Paragraphs using CBS template-specific styles such as `Cover - *`, `Reference Text`, and `Reference Heading` keep their template-defined sizes.
 
 **Removed / cleaned up**
 
 - No manual table-of-contents listing is kept on the cover or in front matter.
-- No ISSN line is kept on the back page.
+- No ISSN line or decorative CBS back page is kept in the final hand-in.
 
 ## 1.2. DPD-Specific Word Output Rules — Spacing and Page Breaks
 
@@ -96,7 +95,7 @@ Only two top-level paragraphs carry `pageBreakBefore` on their paragraph propert
 
 No body Heading 1 (Introduction, Background, Method, Results, Discussion, Conclusion) carries `pageBreakBefore`. Body sections flow inline so the 10-page budget is not wasted on forced breaks. The `Heading 1`, `Heading 2`, and `Heading 3` style definitions themselves must also have `pageBreakBefore` unset; otherwise Word will show "Page break before" as inherited on every heading even when the individual paragraph does not contain a direct page-break flag.
 
-The back-page block in the CBS template already carries its own `pageBreakBefore` and is left untouched.
+No page break is inserted for a decorative back page.
 
 ## 2. DPD-Specific Page Discipline
 
