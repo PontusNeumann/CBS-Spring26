@@ -9,6 +9,16 @@ ML/report/data/**/*.parquet
 ML/report/data/**/*.csv
 ML/report/data/**/*.log
 
+# Archived legacy data dump (>2 GB total; distribute via GitHub Releases instead)
+ML/report/archive/data_old/
+
+# v5 submission data parquets (large; distribute via GitHub Releases)
+ML/report/submission/data/*.parquet
+
+# Optuna study DBs and prediction artifacts (regeneratable; too large for git)
+ML/report/**/outputs/**/study.db
+ML/report/**/outputs/**/preds_test_tuned.npz
+
 # Python bytecode
 __pycache__/
 
