@@ -36,3 +36,7 @@ ML/report/.claude/
 
 # Release tarballs downloaded from GitHub Releases (too large for git)
 *.tar.gz
+
+# DPD report — single-author exam paper; keep out of shared repo so other-project
+# collaborators don't pull the heavy PDF source pool, .docx, and backups.
+DPD/report/
