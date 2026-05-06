@@ -2,6 +2,7 @@
 
 **Course.** KAN-CDSCO1002U — Natural Language Processing and Text Analytics, CBS BADS.
 **Companion notebook.** `report/onestream_architecture_comparison.ipynb`.
+**Companion notes.** `planning/kasper_call_takeaways.md` — practitioner takeaways from the Kasper call cross-checked against SLP3 and primary literature. Covers chunking, embedding-model choice, k-selection, and the no-classifier-RAG argument that motivates Phase 6. Read before any change to Phases 1, 4, or 6.
 **Status.** Plan document. Updates from v2 are flagged in each section.
 
 ---
