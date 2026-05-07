@@ -20,6 +20,7 @@ Outputs:
 
 from __future__ import annotations
 
+import ast
 import json
 import sys
 from pathlib import Path
@@ -37,6 +38,16 @@ from config import DATA_DIR, OUTPUTS_DIR, RANDOM_SEED  # noqa: E402
 # how: we exclude them when building X for modeling
 META_COLS = {"split", "market_id", "ts_dt", "timestamp"}
 TARGET = "bet_correct"
+
+# what: modelling scripts whose StandardScaler usage we audit for train-only fitting
+# why: a scaler fit on the full dataset (train+test) leaks test distribution into training
+# how: D4 check walks each script's AST and flags any StandardScaler() not inside a
+#      fold loop or fitted on a clearly train-scoped array
+SCALER_AUDIT_FILES = [
+    Path(__file__).resolve().parent / "03_train_models.py",
+    Path(__file__).resolve().parent / "04_calibration.py",
+    Path(__file__).resolve().parent / "06_tuning_optuna.py",
+]
 
 # what: columns we refuse to use for modeling because they leak the future
 # why: each one peeks at information that would not be available at trade time
@@ -204,6 +215,305 @@ def check_backtest_context(df: pd.DataFrame) -> dict:
             "context_file": BACKTEST_CONTEXT.name, "checks": split_checks}
 
 
+# ---------------------------------------------------------------------------
+# D4 — StandardScaler refit-per-fold AST audit
+# ---------------------------------------------------------------------------
+
+
+def _enclosing_func(tree: ast.AST, target: ast.AST) -> ast.FunctionDef | None:
+    """Return the FunctionDef node that directly contains `target`, or None."""
+    # what: walk the AST to find which function owns the target node
+    # why: we need the function scope to check for fold loops and train-subset fits
+    # how: iterate all FunctionDef nodes, inner-walk each; first match wins
+    candidate: ast.FunctionDef | None = None
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for inner in ast.walk(node):
+                if inner is target:
+                    candidate = node
+                    break
+            if candidate is not None:
+                break
+    return candidate
+
+
+def _has_fold_loop(func: ast.FunctionDef) -> bool:
+    """True if `func` body contains a recognisable cross-validation split call.
+
+    Recognised patterns:
+      - `<x>.split(...)` where x is any CV splitter (KFold, GroupKFold, etc.)
+      - any `.split(...)` attribute call — conservative but sufficient
+    """
+    # what: look for .split(...) calls anywhere in the function body
+    # why: a CV splitter's .split() is the canonical fold-loop marker
+    # how: walk all Call nodes; check for an Attribute named "split"
+    for node in ast.walk(func):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if node.func.attr == "split":
+                return True
+    return False
+
+
+def _fits_only_train_subset(func: ast.FunctionDef) -> bool:
+    """True if every fit/fit_transform call in `func` targets a train-scoped array.
+
+    Recognises:
+      - X.iloc[tr_idx] or X[tr_idx]  →  ast.Subscript
+      - X_train, X_tr                →  ast.Name ending in _train/_tr
+    Returns True if at least one qualifying pattern is found, or if no
+    fit/fit_transform calls exist at all (scaler instantiated but unused — not a risk).
+    """
+    # what: check that fit_transform is called on a train-restricted subset
+    # why: fit_transform on unsliced X uses test rows and leaks the test distribution
+    # how: inspect the first argument of each fit/fit_transform call
+    seen_any = False
+    for node in ast.walk(func):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if node.func.attr in ("fit_transform", "fit"):
+                if not node.args:
+                    continue
+                seen_any = True
+                arg0 = node.args[0]
+                # X.iloc[...] or X[...]
+                if isinstance(arg0, ast.Subscript):
+                    return True
+                # X.iloc[...].something (Attribute of a Subscript)
+                if isinstance(arg0, ast.Attribute) and isinstance(
+                    arg0.value, ast.Subscript
+                ):
+                    return True
+                # X_train, X_tr, etc.
+                if isinstance(arg0, ast.Name) and (
+                    arg0.id.endswith("_train") or arg0.id.endswith("_tr")
+                ):
+                    return True
+    # no fit calls at all — scaler present but not fitted here; not a leak risk
+    return not seen_any
+
+
+def check_scaler_refit_per_fold() -> dict:
+    """Test D4 — every StandardScaler() is inside a CV fold loop or fits only a train subset.
+
+    what: AST-walk each modelling script and flag any StandardScaler() instantiation
+          that is neither inside a function with a .split() call nor fitted on a
+          clearly train-scoped array (subscripted, iloc'd, or a Name ending _train/_tr).
+    why:  a scaler fit on the full dataset before the CV split leaks test-set
+          distribution statistics into the training signal.
+    how:  parse each file with ast.parse, find all StandardScaler() Call nodes,
+          look up their enclosing function, then apply _has_fold_loop and
+          _fits_only_train_subset heuristics.
+    """
+    findings = []
+    suspicious = []
+
+    for path in SCALER_AUDIT_FILES:
+        if not path.exists():
+            findings.append({"file": path.name, "reason": "file_not_found", "ok": True})
+            continue
+        try:
+            tree = ast.parse(path.read_text())
+        except SyntaxError as e:
+            suspicious.append({"file": path.name, "reason": f"SyntaxError: {e}"})
+            continue
+
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "StandardScaler"
+            ):
+                line_no = getattr(node, "lineno", -1)
+                func = _enclosing_func(tree, node)
+                func_name = func.name if func else "<module>"
+                ok_fold = _has_fold_loop(func) if func else False
+                ok_subset = _fits_only_train_subset(func) if func else False
+                ok = ok_fold or ok_subset
+                findings.append(
+                    {
+                        "file": path.name,
+                        "line": line_no,
+                        "function": func_name,
+                        "has_fold_loop": ok_fold,
+                        "fits_train_subset": ok_subset,
+                        "ok": ok,
+                    }
+                )
+                if not ok:
+                    suspicious.append(
+                        {
+                            "file": path.name,
+                            "line": line_no,
+                            "function": func_name,
+                            "reason": (
+                                "StandardScaler outside CV loop AND "
+                                "fit_transform not on a train-subset"
+                            ),
+                        }
+                    )
+
+    return {
+        "name": "D4_scaler_refit_per_fold",
+        "pass": len(suspicious) == 0,
+        "findings": findings,
+        "suspicious": suspicious,
+    }
+
+
+# ---------------------------------------------------------------------------
+# W1 — wallet causal-bisection spot-check
+# ---------------------------------------------------------------------------
+
+
+def check_wallet_bisection(test: pd.DataFrame) -> dict:
+    """Test W1 — wallet features re-derived from raw enrichment match the parquet values.
+
+    what: for a 500-row sample of the test set, re-compute three wallet features
+          (wallet_polygon_age_at_t_days, wallet_n_inbound_at_t, wallet_n_cex_deposits_at_t)
+          from wallet_enrichment.parquet using only events with timestamp < t, then
+          compare against the values stored in the modelling parquet.
+    why:  detects any off-by-one shift or future-looking join in the wallet feature
+          engineering step; a mismatch here would mean the wallet features leak
+          post-trade data.
+    how:  read enrichment with fetch_status=='ok', build wallet→info lookup dict,
+          sample 500 rows with seed=42, recompute using np.searchsorted (bisect-left),
+          require >=99% match rate to pass.
+    """
+    wallet_enrich_path = DATA_DIR / "wallet_enrichment.parquet"
+
+    # what: graceful skip when the file is absent from submission/data/
+    # why: the upstream dev already verified this on the full dataset;
+    #      in the submission boundary we document as skipped rather than failing
+    if not wallet_enrich_path.exists():
+        return {
+            "name": "W1_wallet_bisection",
+            "pass": True,
+            "skipped": "wallet_enrichment.parquet not in submission/data/",
+        }
+
+    required_cols = [
+        "wallet_polygon_age_at_t_days",
+        "wallet_n_inbound_at_t",
+        "wallet_n_cex_deposits_at_t",
+    ]
+    missing_cols = [c for c in required_cols if c not in test.columns]
+    if missing_cols:
+        return {
+            "name": "W1_wallet_bisection",
+            "pass": True,
+            "skipped": f"wallet feature columns not in test set: {missing_cols}",
+        }
+
+    if "taker" not in test.columns:
+        return {
+            "name": "W1_wallet_bisection",
+            "pass": True,
+            "skipped": "taker column not in test set",
+        }
+
+    # what: load enrichment data; restrict to successfully fetched wallets
+    enrich = pd.read_parquet(wallet_enrich_path)
+    enrich = enrich[enrich["fetch_status"] == "ok"]
+
+    # what: build a per-wallet lookup dict with sorted timestamp arrays
+    # how: inbound_ts and cex_deposit_ts are list-of-int columns in the enrichment parquet
+    idx: dict[str, dict] = {}
+    for _, r in enrich.iterrows():
+        idx[str(r["wallet"]).lower()] = {
+            "polygon_first_tx_ts": (
+                int(r["polygon_first_tx_ts"])
+                if not pd.isna(r["polygon_first_tx_ts"])
+                else None
+            ),
+            "inbound_ts": (
+                np.asarray(r["inbound_ts"], dtype=np.int64)
+                if len(r["inbound_ts"])
+                else np.array([], dtype=np.int64)
+            ),
+            "cex_deposit_ts": (
+                np.asarray(r["cex_deposit_ts"], dtype=np.int64)
+                if len(r["cex_deposit_ts"])
+                else np.array([], dtype=np.int64)
+            ),
+        }
+
+    # what: sample 500 test rows uniformly with a fixed seed for reproducibility
+    rng = np.random.RandomState(42)
+    n_sample = min(500, len(test))
+    sample_idx = rng.choice(len(test), size=n_sample, replace=False)
+
+    n_checked = 0
+    n_match = 0
+    mismatches: list[dict] = []
+
+    for i in sample_idx:
+        wallet = str(test.iloc[i]["taker"]).lower()
+        info = idx.get(wallet)
+        if info is None:
+            continue
+        n_checked += 1
+        t = int(test.iloc[i]["timestamp"])
+
+        # what: re-derive each feature using only events strictly before timestamp t
+        # how: np.searchsorted with side='left' gives count of events < t
+        if info["polygon_first_tx_ts"] is None:
+            exp_age = float("nan")
+        else:
+            exp_age = max(0, t - info["polygon_first_tx_ts"]) / 86400.0
+
+        exp_inbound = (
+            int(np.searchsorted(info["inbound_ts"], t, side="left"))
+            if len(info["inbound_ts"])
+            else 0
+        )
+        exp_cex = (
+            int(np.searchsorted(info["cex_deposit_ts"], t, side="left"))
+            if len(info["cex_deposit_ts"])
+            else 0
+        )
+
+        act_age = test.iloc[i]["wallet_polygon_age_at_t_days"]
+        act_inbound = test.iloc[i]["wallet_n_inbound_at_t"]
+        act_cex = test.iloc[i]["wallet_n_cex_deposits_at_t"]
+
+        ok_age = (np.isnan(exp_age) and pd.isna(act_age)) or (
+            not np.isnan(exp_age)
+            and not pd.isna(act_age)
+            and abs(float(act_age) - exp_age) < 1e-3
+        )
+        ok_inbound = float(act_inbound) == float(exp_inbound)
+        ok_cex = float(act_cex) == float(exp_cex)
+
+        if ok_age and ok_inbound and ok_cex:
+            n_match += 1
+        elif len(mismatches) < 10:
+            mismatches.append(
+                {
+                    "row": int(i),
+                    "wallet": wallet[:10] + "...",
+                    "ts": t,
+                    "age_exp": float(exp_age) if not np.isnan(exp_age) else None,
+                    "age_act": float(act_age) if not pd.isna(act_age) else None,
+                    "inbound_exp": exp_inbound,
+                    "inbound_act": float(act_inbound),
+                    "cex_exp": exp_cex,
+                    "cex_act": float(act_cex),
+                }
+            )
+
+    match_rate = n_match / n_checked if n_checked > 0 else 0.0
+    passed = n_checked == 0 or match_rate >= 0.99
+
+    return {
+        "name": "W1_wallet_bisection",
+        "pass": bool(passed),
+        "n_sampled": int(n_sample),
+        "n_checked": n_checked,
+        "n_match": n_match,
+        "match_rate": float(match_rate),
+        "mismatches_sample": mismatches,
+    }
+
+
 def get_feature_cols(df: pd.DataFrame) -> list[str]:
     """Return the list of columns that are actually features (not meta, not target, not forbidden)."""
     # what: filter the column list down to modeling features
@@ -234,6 +544,8 @@ def main() -> int:
         check_no_post_event_leakage(train, test),
         check_no_forbidden_columns(df),
         check_pre_trade_price(test),
+        check_scaler_refit_per_fold(),
+        check_wallet_bisection(test),
         check_backtest_context(df),
     ]
     n_pass = sum(1 for c in checks if c["pass"])

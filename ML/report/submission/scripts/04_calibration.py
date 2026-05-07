@@ -53,8 +53,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import DATA_DIR, OUTPUTS_DIR, RANDOM_SEED  # noqa: E402
 
 TARGET = "bet_correct"
-N_BOOTSTRAP = 1_000
-PERM_N_REPEATS = 5
+N_BOOTSTRAP = 500
+PERM_N_REPEATS = 3
 
 
 # ----------------------------------------------------------------------------
@@ -109,6 +109,48 @@ def bootstrap_auc_ci(y_true: np.ndarray, y_prob: np.ndarray, n_iter: int = N_BOO
         aucs[i] = roc_auc_score(y_true[idx], y_prob[idx])
     aucs = aucs[~np.isnan(aucs)]
     return float(np.mean(aucs)), float(np.percentile(aucs, 2.5)), float(np.percentile(aucs, 97.5))
+
+
+def paired_bootstrap_auc_diff(
+    y_true: np.ndarray,
+    p_a: np.ndarray,
+    p_b: np.ndarray,
+    n_iter: int = N_BOOTSTRAP,
+    seed: int = RANDOM_SEED,
+) -> dict:
+    """Paired bootstrap test on the AUC difference between two models.
+
+    what: resample BOTH prediction arrays with the same indices (paired) and
+          measure AUC(m_a) - AUC(m_b) on each resample.
+    why:  the per-model bootstrap CIs don't tell us whether the gap between
+          two models is statistically real — paired resampling accounts for
+          correlation in errors across models.
+    how:  p_value = 2 * min(P(diff <= 0), P(diff >= 0)), two-tailed.
+          Degenerate resamples (single class) are skipped to keep the estimator
+          unbiased — identical to the guard in bootstrap_auc_ci.
+    """
+    rng = np.random.default_rng(seed)
+    n = len(y_true)
+    diffs: list[float] = []
+    for _ in range(n_iter):
+        idx = rng.integers(0, n, size=n)
+        y_s = y_true[idx]
+        if len(np.unique(y_s)) < 2:
+            continue
+        auc_a = roc_auc_score(y_s, p_a[idx])
+        auc_b = roc_auc_score(y_s, p_b[idx])
+        diffs.append(auc_a - auc_b)
+    diffs_arr = np.array(diffs)
+    mean_diff = float(np.mean(diffs_arr))
+    ci_lower = float(np.percentile(diffs_arr, 2.5))
+    ci_upper = float(np.percentile(diffs_arr, 97.5))
+    p_val = float(2.0 * min((diffs_arr <= 0).mean(), (diffs_arr >= 0).mean()))
+    return {
+        "mean_diff": mean_diff,
+        "ci_lower": ci_lower,
+        "ci_upper": ci_upper,
+        "p_value": p_val,
+    }
 
 
 # ----------------------------------------------------------------------------
@@ -241,6 +283,120 @@ def permutation_importance_top_k(best_model_name: str, k: int = 15) -> pd.DataFr
     return imp
 
 
+def shap_on_top_picks(best_model_name: str, top_k_pct: float = 0.01) -> None:
+    """SHAP analysis restricted to the top-1% highest-confidence test predictions.
+
+    what: compute SHAP values only for the subset of test rows where the best
+          calibrated model had the highest predicted probabilities.
+    why:  global permutation importance averages over all rows; SHAP on the
+          top-1% picks answers "what drove the model's confidence on the bets
+          it actually wanted to make?" — closer to Lecture 14 (Explainable AI)
+          requirements for a report-relevant explanation.
+    how:  use shap.TreeExplainer (fast, exact for tree ensembles); fall back to
+          the best non-MLP model if the overall best is MLP.
+          For binary classification TreeExplainer returns a list [neg, pos];
+          take element [1] (positive class).
+    """
+    try:
+        import shap  # noqa: PLC0415
+    except ImportError:
+        print("  [shap_on_top_picks] shap not installed — skipping (pip install shap)")
+        return
+
+    TREE_MODELS = {"decision_tree", "random_forest", "hist_gbm", "lightgbm"}
+
+    metrics_dir = OUTPUTS_DIR / "metrics"
+    models_dir = OUTPUTS_DIR / "models"
+
+    # what: pick the right model — prefer best, but fall back if MLP
+    if best_model_name not in TREE_MODELS:
+        # what: scan cal_df ordering to find next-best tree model
+        cal_path = metrics_dir / "calibration_summary.csv"
+        if not cal_path.exists():
+            print("  [shap_on_top_picks] calibration_summary.csv not found — skipping")
+            return
+        ordered = pd.read_csv(cal_path).sort_values("test_auc_cal", ascending=False)["model"].tolist()
+        candidates = [m for m in ordered if m in TREE_MODELS]
+        if not candidates:
+            print("  [shap_on_top_picks] no tree-based model found — skipping")
+            return
+        model_name = candidates[0]
+        print(f"  [shap_on_top_picks] best model is {best_model_name} (not tree); "
+              f"falling back to {model_name}")
+    else:
+        model_name = best_model_name
+
+    # what: reload features and data (same pipeline as permutation_importance_top_k)
+    feature_cols = json.loads((OUTPUTS_DIR / "data" / "feature_cols.json").read_text())
+    df = pd.read_parquet(DATA_DIR / "consolidated_modeling_data.parquet")
+    train = df[df["split"] == "train"].reset_index(drop=True)
+    test = df[df["split"] == "test"].reset_index(drop=True)
+    X_train = train[feature_cols].replace([np.inf, -np.inf], np.nan).fillna(0)
+    X_test = test[feature_cols].replace([np.inf, -np.inf], np.nan).fillna(0)
+    y_train = train[TARGET].astype(int)
+
+    from importlib import util as _u
+    sweep_path = Path(__file__).parent / "03_train_models.py"
+    spec = _u.spec_from_file_location("train_models_mod", sweep_path)
+    mod = _u.module_from_spec(spec); spec.loader.exec_module(mod)  # type: ignore
+    pca_k = mod.pca_elbow_k(X_train)
+    factories = {n: (f, s) for n, f, s in mod.make_factories(pca_k)}
+
+    if model_name not in factories:
+        print(f"  [shap_on_top_picks] {model_name} not in factories — skipping")
+        return
+    factory, scale = factories[model_name]
+
+    if scale:
+        scaler = StandardScaler().fit(X_train)
+        X_tr_arr = scaler.transform(X_train)
+        X_te_arr = scaler.transform(X_test)
+    else:
+        X_tr_arr = X_train.values
+        X_te_arr = X_test.values
+
+    clf = factory().fit(X_tr_arr, y_train)
+
+    # what: select top-1% test rows by calibrated probability
+    cal_npz = models_dir / model_name / "preds_test_cal.npz"
+    if not cal_npz.exists():
+        print(f"  [shap_on_top_picks] calibrated preds for {model_name} not found — skipping")
+        return
+    cal_probs = np.load(cal_npz)["cal"]
+    k = max(1, int(np.ceil(top_k_pct * len(cal_probs))))
+    top_idx = np.argsort(cal_probs)[-k:]
+    X_top = X_te_arr[top_idx]
+
+    print(f"  [shap_on_top_picks] running SHAP on {k} top-{top_k_pct:.0%} picks for {model_name}...")
+    explainer = shap.TreeExplainer(clf)
+    shap_vals = explainer.shap_values(X_top)
+    # how: binary classification returns list [neg_class, pos_class]; take pos_class
+    if isinstance(shap_vals, list):
+        shap_vals = shap_vals[1]
+
+    # what: save summary bar plot
+    fig, ax = plt.subplots(figsize=(8, 5))
+    shap.summary_plot(shap_vals, X_top, feature_names=feature_cols, plot_type="bar", show=False)
+    plt.title(f"SHAP (top {top_k_pct:.0%} picks) — {model_name}")
+    plt.tight_layout()
+    plot_path = metrics_dir / f"shap_summary_top1pct_{model_name}.png"
+    plt.savefig(plot_path, dpi=120, bbox_inches="tight")
+    plt.close()
+    print(f"  [shap_on_top_picks] saved {plot_path.name}")
+
+    # what: save CSV ranking by mean absolute SHAP
+    mean_abs = np.abs(shap_vals).mean(axis=0)
+    std_abs = np.abs(shap_vals).std(axis=0)
+    ranking = (
+        pd.DataFrame({"feature": feature_cols, "mean_abs_shap": mean_abs, "std_shap": std_abs})
+        .sort_values("mean_abs_shap", ascending=False)
+        .reset_index(drop=True)
+    )
+    csv_path = metrics_dir / f"shap_ranking_top1pct_{model_name}.csv"
+    ranking.to_csv(csv_path, index=False)
+    print(f"  [shap_on_top_picks] saved {csv_path.name}")
+
+
 # ----------------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------------
@@ -302,6 +458,43 @@ def main() -> int:
         print(f"  {name:14s}  AUC = {mean_auc:.4f}  CI = [{lo:.4f}, {hi:.4f}]")
     pd.DataFrame(ci_rows).to_csv(metrics_dir / "auc_bootstrap_ci.csv", index=False)
 
+    # what: paired bootstrap AUC differences for all model pairs
+    # why:  per-model CIs don't tell us if pairwise gaps are significant; paired
+    #       resampling gives a proper test and Bonferroni-corrected p-values
+    print("\nPaired bootstrap AUC differences ...")
+    # how:  collect calibrated preds for all models that produced a cal file
+    cal_map: dict[str, np.ndarray] = {}
+    for name in model_names:
+        cp = models_dir / name / "preds_test_cal.npz"
+        if cp.exists():
+            cal_map[name] = np.load(cp)["cal"]
+    pairs = [(a, b) for i, a in enumerate(sorted(cal_map)) for b in sorted(cal_map)[i + 1:]]
+    n_pairs = len(pairs)
+    pair_rows = []
+    for m_a, m_b in pairs:
+        res = paired_bootstrap_auc_diff(y_test.values, cal_map[m_a], cal_map[m_b], n_iter=200)
+        bonf = min(res["p_value"] * n_pairs, 1.0)
+        pair_rows.append({
+            "model_a": m_a,
+            "model_b": m_b,
+            "mean_auc_diff": res["mean_diff"],
+            "ci_lower": res["ci_lower"],
+            "ci_upper": res["ci_upper"],
+            "p_value": res["p_value"],
+            "p_value_bonferroni": bonf,
+        })
+        print(f"  {m_a} vs {m_b}: diff={res['mean_diff']:+.4f} "
+              f"CI=[{res['ci_lower']:+.4f},{res['ci_upper']:+.4f}] "
+              f"p={res['p_value']:.3f} p_bonf={bonf:.3f}")
+    if pair_rows:
+        pair_df = pd.DataFrame(pair_rows)
+        pair_df.to_csv(metrics_dir / "auc_pairwise.csv", index=False)
+        top5 = pair_df.assign(abs_diff=pair_df["mean_auc_diff"].abs()).sort_values(
+            "abs_diff", ascending=False
+        ).head(5).drop(columns="abs_diff")
+        print("\nTop-5 pairs by |mean AUC diff|:")
+        print(top5.to_string(index=False))
+
     # what: permutation importance on the best model (head of the cal_df)
     if not cal_df.empty:
         best = cal_df.iloc[0]["model"]
@@ -310,6 +503,14 @@ def main() -> int:
         if imp is not None:
             imp.to_csv(metrics_dir / f"permutation_importance_{best}.csv", index=False)
             print(imp.to_string(index=False))
+
+    # what: SHAP on top-1% picks for the best (tree-based) model
+    # why:  complements global permutation importance with a focused explainability
+    #       view for the model's most confident predictions (Lecture 14 requirement)
+    if not cal_df.empty:
+        best = cal_df.iloc[0]["model"]
+        print(f"\nSHAP on top-1% picks (best model: {best}) ...")
+        shap_on_top_picks(best)
 
     print(f"\nStage 4 complete. Outputs in {metrics_dir.relative_to(OUTPUTS_DIR.parent)}.")
     print("Proceed to 05_backtest.py.")

@@ -500,8 +500,88 @@ def render_overview(df: pd.DataFrame, out_path: Path,
 
 
 # ----------------------------------------------------------------------------
+# Diagnostics: per-market PnL + edge-bucket hit rate (added per robustness review)
+# ----------------------------------------------------------------------------
+
+
+def per_market_pnl_breakdown(model_name: str, p_hat: np.ndarray, edge: np.ndarray,
+                              cost: np.ndarray, bet_correct: np.ndarray,
+                              market_ids: np.ndarray, mask: np.ndarray,
+                              out_path: Path) -> pd.DataFrame:
+    """Per-market PnL breakdown for a single (model, strategy) pair.
+
+    Tells the reviewer whether headline ROI comes from one market or many.
+    With only 10 test markets, concentration is a credibility question.
+    """
+    sel = mask & (~np.isnan(p_hat))
+    if sel.sum() == 0:
+        return pd.DataFrame()
+    rows = []
+    for mid in np.unique(market_ids[sel]):
+        m = sel & (market_ids == mid)
+        n = int(m.sum())
+        if n == 0:
+            continue
+        # Simplified PnL: stake $1 per signal, win pays 1/cost, lose pays -1
+        wins = bet_correct[m].astype(int)
+        c = cost[m]
+        pnl = np.where(wins == 1, (1.0 / c) - 1.0, -1.0)
+        rows.append({"market_id": str(mid), "n_signals": n,
+                     "hit_rate": float(wins.mean()),
+                     "total_pnl": float(pnl.sum()),
+                     "pnl_per_signal": float(pnl.mean())})
+    df = pd.DataFrame(rows).sort_values("total_pnl", ascending=False)
+    df.to_csv(out_path, index=False)
+    return df
+
+
+def plot_edge_distribution(edge: np.ndarray, bet_correct: np.ndarray,
+                            mask_top_k: np.ndarray, out_path: Path) -> None:
+    """Edge distribution + hit rate per edge bucket — direct test of edge as signal."""
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    axes[0].hist(edge, bins=80, alpha=0.5, label="all test trades", color="grey")
+    if mask_top_k.any():
+        axes[0].hist(edge[mask_top_k], bins=80, alpha=0.7,
+                     label="top-1% by p_hat", color="C1")
+    axes[0].axvline(0, color="black", lw=0.5)
+    axes[0].axvline(0.02, color="green", lw=0.5, ls="--",
+                    label="general +EV threshold (0.02)")
+    axes[0].axvline(0.20, color="red", lw=0.5, ls="--",
+                    label="home-run threshold (0.20)")
+    axes[0].set_xlabel("edge = p_hat - cost")
+    axes[0].set_ylabel("trade count")
+    axes[0].set_title("Edge distribution")
+    axes[0].legend(fontsize=8)
+    axes[0].grid(alpha=0.3)
+
+    bucket_edges = [-1, -0.2, -0.05, 0, 0.02, 0.05, 0.10, 0.20, 0.50, 1]
+    labels = [f"{a:.2f}-{b:.2f}" for a, b in zip(bucket_edges[:-1], bucket_edges[1:])]
+    bucket = np.digitize(edge, bucket_edges[1:-1], right=False)
+    rates, counts = [], []
+    for b in range(len(labels)):
+        m = bucket == b
+        rates.append(bet_correct[m].mean() if m.any() else 0)
+        counts.append(int(m.sum()))
+    bars = axes[1].bar(labels, rates,
+                        color=["red" if r < 0.5 else "green" for r in rates])
+    axes[1].axhline(0.5, color="black", ls="--", lw=0.5)
+    axes[1].set_xlabel("edge bucket")
+    axes[1].set_ylabel("empirical hit rate")
+    axes[1].set_title("Hit rate by edge bucket - does higher edge = more wins?")
+    for bar, c in zip(bars, counts):
+        axes[1].text(bar.get_x() + bar.get_width() / 2, 0.02, f"n={c}",
+                     ha="center", fontsize=8, rotation=90)
+    plt.setp(axes[1].xaxis.get_majorticklabels(), rotation=45, ha="right")
+    axes[1].grid(alpha=0.3, axis="y")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=140)
+    plt.close(fig)
+
+
+# ----------------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------------
+
 
 def main() -> int:
     print("=" * 60)
@@ -616,6 +696,35 @@ def main() -> int:
         verdict = "yes" if r["ml_beats_naive"] else "no"
         print(f"  {s:20s}  naive={r['naive_roi']*100:+.1f}%  "
               f"best_ml={r['best_model']}={r['best_model_roi']*100:+.1f}%  -> {verdict}")
+
+    # === Diagnostics added for robustness: per-market PnL + edge buckets ===
+    # what: pick the best ML model from the headline scenario for diagnostics
+    # why: per-market PnL shows whether headline ROI is concentrated; edge buckets
+    #      directly test "higher predicted edge = more wins" for the report.
+    print("\nDiagnostics: per-market PnL + edge-bucket hit rate ...")
+    headline = sens[(sens["initial_capital"] == 10_000) &
+                    (sens["max_bet_pct"] == 0.05) &
+                    (sens["liquidity_scaler"] == 1.0)]
+    ml_only = headline[headline["model"] != "naive_consensus"].sort_values(
+        "roi", ascending=False)
+    if not ml_only.empty:
+        best_model = ml_only.iloc[0]["model"]
+        print(f"  best model in headline: {best_model}")
+        p_hat_best = model_preds[best_model]
+        cost_b, edge_b = compute_cost_and_edge(test, p_hat_best)
+        masks_b = strategy_masks(p_hat_best, edge_b, cost_b, time_to_deadline)
+        # Per-market PnL on general_ev (the broadest strategy)
+        pm = per_market_pnl_breakdown(best_model, p_hat_best, edge_b, cost_b,
+                                       bet_correct, market_ids,
+                                       masks_b["general_ev"],
+                                       out_dir / f"per_market_pnl_{best_model}.csv")
+        if not pm.empty:
+            print(f"  per-market PnL ({best_model} on general_ev):")
+            print(pm.to_string(index=False))
+        # Edge distribution + hit rate
+        plot_edge_distribution(edge_b, bet_correct, masks_b["top1pct_phat"],
+                                out_dir / f"edge_distribution_{best_model}.png")
+        print(f"  wrote edge_distribution_{best_model}.png")
 
     print(f"\nStage 5 complete. Outputs in {out_dir.relative_to(OUTPUTS_DIR.parent)}.")
     print("Proceed to 06_tuning_optuna.py.")
