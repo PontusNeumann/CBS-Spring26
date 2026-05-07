@@ -53,10 +53,56 @@ SCALER_AUDIT_FILES = [
 # why: each one peeks at information that would not be available at trade time
 # how: dropped before any model is fit; tested below (test F3)
 FORBIDDEN_LEAKY_COLS = {
-    "kyle_lambda_market_static",   # fit on first half of each market then broadcast back
-    "wallet_funded_by_cex",        # lifetime flag — true if wallet ever got CEX deposit, even after t
-    "n_tokentx",                   # lifetime tx count — peeks past trade time
-    "wallet_prior_win_rate",       # naive version that includes the current trade
+    # Causality / future-looking (original v5 set)
+    "kyle_lambda_market_static",
+    "wallet_funded_by_cex",
+    "n_tokentx",
+    "wallet_prior_win_rate",
+    # P0-11 — direction-encoding pair: jointly determine bet_correct via XOR formula whose
+    # mapping flips across market resolution types (catastrophic test-set inversion on
+    # single-resolution cohorts; the exam test set is all-NO ceasefires). See foundation.md.
+    "side_buy",
+    "outcome_yes",
+    # P0-12 — direction-encoding aggregates with 30-pt train/test cohort shift
+    "market_buy_share_running",
+    "taker_directional_purity_in_market",
+    "taker_position_size_before_trade",
+    "consensus_strength",
+    "contrarian_score",
+    "contrarian_strength",
+    "is_long_shot_buy",
+    "taker_yes_share_global",
+    "yes_buy_pressure_5min",
+    "yes_volume_share_recent_1h",
+    "yes_volume_share_recent_5min",
+    "order_flow_imbalance_1h",
+    "order_flow_imbalance_24h",
+    "order_flow_imbalance_5min",
+    "signed_oi_autocorr_1h",
+    "token_side_skew_5min",
+    # P0-8 — absolute-scale features that leak market identity
+    "log_time_to_deadline_hours",
+    "is_within_5min_of_deadline",
+    "is_within_1h_of_deadline",
+    "is_within_24h_of_deadline",
+    "market_price_vol_last_5min",
+    "market_price_vol_last_24h",
+    # P0-8 — absolute price levels (cost-derived; leak the market's price benchmark)
+    "recent_price_high_1h",
+    "recent_price_low_1h",
+    "recent_price_range_1h",
+    "recent_price_mean_5min",
+    "recent_price_mean_1h",
+    "recent_price_mean_24h",
+    "pre_trade_price_change_5min",
+    "pre_trade_price_change_1h",
+    "pre_trade_price_change_24h",
+    "distance_from_boundary",
+    "log_payoff_if_correct",
+    "risk_reward_ratio_pre",
+    # Market price benchmark — explicitly excluded from features so p_hat stays
+    # independent of market belief; retained in the parquet for backtest cost math.
+    "pre_trade_price",
 }
 
 # what: row counts we expect from the team's 2026-04-29 release
