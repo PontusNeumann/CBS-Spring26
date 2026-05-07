@@ -1,0 +1,62 @@
+{
+  "phat_gt_0.99": {
+    "naive_roi": 0.018485188484191895,
+    "best_model": "decision_tree",
+    "best_model_roi": 0.0,
+    "ml_beats_naive": false
+  },
+  "phat_gt_0.95": {
+    "naive_roi": 0.01024782657623291,
+    "best_model": "decision_tree",
+    "best_model_roi": 0.0,
+    "ml_beats_naive": false
+  },
+  "phat_gt_0.9": {
+    "naive_roi": 0.04078817367553711,
+    "best_model": "hist_gbm",
+    "best_model_roi": 0.16443979740142822,
+    "ml_beats_naive": true
+  },
+  "top1pct_phat": {
+    "naive_roi": 0.016599059104919434,
+    "best_model": "hist_gbm",
+    "best_model_roi": 0.3442509174346924,
+    "ml_beats_naive": true
+  },
+  "top1pct_edge": {
+    "naive_roi": 0.01609945297241211,
+    "best_model": "hist_gbm",
+    "best_model_roi": 0.14172053337097168,
+    "ml_beats_naive": true
+  },
+  "top5pct_edge": {
+    "naive_roi": 0.005056023597717285,
+    "best_model": "lightgbm",
+    "best_model_roi": -0.34688884019851685,
+    "ml_beats_naive": false
+  },
+  "general_ev": {
+    "naive_roi": 0.006435751914978027,
+    "best_model": "random_forest",
+    "best_model_roi": -0.3650854825973511,
+    "ml_beats_naive": false
+  },
+  "general_ev_late": {
+    "naive_roi": 0.005263924598693848,
+    "best_model": "decision_tree",
+    "best_model_roi": 0.04358530044555664,
+    "ml_beats_naive": true
+  },
+  "general_ev_cheap": {
+    "naive_roi": 0.0,
+    "best_model": "mlp_sklearn",
+    "best_model_roi": -0.6933544874191284,
+    "ml_beats_naive": false
+  },
+  "home_run": {
+    "naive_roi": 0.0,
+    "best_model": "random_forest",
+    "best_model_roi": -0.1687028998565676,
+    "ml_beats_naive": false
+  }
+}

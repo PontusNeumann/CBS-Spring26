@@ -24,21 +24,179 @@
       "name": "F3_forbidden_cols_excluded_from_features",
       "pass": true,
       "present_in_data_but_excluded": [
+        "consensus_strength",
+        "contrarian_score",
+        "contrarian_strength",
+        "distance_from_boundary",
+        "is_long_shot_buy",
+        "is_within_1h_of_deadline",
+        "is_within_24h_of_deadline",
+        "is_within_5min_of_deadline",
         "kyle_lambda_market_static",
-        "wallet_funded_by_cex"
+        "log_payoff_if_correct",
+        "log_time_to_deadline_hours",
+        "market_buy_share_running",
+        "market_price_vol_last_24h",
+        "market_price_vol_last_5min",
+        "order_flow_imbalance_1h",
+        "order_flow_imbalance_24h",
+        "order_flow_imbalance_5min",
+        "outcome_yes",
+        "pre_trade_price",
+        "pre_trade_price_change_1h",
+        "pre_trade_price_change_24h",
+        "pre_trade_price_change_5min",
+        "recent_price_high_1h",
+        "recent_price_low_1h",
+        "recent_price_mean_1h",
+        "recent_price_mean_24h",
+        "recent_price_mean_5min",
+        "recent_price_range_1h",
+        "risk_reward_ratio_pre",
+        "side_buy",
+        "signed_oi_autocorr_1h",
+        "taker_directional_purity_in_market",
+        "taker_position_size_before_trade",
+        "taker_yes_share_global",
+        "token_side_skew_5min",
+        "wallet_funded_by_cex",
+        "yes_buy_pressure_5min",
+        "yes_volume_share_recent_1h",
+        "yes_volume_share_recent_5min"
       ],
       "would_leak_into_features": [],
       "forbidden_set": [
+        "consensus_strength",
+        "contrarian_score",
+        "contrarian_strength",
+        "distance_from_boundary",
+        "is_long_shot_buy",
+        "is_within_1h_of_deadline",
+        "is_within_24h_of_deadline",
+        "is_within_5min_of_deadline",
         "kyle_lambda_market_static",
+        "log_payoff_if_correct",
+        "log_time_to_deadline_hours",
+        "market_buy_share_running",
+        "market_price_vol_last_24h",
+        "market_price_vol_last_5min",
         "n_tokentx",
+        "order_flow_imbalance_1h",
+        "order_flow_imbalance_24h",
+        "order_flow_imbalance_5min",
+        "outcome_yes",
+        "pre_trade_price",
+        "pre_trade_price_change_1h",
+        "pre_trade_price_change_24h",
+        "pre_trade_price_change_5min",
+        "recent_price_high_1h",
+        "recent_price_low_1h",
+        "recent_price_mean_1h",
+        "recent_price_mean_24h",
+        "recent_price_mean_5min",
+        "recent_price_range_1h",
+        "risk_reward_ratio_pre",
+        "side_buy",
+        "signed_oi_autocorr_1h",
+        "taker_directional_purity_in_market",
+        "taker_position_size_before_trade",
+        "taker_yes_share_global",
+        "token_side_skew_5min",
         "wallet_funded_by_cex",
-        "wallet_prior_win_rate"
+        "wallet_prior_win_rate",
+        "yes_buy_pressure_5min",
+        "yes_volume_share_recent_1h",
+        "yes_volume_share_recent_5min"
       ]
     },
     {
       "name": "D1_pre_trade_price",
       "pass": true,
       "skipped": "raw price column not in dataset"
+    },
+    {
+      "name": "D4_scaler_refit_per_fold",
+      "pass": true,
+      "findings": [
+        {
+          "file": "03_train_models.py",
+          "line": 212,
+          "function": "pca_elbow_k",
+          "has_fold_loop": false,
+          "fits_train_subset": true,
+          "ok": true
+        },
+        {
+          "file": "03_train_models.py",
+          "line": 154,
+          "function": "fit_final",
+          "has_fold_loop": false,
+          "fits_train_subset": true,
+          "ok": true
+        },
+        {
+          "file": "03_train_models.py",
+          "line": 255,
+          "function": "benchmark_complexity",
+          "has_fold_loop": false,
+          "fits_train_subset": true,
+          "ok": true
+        },
+        {
+          "file": "03_train_models.py",
+          "line": 129,
+          "function": "cv_oof",
+          "has_fold_loop": true,
+          "fits_train_subset": true,
+          "ok": true
+        },
+        {
+          "file": "04_calibration.py",
+          "line": 265,
+          "function": "permutation_importance_top_k",
+          "has_fold_loop": false,
+          "fits_train_subset": true,
+          "ok": true
+        },
+        {
+          "file": "04_calibration.py",
+          "line": 351,
+          "function": "shap_on_top_picks",
+          "has_fold_loop": false,
+          "fits_train_subset": true,
+          "ok": true
+        },
+        {
+          "file": "06_tuning_optuna.py",
+          "line": 191,
+          "function": "objective_holdout",
+          "has_fold_loop": true,
+          "fits_train_subset": true,
+          "ok": true
+        },
+        {
+          "file": "06_tuning_optuna.py",
+          "line": 256,
+          "function": "tune_one_model",
+          "has_fold_loop": false,
+          "fits_train_subset": true,
+          "ok": true
+        },
+        {
+          "file": "06_tuning_optuna.py",
+          "line": 163,
+          "function": "objective_kfold",
+          "has_fold_loop": true,
+          "fits_train_subset": true,
+          "ok": true
+        }
+      ],
+      "suspicious": []
+    },
+    {
+      "name": "W1_wallet_bisection",
+      "pass": true,
+      "skipped": "wallet_enrichment.parquet not in submission/data/"
     },
     {
       "name": "B1_backtest_context",
@@ -62,5 +220,5 @@
       }
     }
   ],
-  "n_pass": 6
+  "n_pass": 8
 }
