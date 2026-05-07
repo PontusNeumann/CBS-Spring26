@@ -14,6 +14,7 @@ ML/report/archive/data_old/
 
 # v5 submission data parquets (large; distribute via GitHub Releases)
 ML/report/submission/data/*.parquet
+!ML/report/submission/data/backtest_context.parquet
 
 # Optuna study DBs and prediction artifacts (regeneratable; too large for git)
 ML/report/**/outputs/**/study.db

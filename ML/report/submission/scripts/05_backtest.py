@@ -18,6 +18,7 @@ What it does:
      as a falsification control — does the model add value over a free heuristic?
   4. Output the headline figure (overview.png) used in the report.
   5. Sweep capital, max-bet, and copycat scenarios for a sensitivity table.
+  6. Write residual-edge, consensus/contrarian, and SELL-semantics diagnostics.
 
 Run:
   python 05_backtest.py
@@ -26,6 +27,7 @@ Outputs:
   outputs/backtest/sensitivity.csv         per (model, strategy, scenario): n, ROI, drawdown
   outputs/backtest/overview.png            headline heatmap (used in report main body)
   outputs/backtest/falsification.json      naive-vs-model verdict per strategy
+  outputs/backtest/diagnostics_*.csv/json  residual edge + claim-falsification diagnostics
 """
 
 from __future__ import annotations
@@ -42,6 +44,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+from sklearn.metrics import roc_auc_score
 
 warnings.filterwarnings("ignore")
 
@@ -49,6 +52,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import DATA_DIR, OUTPUTS_DIR, RANDOM_SEED  # noqa: E402
 
 TARGET = "bet_correct"
+
+BACKTEST_CONTEXT = DATA_DIR / "backtest_context.parquet"
+BACKTEST_CONTEXT_REQUIRED_COLS = {
+    "split", "row_in_split", "market_id", "timestamp", "usd_amount",
+    "price", "token_amount", "pre_yes_price_corrected",
+    "taker", "taker_direction", "nonusdc_side",
+}
 
 # what: realism constants (cost floor caps payoff at 19x; gas + slippage applied per trade)
 COST_FLOOR = 0.05
@@ -65,17 +75,31 @@ CEASEFIRE_EVENT_UTC = pd.Timestamp("2026-04-07T23:59:59", tz="UTC").timestamp()
 # Cost + edge math
 # ----------------------------------------------------------------------------
 
+def trader_side_is_yes(test: pd.DataFrame) -> np.ndarray:
+    """Return 1 if the trade is economically exposed to YES, else 0 for NO."""
+    side_buy = test["side_buy"].values
+    outcome_yes = test["outcome_yes"].values
+    return side_buy * outcome_yes + (1 - side_buy) * (1 - outcome_yes)
+
+
+def market_side_probability(test: pd.DataFrame) -> np.ndarray:
+    """Market-implied probability of the side the trader is economically taking."""
+    if "pre_yes_price_corrected" not in test.columns:
+        raise ValueError(
+            "pre_yes_price_corrected is required. Run 01_data_prep.py with "
+            "submission/data/backtest_context.parquet present."
+        )
+    p_yes = test["pre_yes_price_corrected"].values
+    side_yes = trader_side_is_yes(test)
+    return np.where(side_yes == 1, p_yes, 1 - p_yes)
+
+
 def compute_cost_and_edge(test: pd.DataFrame, p_hat: np.ndarray, cost_floor: float = COST_FLOOR):
     """Per-trade cost paid for the winning side + model edge (p_hat - cost)."""
     # what: every trade has a buy/sell side and a yes/no outcome; cost is the price for the winning side
     # how: BUY YES at p_yes -> cost = p_yes; BUY NO at (1-p_yes) -> cost = 1 - p_yes; etc
     # why: edge = model's view of P(win) minus market's implied price = expected profit per $1 staked
-    p_yes = test["pre_yes_price_corrected"].values if "pre_yes_price_corrected" in test.columns \
-        else test["pre_trade_price"].values
-    side_buy = test["side_buy"].values
-    outcome_yes = test["outcome_yes"].values
-    trader_side_wins_yes = side_buy * outcome_yes + (1 - side_buy) * (1 - outcome_yes)
-    cost = np.where(trader_side_wins_yes == 1, p_yes, 1 - p_yes)
+    cost = market_side_probability(test)
     cost = np.clip(cost, cost_floor, 1.0 - cost_floor)
     edge = p_hat - cost
     return cost, edge
@@ -232,16 +256,188 @@ def realistic_backtest(signal_mask: np.ndarray, cost: np.ndarray, bet_correct: n
 # ----------------------------------------------------------------------------
 
 def naive_consensus_phat(test: pd.DataFrame) -> np.ndarray:
-    """Naive baseline: 'predict the market favourite wins' with confidence = pre-trade YES price."""
+    """Naive baseline: use the market-implied probability of the trader's side."""
     # what: a free heuristic that requires no model — just use the market's own price
     # why: every model must beat THIS to claim it adds value (Stage B1b falsification)
-    p_yes = test["pre_yes_price_corrected"].values if "pre_yes_price_corrected" in test.columns \
-        else test["pre_trade_price"].values
-    side_buy = test["side_buy"].values
-    outcome_yes = test["outcome_yes"].values
-    trader_side_wins_yes = side_buy * outcome_yes + (1 - side_buy) * (1 - outcome_yes)
     # what: baseline prob of winning = market's price for the trader's chosen side
-    return np.where(trader_side_wins_yes == 1, p_yes, 1 - p_yes)
+    return market_side_probability(test)
+
+
+# ----------------------------------------------------------------------------
+# Backtest context and diagnostics
+# ----------------------------------------------------------------------------
+
+def attach_backtest_context(test: pd.DataFrame) -> pd.DataFrame:
+    """Attach raw backtest-only fields and fail fast if they are missing or misaligned."""
+    if not BACKTEST_CONTEXT.exists():
+        raise SystemExit(
+            f"Missing {BACKTEST_CONTEXT}. The realistic backtest requires the "
+            "bundled backtest context for corrected YES prices and trade USD."
+        )
+    ctx = pd.read_parquet(BACKTEST_CONTEXT)
+    missing = sorted(BACKTEST_CONTEXT_REQUIRED_COLS - set(ctx.columns))
+    if missing:
+        raise SystemExit(f"{BACKTEST_CONTEXT.name} is missing required columns: {missing}")
+
+    ctx_test = ctx[ctx["split"] == "test"].reset_index(drop=True)
+    if len(ctx_test) != len(test):
+        raise SystemExit(
+            f"backtest context row mismatch: test={len(test):,}, "
+            f"context={len(ctx_test):,}"
+        )
+    expected_row = np.arange(len(test))
+    if not np.array_equal(ctx_test["row_in_split"].to_numpy(), expected_row):
+        raise SystemExit("backtest context row_in_split is not aligned to test row order")
+    key_ok = (
+        test["market_id"].astype(str).to_numpy() == ctx_test["market_id"].astype(str).to_numpy()
+    ).all() and (
+        test["timestamp"].to_numpy() == ctx_test["timestamp"].to_numpy()
+    ).all()
+    if not key_ok:
+        raise SystemExit("backtest context market_id/timestamp keys do not align to test rows")
+    if not ctx_test["pre_yes_price_corrected"].between(0, 1).all():
+        raise SystemExit("pre_yes_price_corrected must be in [0, 1]")
+    if not (np.isfinite(ctx_test["usd_amount"]).all() and (ctx_test["usd_amount"] >= 0).all()):
+        raise SystemExit("usd_amount must be finite and non-negative for every backtest row")
+
+    out = test.copy()
+    for col in [
+        "usd_amount", "price", "token_amount", "pre_yes_price_corrected",
+        "taker", "taker_direction", "nonusdc_side",
+    ]:
+        out[col] = ctx_test[col].values
+    print(
+        "  attached backtest context: "
+        f"pre_yes mean={out['pre_yes_price_corrected'].mean():.3f}, "
+        f"usd mean=${out['usd_amount'].mean():,.2f}"
+    )
+    return out
+
+
+def safe_auc(y_true: np.ndarray, score: np.ndarray) -> float:
+    """AUC helper that returns NaN for degenerate scores or labels."""
+    if len(np.unique(y_true)) < 2 or np.nanstd(score) == 0:
+        return float("nan")
+    return float(roc_auc_score(y_true, score))
+
+
+def residualize(x: np.ndarray, control: np.ndarray) -> np.ndarray:
+    """Linear residual of x after projecting on one control variable."""
+    if np.nanstd(control) == 0:
+        return x - np.nanmean(x)
+    a, b = np.polyfit(control, x, 1)
+    return x - (a * control + b)
+
+
+def write_residual_edge_diagnostics(test: pd.DataFrame, model_preds: dict[str, np.ndarray],
+                                    out_dir: Path) -> None:
+    """Does p_hat add signal beyond the market-implied probability of the same side?"""
+    y = test[TARGET].astype(int).values
+    market_prob = market_side_probability(test)
+    rows = []
+    for model_name, p_hat in model_preds.items():
+        edge = p_hat - market_prob
+        edge_resid = residualize(edge, market_prob)
+        y_resid = residualize(y.astype(float), market_prob)
+        partial_corr = float(np.corrcoef(edge_resid, y_resid)[0, 1])
+        rows.append({
+            "model": model_name,
+            "auc_p_hat": safe_auc(y, p_hat),
+            "auc_market_prob": safe_auc(y, market_prob),
+            "auc_edge": safe_auc(y, edge),
+            "residual_edge_auc": safe_auc(y, edge_resid),
+            "partial_corr_edge_y_given_market_prob": partial_corr,
+            "mean_edge": float(np.mean(edge)),
+            "share_positive_edge": float(np.mean(edge > 0)),
+            "n": int(len(y)),
+        })
+    pd.DataFrame(rows).to_csv(out_dir / "diagnostics_residual_edge.csv", index=False)
+
+
+def write_consensus_diagnostics(test: pd.DataFrame, model_preds: dict[str, np.ndarray],
+                                out_dir: Path) -> None:
+    """Top-pick decomposition: consensus-following vs contrarian selections."""
+    y = test[TARGET].astype(int).values
+    pre_yes = test["pre_yes_price_corrected"].values
+    side_yes = trader_side_is_yes(test)
+    consensus_yes = pre_yes >= 0.5
+    with_consensus = side_yes == consensus_yes.astype(int)
+    market_prob = market_side_probability(test)
+    n = len(test)
+
+    rows = []
+    for model_name, p_hat in model_preds.items():
+        edge = p_hat - market_prob
+        selectors = {
+            "top1pct_phat": p_hat,
+            "top1pct_edge": edge,
+        }
+        for selector, score in selectors.items():
+            k = max(1, int(n * 0.01))
+            idx = np.argsort(score)[-k:]
+            with_idx = idx[with_consensus[idx]]
+            against_idx = idx[~with_consensus[idx]]
+            market_counts = test.iloc[idx]["market_id"].value_counts()
+            rows.append({
+                "model": model_name,
+                "selector": selector,
+                "n_picks": int(k),
+                "hit_rate": float(y[idx].mean()),
+                "pct_with_consensus": float(with_consensus[idx].mean()),
+                "pct_against_consensus": float((~with_consensus[idx]).mean()),
+                "with_consensus_hit_rate": float(y[with_idx].mean()) if len(with_idx) else np.nan,
+                "against_consensus_hit_rate": float(y[against_idx].mean()) if len(against_idx) else np.nan,
+                "pre_yes_mean": float(pre_yes[idx].mean()),
+                "pre_yes_median": float(np.median(pre_yes[idx])),
+                "n_unique_markets": int(market_counts.size),
+                "top_market_share": float(market_counts.iloc[0] / k) if len(market_counts) else 0.0,
+            })
+    pd.DataFrame(rows).to_csv(out_dir / "diagnostics_consensus.csv", index=False)
+
+
+def write_sell_semantics_diagnostics(test: pd.DataFrame, model_preds: dict[str, np.ndarray],
+                                     out_dir: Path) -> None:
+    """Check how often SELL rows look like closing trades rather than fresh directional bets."""
+    raw = test[["market_id", "timestamp", "taker", "taker_direction", "nonusdc_side", TARGET]].copy()
+    raw["market_id"] = raw["market_id"].astype(str)
+    raw["taker"] = raw["taker"].astype(str)
+    raw["nonusdc_side"] = raw["nonusdc_side"].astype(str)
+    raw["is_sell"] = raw["taker_direction"].astype(str).str.upper().eq("SELL")
+    raw["is_buy"] = raw["taker_direction"].astype(str).str.upper().eq("BUY")
+
+    grp = raw.groupby(["market_id", "taker", "nonusdc_side"], sort=False)
+    raw["prior_buys_same_side"] = grp["is_buy"].cumsum().shift(1).fillna(0)
+    raw.loc[grp.head(1).index, "prior_buys_same_side"] = 0
+
+    sells = raw[raw["is_sell"]]
+    n_sells = int(len(sells))
+    n_closing = int((sells["prior_buys_same_side"] >= 1).sum())
+    detail: dict[str, object] = {
+        "n_test_rows": int(len(raw)),
+        "n_sells": n_sells,
+        "n_sells_closing": n_closing,
+        "n_sells_open_short": int(n_sells - n_closing),
+        "pct_sells_closing": float(n_closing / max(n_sells, 1)),
+    }
+
+    y = raw[TARGET].astype(int).values
+    ml_preds = {k: v for k, v in model_preds.items() if k != "naive_consensus"}
+    if ml_preds:
+        best_name = max(ml_preds, key=lambda k: safe_auc(y, ml_preds[k]))
+        p_hat = ml_preds[best_name]
+        k = max(1, int(len(raw) * 0.01))
+        top_idx = np.argsort(p_hat)[-k:]
+        top = raw.iloc[top_idx]
+        top_sells = top[top["is_sell"]]
+        detail.update({
+            "top1pct_model": best_name,
+            "top1pct_n": int(k),
+            "top1pct_sell_share": float(len(top_sells) / k),
+            "top1pct_sells_closing_share": float(
+                (top_sells["prior_buys_same_side"] >= 1).mean()
+            ) if len(top_sells) else None,
+        })
+    (out_dir / "diagnostics_sell_semantics.json").write_text(json.dumps(detail, indent=2))
 
 
 # ----------------------------------------------------------------------------
@@ -319,6 +515,7 @@ def main() -> int:
     df = pd.read_parquet(DATA_DIR / "consolidated_modeling_data.parquet")
     test = df[df["split"] == "test"].reset_index(drop=True).copy()
     test["market_id"] = test["market_id"].astype(str)
+    test = attach_backtest_context(test)
 
     # what: per-market resolve_ts, reconstructed from log_time_to_deadline_hours, capped at the ceasefire event
     # why: prior code assumed all 10 test markets resolve at the ceasefire. In reality the recovered deadlines
@@ -351,6 +548,13 @@ def main() -> int:
     model_preds["naive_consensus"] = naive_consensus_phat(test)
     print(f"  models in this run: {list(model_preds)}")
 
+    # what: write compact claim diagnostics before the trading grid
+    # why: the report needs to distinguish residual model signal from consensus-following
+    write_residual_edge_diagnostics(test, model_preds, out_dir)
+    write_consensus_diagnostics(test, model_preds, out_dir)
+    write_sell_semantics_diagnostics(test, model_preds, out_dir)
+    print("  wrote residual-edge, consensus, and SELL-semantics diagnostics")
+
     # what: parameter grid for the sensitivity sweep
     capitals = [1_000, 10_000, 100_000]
     bet_pcts = [0.01, 0.05, 0.10]
@@ -360,8 +564,7 @@ def main() -> int:
     bet_correct = test[TARGET].astype(int).values
     timestamps = test["timestamp"].astype(float).values
     market_ids = test["market_id"].values
-    usd_amount = test["usd_amount"].values if "usd_amount" in test.columns \
-        else np.full(len(test), 100.0)
+    usd_amount = test["usd_amount"].astype(float).values
     time_to_deadline = test["time_to_deadline"].values
 
     # what: outer loop = model, inner = strategy x scenario grid
@@ -408,7 +611,7 @@ def main() -> int:
                                  "best_model_roi": float(best["roi"]),
                                  "ml_beats_naive": bool(best["roi"] > naive_roi)}
     (out_dir / "falsification.json").write_text(json.dumps(falsification, indent=2))
-    print("\nFalsification (does the best ML model beat the naive market-favourite baseline?):")
+    print("\nFalsification (does the best ML model beat the naive market-favorite baseline?):")
     for s, r in falsification.items():
         verdict = "yes" if r["ml_beats_naive"] else "no"
         print(f"  {s:20s}  naive={r['naive_roi']*100:+.1f}%  "

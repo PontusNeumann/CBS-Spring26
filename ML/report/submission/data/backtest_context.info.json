@@ -1,0 +1,41 @@
+{
+  "file": "backtest_context.parquet",
+  "purpose": "Backtest-only context columns omitted from the modeling parquet: corrected YES-normalized pre-trade price, true trade size, and raw taker-side fields for diagnostics.",
+  "n_rows_total": 1371180,
+  "n_rows_train": 1114003,
+  "n_rows_test": 257177,
+  "columns": [
+    "split",
+    "row_in_split",
+    "market_id",
+    "timestamp",
+    "usd_amount",
+    "price",
+    "token_amount",
+    "pre_yes_price_corrected",
+    "taker",
+    "taker_direction",
+    "nonusdc_side"
+  ],
+  "source_files": {
+    "train": "archive/data_old/archive/alex/train.parquet",
+    "test": "archive/data_old/archive/alex/test.parquet"
+  },
+  "alignment_checks": {
+    "train": {
+      "n_rows": 1114003,
+      "side_buy_match_rate": 1.0,
+      "outcome_yes_match_rate": 1.0,
+      "log_size_match_rate": 1.0,
+      "pre_trade_price_match_rate": 1.0
+    },
+    "test": {
+      "n_rows": 257177,
+      "side_buy_match_rate": 1.0,
+      "outcome_yes_match_rate": 1.0,
+      "log_size_match_rate": 1.0,
+      "pre_trade_price_match_rate": 1.0
+    }
+  },
+  "sha256": "2ccb700cf74f8498c0647840ec25697232e612fec94168b281755f54877ea0b7"
+}

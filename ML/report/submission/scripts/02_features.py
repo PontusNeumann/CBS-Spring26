@@ -10,8 +10,8 @@ features) was performed upstream and the result was bundled into the consolidate
 parquet shipped with the submission. This script:
   - documents the feature taxonomy that the consolidated parquet exposes
   - fits the StandardScaler used by every linear or NN model in the pipeline
-  - adds an unsupervised Isolation Forest anomaly score (curriculum: outlier detection)
-    as one extra feature available to downstream models
+  - writes an unsupervised Isolation Forest anomaly score as a diagnostic
+    (curriculum: outlier detection). It is not joined into the supervised X matrix.
 
 Run:
   python 02_features.py
@@ -95,7 +95,7 @@ def add_iso_forest_score(train: pd.DataFrame, test: pd.DataFrame,
                           feature_cols: list[str], scaler: StandardScaler) -> pd.DataFrame:
     """Train an Isolation Forest on train, score every row (train + test).
 
-    Curriculum link: outlier detection (lecture 7). Hypothesis: insider trades sit
+    Curriculum link: outlier detection (lecture 7). Hypothesis: unusual trades sit
     further from the joint feature distribution than retail trades, so a higher
     anomaly score should correlate with bet_correct.
     """
@@ -158,7 +158,7 @@ def main() -> int:
     iso_scores = add_iso_forest_score(train, test, feature_cols, scaler)
     iso_scores.to_parquet(out_dir / "iso_forest_scores.parquet", index=False)
 
-    print(f"\nStage 2 complete. {len(feature_cols)} features ready for modelling.")
+    print(f"\nStage 2 complete. {len(feature_cols)} features ready for modeling.")
     return 0
 
 

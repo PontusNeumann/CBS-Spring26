@@ -17,11 +17,11 @@
 
 ## 1. Summary
 
-The project studies whether a machine-learning model trained on pre-trade behavioural and market-state features can produce a probability of trade success (`bet_correct`) that systematically diverges from the contemporaneous market-implied probability on resolved Iran geopolitical Polymarket events, and whether that gap supports a profitable trading rule out of sample.
+The project studies whether a machine-learning model trained on pre-trade behavioral and market-state features can produce a probability of trade success (`bet_correct`) that systematically diverges from the contemporaneous market-implied probability on resolved Iran geopolitical Polymarket events, and whether that gap supports a profitable trading rule out of sample.
 
 The dataset covers all 74 resolved sub-markets across four Iran-related event clusters (Polymarket events 114242, 236884, 355299, 357625), 1,371,180 trades by 109,080 wallets between 2025-12-22 and 2026-04-19. Train and test are market-cohort-disjoint and temporally separated: 63 strike-ladder markets pre-2026-02-28 for training, 10 ceasefire-ladder markets post-strike for test.
 
-The submission compares seven supervised models (logistic regression L1/L2, decision tree, random forest, histogram gradient boosting, LightGBM, PCA→LogReg, sklearn MLP) plus an Isolation Forest anomaly score, all under 5-fold GroupKFold cross-validation. Each model's raw probabilities are isotonic-calibrated against out-of-fold predictions, then evaluated on a realistic capital-aware backtest with gas, slippage, concentration limits, and a naive market-favourite baseline as the falsification control. A hyperparameter sweep with Optuna (TPE, MedianPruner) runs in parallel for Random Forest, HistGBM, and MLP.
+The submission compares seven supervised models (logistic regression L1/L2, decision tree, random forest, histogram gradient boosting, LightGBM, PCA→LogReg, sklearn MLP) under 5-fold GroupKFold cross-validation, with Isolation Forest retained as an unsupervised diagnostic. Each model's raw probabilities are isotonic-calibrated against out-of-fold predictions, then evaluated on a realistic capital-aware backtest with gas, slippage, concentration limits, and a naive market-favorite baseline as the falsification control. A hyperparameter sweep with Optuna (TPE, MedianPruner) runs in parallel for Random Forest, HistGBM, and MLP.
 
 A secondary, out-of-scope observation is reserved for the Discussion: if feature-importance analysis shows the signal concentrates on features that resemble those associated with informed trading in the literature (abnormal bet size, pre-event timing, wallet newness, directional concentration), the report flags the parallel and notes it as future work.
 
@@ -33,21 +33,21 @@ This project studies the gap between Polymarket's contemporaneous market-implied
 
 ### Short form
 
-**RQ1.** Can a machine-learning model trained on pre-execution market-state and behavioural features produce a probability estimate that systematically differs from the contemporaneous market-implied probability in settled Iran prediction markets, such that a trading rule acting on the gap generates positive risk-adjusted returns out of sample?
+**RQ1.** Can a machine-learning model trained on pre-execution market-state and behavioral features produce a probability estimate that systematically differs from the contemporaneous market-implied probability in settled Iran prediction markets, such that a trading rule acting on the gap generates positive risk-adjusted returns out of sample?
 
 ### Detailed form
 
 **RQ1a — Probability gap.** Does a supervised model trained on pre-execution features (market state, recent market activity, wallet history, on-chain wallet identity) produce a probability estimate `p_hat` whose residual against the contemporaneous market-implied probability `pre_yes_price_corrected` predicts `bet_correct` on a temporally held-out test set?
 *Success criterion:* ROC-AUC of `p_hat` on the test cohort is materially above 0.5, with calibrated Brier-score improvement over the market-implied null and an improved reliability diagram.
 
-**RQ1b — Trading rule.** Does a portfolio of capital-aware betting strategies acting on `p_hat` (high-confidence thresholds, top-K by edge, EV-positive filters) generate positive cumulative ROI out of sample, relative to a naive market-favourite baseline that requires no model?
+**RQ1b — Trading rule.** Does a portfolio of capital-aware betting strategies acting on `p_hat` (high-confidence thresholds, top-K by edge, EV-positive filters) generate positive cumulative ROI out of sample, relative to a naive market-favorite baseline that requires no model?
 *Success criterion:* positive ROI on the test cohort under realistic frictions (gas, slippage, concentration limits) on at least one strategy, and a strict ROI improvement over the naive baseline on the same strategy.
 
 ## 3. Framing Decision
 
-The efficient-market null for Polymarket is that the market-implied price already incorporates all public information, so no pre-execution feature set should add predictive power. A systematic gap between `p_hat` and `pre_yes_price_corrected` that predicts settlement is therefore direct evidence of mispricing, and acting on the gap monetises it.
+The efficient-market null for Polymarket is that the market-implied price already incorporates all public information, so no pre-execution feature set should add predictive power. A systematic gap between `p_hat` and `pre_yes_price_corrected` that predicts settlement is therefore direct evidence of mispricing, and acting on the gap monetizes it.
 
-This framing makes the target observable (settlement is public), keeps the evaluation economic and quantitative (ROI, drawdown, hit rate), and avoids the labelling circularity of trying to pre-label wallets as informed. Any resemblance between the features driving the signal and informed-trading traits is reserved for the Discussion, not the research question.
+This framing makes the target observable (settlement is public), keeps the evaluation economic and quantitative (ROI, drawdown, hit rate), and avoids the labeling circularity of trying to pre-label wallets as informed. Any resemblance between the features driving the signal and informed-trading traits is reserved for the Discussion, not the research question.
 
 ## 4. Data
 
@@ -57,13 +57,13 @@ This framing makes the target observable (settlement is public), keeps the evalu
 | Unit of analysis | One resolved trade. Final dataset: 1,371,180 trades (1,114,003 train + 257,177 test). |
 | Sources | Hybrid pipeline: (a) market metadata via Polymarket Gamma API, (b) trade history for 67 markets via the HuggingFace mirror `SII-WANGZJ/Polymarket_data` (38.7 GB, streamed via duckdb httpfs), (c) trade history for 7 ceasefire markets via the Polymarket Data API, (d) CLOB mid-price for ceasefire markets, (e) on-chain wallet enrichment via Etherscan V2 (108,621 of 109,080 wallets enriched, 99.58% coverage). |
 | Target | `bet_correct ∈ {0, 1}` from market resolution and the side of the trade. Pos rate 50.31% train, 50.37% test (no resampling needed). |
-| Benchmark | `pre_yes_price_corrected` — pre-trade YES-token price reconstructed per-market via `compute_pre_yes_price_corrected()` (fixes the per-token vs YES-normalised price bug that previously inflated ROI by ~400×). |
-| Feature inventory | 87 columns total: 5 meta/id (`split`, `market_id`, `ts_dt`, `timestamp`, `bet_correct` — the last is the target) + 70 core features + 12 wallet features. The submission's `01_data_prep.py` produces a modelling feature list of **80 features** after dropping the 5 meta/id columns (which include the target) and the forbidden lifetime flags filtered at load time per `FORBIDDEN_LEAKY_COLS` (§6.2). The 4 low-signal CEX features (`wallet_funded_by_cex_scoped`, `wallet_cex_usdc_cumulative_at_t`, `wallet_log_cex_usdc_cum`, `wallet_n_cex_deposits_at_t`) are kept in the feature list for inventory completeness; the 2026-04-29 audit recommended dropping them on signal grounds (mutual information ≤ 0.0014). See **§6 Open decisions**. |
-| Feature groups | (1) trade-local — `log_size`, `side_buy`, `outcome_yes`, payoff/distance/count features; (2) time/cyclical — `pct_time_elapsed`, time-to-deadline, hour-of-day sin/cos; (3) pre-trade price + price-change features at 5min/1h/24h windows; (4) microstructure — Kyle's λ, realized vol, jump component, signed OI autocorrelation; (5) order flow — imbalance at 5min/1h/24h, YES volume share, taker side skew; (6) behaviour derivatives — contrarian/consensus scores, risk-reward, long-shot indicator; (7) per-taker history — log priors, cumvol, unique markets, directional purity, position size, yes-share; (8) on-chain wallet identity — Polygon age, nonce, inbound count, USDC funding history. |
-| Pre-modelling filter | Already applied upstream: post-resolution close-out trades (`settlement_minus_trade_sec ≤ 0`, ~16.5% of raw rows) dropped before consolidation. |
-| Split | Market-cohort-disjoint and temporally separated. **Train:** 63 markets, 1,114,003 trades, all `timestamp` < 2026-02-28 06:34:59 UTC (Operation Epic Fury launch). **Test:** 10 markets, 257,177 trades, all `timestamp` ≥ 2026-02-28 14:02:57 UTC. Zero market overlap. K-fold inside train uses `GroupKFold(n_splits=5)` on `market_id`. The cohort-disjoint split is the leak-defence mechanism for the within-market direction-determinism channel previously surfaced (see §5 Leakage policy). |
+| Benchmark | `pre_yes_price_corrected` — pre-trade YES-token price reconstructed per-market and bundled in `submission/data/backtest_context.parquet` (fixes the per-token vs YES-normalized price bug that previously inflated ROI by ~400×). |
+| Feature inventory | 87 columns total: 5 meta/id (`split`, `market_id`, `ts_dt`, `timestamp`, `bet_correct` — the last is the target) + 70 core features + 12 wallet features. The submission's `01_data_prep.py` produces a modeling feature list of **80 features** after dropping the 5 meta/id columns (which include the target) and the forbidden lifetime flags filtered at load time per `FORBIDDEN_LEAKY_COLS` (§6.2). The 4 low-signal CEX features (`wallet_funded_by_cex_scoped`, `wallet_cex_usdc_cumulative_at_t`, `wallet_log_cex_usdc_cum`, `wallet_n_cex_deposits_at_t`) are kept in the feature list for inventory completeness; the 2026-04-29 audit recommended dropping them on signal grounds (mutual information ≤ 0.0014). See **§6 Open decisions**. |
+| Feature groups | (1) trade-local — `log_size`, `side_buy`, `outcome_yes`, payoff/distance/count features; (2) time/cyclical — `pct_time_elapsed`, time-to-deadline, hour-of-day sin/cos; (3) pre-trade price + price-change features at 5min/1h/24h windows; (4) microstructure — Kyle's λ, realized vol, jump component, signed OI autocorrelation; (5) order flow — imbalance at 5min/1h/24h, YES volume share, taker side skew; (6) behavior derivatives — contrarian/consensus scores, risk-reward, long-shot indicator; (7) per-taker history — log priors, cumvol, unique markets, directional purity, position size, yes-share; (8) on-chain wallet identity — Polygon age, nonce, inbound count, USDC funding history. |
+| Pre-modeling filter | Already applied upstream: post-resolution close-out trades (`settlement_minus_trade_sec ≤ 0`, ~16.5% of raw rows) dropped before consolidation. |
+| Split | Market-cohort-disjoint and temporally separated. **Train:** 63 markets, 1,114,003 trades, all `timestamp` < 2026-02-28 06:34:59 UTC (Operation Epic Fury launch). **Test:** 10 markets, 257,177 trades, all `timestamp` ≥ 2026-02-28 14:02:57 UTC. Zero market overlap. K-fold inside train uses `GroupKFold(n_splits=5)` on `market_id`. The cohort-disjoint split is the leak-defense mechanism for the within-market direction-determinism channel previously surfaced (see §5 Leakage policy). |
 | Class balance | 0.503 positive in both splits; no resampling, no SMOTE, no `class_weight` adjustments at the data level (some sklearn estimators set `class_weight="balanced"` internally as a safety net but it has no effect on this balanced dataset). |
-| Single source of truth | `submission/data/consolidated_modeling_data.parquet` (303 MB, 1.37M × 87). The `wallet_enrichment.parquet` table (355 MB) is already joined into the consolidated parquet; it lives in `archive/` for traceback only. |
+| Single source of truth | `submission/data/consolidated_modeling_data.parquet` (303 MB, 1.37M × 87) for modeling, plus `submission/data/backtest_context.parquet` (20 MB) for backtest-only price, liquidity, and taker diagnostics. The `wallet_enrichment.parquet` table (355 MB) is already joined into the consolidated parquet; it lives in `archive/` for traceback only. |
 
 ## 5. Method
 
@@ -73,11 +73,11 @@ The full pipeline lives in `submission/scripts/`. Each script is a teacher-frien
 
 | Script | Stage | What it produces |
 |---|---|---|
-| `01_data_prep.py` | Load + leakage checks | `feature_cols.json` (80 features), `leakage_report.json` (5/5 checks pass on the bundled data) |
-| `02_features.py` | Taxonomy + scaler + Isolation Forest | `feature_taxonomy.json`, `scaler.joblib`, `iso_forest_scores.parquet` |
+| `01_data_prep.py` | Load + leakage checks | `feature_cols.json` (80 features), `leakage_report.json` with modeling and backtest-context checks |
+| `02_features.py` | Taxonomy + scaler + Isolation Forest diagnostic | `feature_taxonomy.json`, `scaler.joblib`, `iso_forest_scores.parquet` |
 | `03_train_models.py` | Train 7-8 models with 5-fold GroupKFold + complexity benchmark | `metrics.json`, `preds_oof.npy`, `preds_test.npz` per model; `comparison.csv`, `complexity.csv` |
 | `04_calibration.py` | Isotonic recalibration + reliability diagrams + bootstrap CI + permutation importance | `preds_test_cal.npz` per model; `calibration_summary.csv`, `auc_bootstrap_ci.csv`, `permutation_importance_<best>.csv`, reliability PNGs |
-| `05_backtest.py` | Capital-aware sim across 540 cells + naive baseline + headline figure | `sensitivity.csv`, `falsification.json`, `overview.png` |
+| `05_backtest.py` | Capital-aware sim across 540 cells + naive baseline + diagnostics + headline figure | `sensitivity.csv`, `falsification.json`, `diagnostics_residual_edge.csv`, `diagnostics_consensus.csv`, `diagnostics_sell_semantics.json`, `overview.png` |
 | `06_tuning_optuna.py` | Optuna TPE for RF / HistGBM / MLP | `best_params.json`, `study_history.csv`, `comparison_vs_default.json`, `preds_test_tuned.npz` per tuned model |
 | `report_tools/eda.py` | EDA (work in progress) | 19 figures + tables written directly to `submission/report_assets/figures/appendix/eda/` |
 
@@ -90,12 +90,12 @@ The full pipeline lives in `submission/scripts/`. Each script is a teacher-frien
 - **Histogram Gradient Boosting** (Lecture 5) — fast boosting.
 - **LightGBM** — alternative gradient-boosting library; included if installed.
 - **PCA(K = elbow) → Logistic Regression** (Lectures 4 + 5) — dimensionality reduction. K is chosen by the geometric-elbow method on the cumulative variance curve, not a magic 0.95 threshold.
-- **MLP (sklearn)** (Lectures 8, 9) — `(64, 32)` ReLU, Adam, early stopping. The Keras MLP previously planned was swapped for sklearn after `model.fit` deadlocked on the local stack; the architecture and regularisation strength are equivalent for this 80-feature input.
-- **Isolation Forest** (Lecture 7) — UNSUPERVISED. Score is added as one extra feature in `02_features.py`; not a stand-alone classifier in the headline table.
+- **MLP (sklearn)** (Lectures 8, 9) — `(64, 32)` ReLU, Adam, early stopping. The Keras MLP previously planned was swapped for sklearn after `model.fit` deadlocked on the local stack; the architecture and regularization strength are equivalent for this 80-feature input.
+- **Isolation Forest** (Lecture 7) — UNSUPERVISED diagnostic. The score is written by `02_features.py` for outlier-detection coverage and optional discussion, but it is not joined into the supervised feature matrix or headline model table.
 
 ### 5.3 Cross-validation and calibration
 
-5-fold `GroupKFold(market_id)` so no market spans train and val of any fold. The same group constraint is also the leak-defence rationale for the train/test split (no market in both sides), making fold-internal validation directly representative of test-time generalisation.
+5-fold `GroupKFold(market_id)` so no market spans train and val of any fold. The same group constraint is also the leak-defense rationale for the train/test split (no market in both sides), making fold-internal validation directly representative of test-time generalization.
 
 Per model the script saves:
 - `preds_oof.npy` — out-of-fold predictions on train rows.
@@ -105,7 +105,7 @@ Per model the script saves:
 
 ### 5.4 Backtest
 
-`05_backtest.py` simulates ten betting strategies across a parameter grid:
+`05_backtest.py` first attaches `submission/data/backtest_context.parquet`, then simulates ten betting strategies across a parameter grid. The sidecar is required because the modeling parquet intentionally omits raw fields that are not features, including true `usd_amount`, raw taker-side fields, and corrected `pre_yes_price_corrected`.
 
 - **Confidence thresholds:** `phat_gt_0.99`, `phat_gt_0.95`, `phat_gt_0.9`.
 - **Top-K by score:** `top1pct_phat`, `top1pct_edge`, `top5pct_edge`.
@@ -115,6 +115,8 @@ Per model the script saves:
 Each (model × strategy) cell is run across the grid `initial_capital ∈ {1k, 10k, 100k}` × `max_bet_pct ∈ {1%, 5%, 10%}` × `liquidity_scaler ∈ {1.0, 0.10}` (no copycats vs. 10× copycats sharing fill), giving 18 scenarios per cell. The execution loop applies a 5% cost floor (caps payoff at 19×), $0.50 gas per trade, 5% slippage above the 25%-of-trade-volume threshold, a 20% concentration cap per market, and chronological capital release on resolution.
 
 A **naive consensus baseline** (`p_hat` = market-implied probability) runs the same strategies and is compared in `falsification.json`. Each ML model must beat this free heuristic for the strategy to count as model-driven alpha.
+
+The same script also writes three compact diagnostics for report robustness: `diagnostics_residual_edge.csv` tests whether `p_hat - market_prob` retains signal after controlling for market-implied probability; `diagnostics_consensus.csv` decomposes top picks into consensus-following versus contrarian selections; `diagnostics_sell_semantics.json` checks whether SELL rows look like closing trades rather than fresh directional bets.
 
 The headline figure `overview.png` is the heatmap of ROI per (strategy, model) at the headline scenario ($10K, 5% bet, no copycats).
 
@@ -136,13 +138,13 @@ Required by the guidelines. `03_train_models.py:benchmark_complexity()` measures
 
 Consolidated from the 2026-04-29 leakage audit (full historical log preserved in `archive/data-pipeline-issues.md`). The submission's `01_data_prep.py` enforces the policy in code; this section documents the rationale.
 
-### 6.1 Cohort-disjoint split as the headline defence
+### 6.1 Cohort-disjoint split as the headline defense
 
-The train/test split is by market cohort, not by trade timestamp inside a market. With 63 train markets and 10 test markets and zero overlap, no classifier can memorise per-market resolution from train rows and apply it to test rows of the same market. This protection lets the modelling feature set retain `side_buy`, `outcome_yes`, `taker_directional_purity_in_market`, `taker_position_size_before_trade`, and `market_buy_share_running` — features that would otherwise re-open the within-market direction-determinism leak (the previous P0-11 / P0-12 channels). Fold-internal validation uses `GroupKFold(market_id)` so the same protection applies during CV.
+The train/test split is by market cohort, not by trade timestamp inside a market. With 63 train markets and 10 test markets and zero overlap, no classifier can memorize per-market resolution from train rows and apply it to test rows of the same market. This protection lets the modeling feature set retain `side_buy`, `outcome_yes`, `taker_directional_purity_in_market`, `taker_position_size_before_trade`, and `market_buy_share_running` — features that would otherwise re-open the within-market direction-determinism leak (the previous P0-11 / P0-12 channels). Fold-internal validation uses `GroupKFold(market_id)` so the same protection applies during CV.
 
 ### 6.2 Hard-excluded forbidden columns
 
-`01_data_prep.py:FORBIDDEN_LEAKY_COLS` excludes four columns from every modelling feature list:
+`01_data_prep.py:FORBIDDEN_LEAKY_COLS` excludes four columns from every modeling feature list:
 
 | Column | Why excluded |
 |---|---|
@@ -161,9 +163,9 @@ The train/test split is by market cohort, not by trade timestamp inside a market
 
 All five checks pass on the bundled dataset.
 
-### 6.4 Per-token vs YES-normalised price (D-029)
+### 6.4 Per-token vs YES-normalized price (D-029)
 
-The HF `price` field is per-token (each token has its own price), not YES-normalised. The naive `pre_trade_price = price.shift(1)` would give the previous trade's per-token price, which could be either side of the market. `compute_pre_yes_price_corrected()` in `05_backtest.py` tracks last-seen token1 and token2 prices separately, shifts to exclude the current trade, and reconstructs YES probability as `last_t1` (else `1 - last_t2`, else 0.5). Discovered 2026-04-28 as the cause of a ~400× ROI inflation in the previous backtest.
+The HF `price` field is per-token (each token has its own price), not YES-normalized. The naive `pre_trade_price = price.shift(1)` would give the previous trade's per-token price, which could be either side of the market. `compute_pre_yes_price_corrected()` in `05_backtest.py` tracks last-seen token1 and token2 prices separately, shifts to exclude the current trade, and reconstructs YES probability as `last_t1` (else `1 - last_t2`, else 0.5). Discovered 2026-04-28 as the cause of a ~400× ROI inflation in the previous backtest.
 
 ### 6.5 Open decisions
 
@@ -172,7 +174,7 @@ The HF `price` field is per-token (each token has its own price), not YES-normal
 
 ## 7. Missing-data policy
 
-The modelling parquet contains zero NaN cells across all 1,371,180 rows × 87 columns. Structural missingness — features that would otherwise be mathematically undefined given the prior history available at row time — is resolved by substitution with semantically meaningful constants at the feature-engineering stage rather than retained as NaN. The substitution rules:
+The modeling parquet contains zero NaN cells across all 1,371,180 rows × 87 columns. Structural missingness — features that would otherwise be mathematically undefined given the prior history available at row time — is resolved by substitution with semantically meaningful constants at the feature-engineering stage rather than retained as NaN. The substitution rules:
 
 - **Cumulative `log_*` counts and volumes** take value 0 on a wallet's first-ever trade (`np.log1p(0) = 0` is the correct mathematical value).
 - **Per-(market, taker) features** (`taker_directional_purity_in_market`, `taker_position_size_before_trade`, `log_taker_prior_trades_in_market`) take value 0 on the first trade in a market via an explicit first-row reset before `cumsum().shift(1)`.
@@ -192,7 +194,9 @@ The convention is the constant strategy in `sklearn.impute.SimpleImputer` taught
 | Reliability | Per-model and combined reliability diagrams | `outputs/metrics/reliability_*.png` |
 | Feature attribution | sklearn permutation importance (top-15) for the best model | `outputs/metrics/permutation_importance_<best>.csv` |
 | Trading rule | Per cell: number of signals, number executed, final capital, ROI, max drawdown | `outputs/backtest/sensitivity.csv` |
-| Falsification | Best ML model vs. naive market-favourite baseline per strategy | `outputs/backtest/falsification.json` |
+| Falsification | Best ML model vs. naive market-favorite baseline per strategy | `outputs/backtest/falsification.json` |
+| Residual signal | Residual-edge AUC and partial correlation after controlling for market probability | `outputs/backtest/diagnostics_residual_edge.csv` |
+| Claim decomposition | Top-pick consensus/contrarian shares and SELL-semantics check | `outputs/backtest/diagnostics_consensus.csv`, `outputs/backtest/diagnostics_sell_semantics.json` |
 | Headline | ROI heatmap (strategy × model) at $10K bankroll, 5% max bet, no copycats | `outputs/backtest/overview.png` |
 | Complexity | Fit time, predict time per 1,000 rows, parameter count proxy | `outputs/metrics/complexity.csv` |
 
@@ -251,7 +255,7 @@ ML/report/
 │   │   └── 06_tuning_optuna.py        Optuna TPE for RF / HistGBM / MLP
 │   ├── outputs/                       regenerated when scripts re-run (gitignored upstream)
 │   │   └── data/, models/, metrics/, backtest/, tuning/
-│   └── report_assets/                 frozen artefacts cited in the .docx
+│   └── report_assets/                 frozen artifacts cited in the .docx
 │       ├── figures/main/              overview_baseline.png, overview_tuned.png, capital_curves.png
 │       ├── figures/appendix/eda/      19 EDA figures + tables + eda_appendix.docx
 │       └── tables/                    tuning_summary.md, backtest_sensitivity.csv, tuned_*.json
@@ -297,8 +301,8 @@ Scripts can be run independently after `01_data_prep.py` produces `feature_cols.
 
 ## 13. Status as of 2026-05-07
 
-- **Data pipeline:** done. Single consolidated parquet shipped; row counts and target balance verified by `01_data_prep.py`.
-- **Modelling pipeline:** done. Six numbered scripts in `submission/scripts/`, all teacher-friendly and verified by syntax + import checks. `01_data_prep.py` runtime-verified end-to-end against the bundled data. **Alex is currently re-running the full pipeline**; `submission/outputs/{data,models,metrics,backtest,tuning}/` will populate from his run and feed the writing pass.
+- **Data pipeline:** done. Single consolidated modeling parquet shipped, with `backtest_context.parquet` added for corrected YES prices, real trade liquidity, and taker-side diagnostics. Row counts, target balance, forbidden-column exclusion, and context alignment are verified by `01_data_prep.py`.
+- **Modeling pipeline:** done. Six numbered scripts in `submission/scripts/`, all teacher-friendly and verified by syntax + import checks. `01_data_prep.py` runtime-verified end-to-end against the bundled data. **Alex is currently re-running the full pipeline**; `submission/outputs/{data,models,metrics,backtest,tuning}/` will populate from his run and feed the writing pass.
 - **Headline figures:** the 2026-04-30 set is ready in `submission/report_assets/figures/main/` (baseline overview, tuned overview, capital curves). To be refreshed against Alex's new outputs before final integration.
 - **EDA:** 19 figures + tables in `submission/report_assets/figures/appendix/eda/`, eda_appendix.docx generated.
 - **Tuning:** 30-trial RF and 30-trial MLP runs completed 2026-04-30; baseline kept as headline per team agreement. HistGBM is in the `06_tuning_optuna.py` scope per §5.5 but no HistGBM tuning has produced a headline number; treat the tuning summary as **RF + MLP** only when quoting numbers in the report.
@@ -309,8 +313,8 @@ Scripts can be run independently after `01_data_prep.py` produces `feature_cols.
 
 - **Feature count: 80 vs 76.** See §6.5.
 - **Headline model.** Default RF leads on baseline test AUC (0.899) but the number is suspiciously high; tuned RF drops to 0.775. The MLP baseline (0.802) is the more honest headline if the report wants to cite a single number. Decision: present both, lead with the multi-model comparison table.
-- **Market-implied benchmark fix.** Whether to fetch CLOB history for the 67 HF markets (~1 h network) before submission, or document the asymmetry as a methodology limitation. Recommendation: document; cost-benefit doesn't justify the rebuild this close to deadline.
-- **Tuned predictions in headline backtest.** Tuned RF and MLP predictions exist (`outputs/v5/rigor/optuna/`) but are not currently isotonic-recalibrated, so threshold-based strategy results are not directly comparable to baseline. Either re-run `04_calibration.py + 05_backtest.py` against tuned predictions, or keep the side-by-side framing already in `submission/report_assets/figures/main/`.
+- **Market-implied benchmark limitation.** The corrected pre-trade YES price and real trade liquidity are now bundled in `backtest_context.parquet`. The remaining limitation is CLOB-history asymmetry for HF markets, which should be documented rather than rebuilt this close to deadline.
+- **Tuned predictions in headline backtest.** Tuned RF and MLP predictions exist (`outputs/v5/rigor/optuna/`) but are not currently isotonic-recalibrated, so threshold-based strategy results are not directly comparable to baseline. Either rerun `04_calibration.py + 05_backtest.py` against tuned predictions, or keep the side-by-side framing already in `submission/report_assets/figures/main/`.
 
 ## 15. References
 

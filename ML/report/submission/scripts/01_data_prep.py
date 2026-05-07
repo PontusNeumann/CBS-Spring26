@@ -14,7 +14,7 @@ Run:
   python 01_data_prep.py
 
 Outputs:
-  outputs/data/feature_cols.json   list of 81 modelling features (after exclusions)
+  outputs/data/feature_cols.json   list of 80 modeling features (after exclusions)
   outputs/data/leakage_report.json results of all leakage checks (pass/fail)
 """
 
@@ -34,11 +34,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import DATA_DIR, OUTPUTS_DIR, RANDOM_SEED  # noqa: E402
 
 # what: meta columns that are NOT features (book-keeping for the row)
-# how: we exclude them when building X for modelling
+# how: we exclude them when building X for modeling
 META_COLS = {"split", "market_id", "ts_dt", "timestamp"}
 TARGET = "bet_correct"
 
-# what: columns we refuse to use for modelling because they leak the future
+# what: columns we refuse to use for modeling because they leak the future
 # why: each one peeks at information that would not be available at trade time
 # how: dropped before any model is fit; tested below (test F3)
 FORBIDDEN_LEAKY_COLS = {
@@ -53,6 +53,16 @@ FORBIDDEN_LEAKY_COLS = {
 EXPECTED_TRAIN_ROWS = 1_114_003
 EXPECTED_TEST_ROWS = 257_177
 EXPECTED_TOTAL_ROWS = EXPECTED_TRAIN_ROWS + EXPECTED_TEST_ROWS
+
+# what: backtest-only context omitted from the modeling parquet
+# why: realistic backtests need true trade USD and corrected YES-normalized price,
+#      but these raw fields are not modeling features and must stay out of X
+BACKTEST_CONTEXT = DATA_DIR / "backtest_context.parquet"
+BACKTEST_CONTEXT_REQUIRED_COLS = {
+    "split", "row_in_split", "market_id", "timestamp", "usd_amount",
+    "price", "token_amount", "pre_yes_price_corrected",
+    "taker", "taker_direction", "nonusdc_side",
+}
 
 # what: timestamps of the two real-world events that bracket the test cohort
 # why: any trade timestamped after these is leakage (post-event)
@@ -152,9 +162,51 @@ def check_pre_trade_price(test: pd.DataFrame) -> dict:
             "match_rate": match_rate}
 
 
+def check_backtest_context(df: pd.DataFrame) -> dict:
+    """Test B1 — backtest context exists and aligns row-for-row with the modeling data."""
+    # what: the modeling parquet intentionally omits raw trading fields; this sidecar supplies them
+    # why: silent fallbacks in the backtest would make ROI and liquidity assumptions non-reproducible
+    if not BACKTEST_CONTEXT.exists():
+        return {"name": "B1_backtest_context", "pass": False,
+                "reason": f"missing {BACKTEST_CONTEXT.name}"}
+    ctx = pd.read_parquet(BACKTEST_CONTEXT)
+    missing = sorted(BACKTEST_CONTEXT_REQUIRED_COLS - set(ctx.columns))
+    if missing:
+        return {"name": "B1_backtest_context", "pass": False,
+                "reason": "missing required columns", "missing_columns": missing}
+    if len(ctx) != len(df):
+        return {"name": "B1_backtest_context", "pass": False,
+                "reason": "row count mismatch", "context_rows": len(ctx),
+                "model_rows": len(df)}
+
+    split_checks = {}
+    for split in ("train", "test"):
+        model_sub = df[df["split"] == split][["market_id", "timestamp"]].reset_index(drop=True)
+        ctx_sub = ctx[ctx["split"] == split].reset_index(drop=True)
+        expected_row = np.arange(len(model_sub))
+        row_ok = np.array_equal(ctx_sub["row_in_split"].to_numpy(), expected_row)
+        key_ok = (
+            model_sub["market_id"].astype(str).to_numpy() == ctx_sub["market_id"].astype(str).to_numpy()
+        ).all() and (
+            model_sub["timestamp"].to_numpy() == ctx_sub["timestamp"].to_numpy()
+        ).all()
+        price_ok = ctx_sub["pre_yes_price_corrected"].between(0, 1).all()
+        usd_ok = np.isfinite(ctx_sub["usd_amount"]).all() and (ctx_sub["usd_amount"] >= 0).all()
+        split_checks[split] = {
+            "rows": int(len(ctx_sub)),
+            "row_in_split_ok": bool(row_ok),
+            "market_timestamp_alignment_ok": bool(key_ok),
+            "pre_yes_price_in_0_1": bool(price_ok),
+            "usd_amount_finite_nonnegative": bool(usd_ok),
+        }
+    ok = all(all(v for k, v in c.items() if k != "rows") for c in split_checks.values())
+    return {"name": "B1_backtest_context", "pass": bool(ok),
+            "context_file": BACKTEST_CONTEXT.name, "checks": split_checks}
+
+
 def get_feature_cols(df: pd.DataFrame) -> list[str]:
     """Return the list of columns that are actually features (not meta, not target, not forbidden)."""
-    # what: filter the column list down to modelling features
+    # what: filter the column list down to modeling features
     # why: this is the canonical feature list every downstream script should use
     excluded = META_COLS | {TARGET} | FORBIDDEN_LEAKY_COLS
     return sorted([c for c in df.columns if c not in excluded])
@@ -182,6 +234,7 @@ def main() -> int:
         check_no_post_event_leakage(train, test),
         check_no_forbidden_columns(df),
         check_pre_trade_price(test),
+        check_backtest_context(df),
     ]
     n_pass = sum(1 for c in checks if c["pass"])
     for c in checks:
@@ -189,7 +242,7 @@ def main() -> int:
         print(f"  [{flag}] {c['name']}")
     print(f"  -> {n_pass}/{len(checks)} checks passed")
 
-    # what: persist the leakage report next to the modelling outputs
+    # what: persist the leakage report next to the modeling outputs
     leak_path = out_dir / "leakage_report.json"
     leak_path.write_text(json.dumps({"checks": checks, "n_pass": n_pass}, indent=2))
     print(f"  saved leakage report -> {leak_path.relative_to(OUTPUTS_DIR.parent)}")

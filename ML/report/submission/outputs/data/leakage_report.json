@@ -39,7 +39,28 @@
       "name": "D1_pre_trade_price",
       "pass": true,
       "skipped": "raw price column not in dataset"
+    },
+    {
+      "name": "B1_backtest_context",
+      "pass": true,
+      "context_file": "backtest_context.parquet",
+      "checks": {
+        "train": {
+          "rows": 1114003,
+          "row_in_split_ok": true,
+          "market_timestamp_alignment_ok": true,
+          "pre_yes_price_in_0_1": true,
+          "usd_amount_finite_nonnegative": true
+        },
+        "test": {
+          "rows": 257177,
+          "row_in_split_ok": true,
+          "market_timestamp_alignment_ok": true,
+          "pre_yes_price_in_0_1": true,
+          "usd_amount_finite_nonnegative": true
+        }
+      }
     }
   ],
-  "n_pass": 5
+  "n_pass": 6
 }

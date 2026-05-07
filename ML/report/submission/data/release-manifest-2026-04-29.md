@@ -17,6 +17,18 @@ Companion data for the consolidated modeling parquet. Extract to `ML/report/data
 | `README.md` | 2.4 KB | `72d48efe9a14753b825557f5a69d8676a2caa6781fbff7c28a7c8a8715020f66` |
 | `MISSING_DATA.md` | 6.1 KB | `b4a0e901b604553741af0e7a51a748de7d4c4c9437aecbc9c8276477f39a7875` |
 
+## 2026-05-07 backtest sidecar addendum
+
+The original modeling parquet intentionally omits raw trade fields that are not
+features. The submission now bundles a slim sidecar so the economic backtest can
+use the corrected YES-normalized pre-trade price and true trade liquidity without
+reading from `archive/`.
+
+| File | Size | SHA-256 |
+|------|------|---------|
+| `backtest_context.parquet` | 20.2 MB | `2ccb700cf74f8498c0647840ec25697232e612fec94168b281755f54877ea0b7` |
+| `backtest_context.info.json` | 1.1 KB | `83d753ac6b3fbbd02112d99bdf468764f4a822172433eb33a41a390bd063ff2d` |
+
 ## Dataset summary
 
 - 1,371,180 rows (1,114,003 train / 257,177 test, by `split` column)

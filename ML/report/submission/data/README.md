@@ -1,10 +1,12 @@
 # Modeling data
 
-Active file: `data/consolidated_modeling_data.parquet` (317.5 MB)
+Active modeling file: `data/consolidated_modeling_data.parquet` (317.5 MB)
+
+Backtest-only sidecar: `data/backtest_context.parquet` (20 MB)
 
 Target: `bet_correct` (int64, binary 0/1, balanced ~50.3% positive in both train and test).
 
-**Leakage note:** all features are temporally causal (verified in `alex/scripts/06b_engineer_features.py`). The team's train/test split is market-cohort-disjoint (63 train markets, 10 test markets, zero overlap), which is the leak-defence mechanism for the within-market direction-determinism channel Pontus's prior audit flagged. Five features are still excluded at modelling time — 1 structural (`wallet_funded_by_cex`, lifetime flag) and 4 low-signal CEX features. See `data-pipeline-issues.md` (2026-04-29 audit) for the full rationale. The canonical model loader is `alex/v4_final_ml_pipeline/scripts/_common.load_modeling_dataset()` (returns 77 features after exclusion).
+**Leakage note:** all modeling features are temporally causal. The team's train/test split is market-cohort-disjoint (63 train markets, 10 test markets, zero overlap), which is the leak-defense mechanism for the within-market direction-determinism channel flagged in the audit. `submission/scripts/01_data_prep.py` excludes the forbidden lifetime/static columns before any model is fit and validates the backtest sidecar row alignment.
 
 ## Load
 
@@ -41,23 +43,31 @@ X_test,  y_test  = test[feature_cols],  test[TARGET]
 
 `consolidated_modeling_data.info.json` contains row/column counts, build timestamp, and the full wallet feature list.
 
+## Backtest context
+
+`backtest_context.parquet` is not a modeling input. It exists so the economic evaluation can be reproduced without relying on archived local files. It contains:
+
+- `usd_amount`, the true trade size used for liquidity-aware bet sizing.
+- `pre_yes_price_corrected`, the corrected YES-normalized pre-trade price used for cost, edge, and naive-consensus diagnostics.
+- `price`, `token_amount`, `taker`, `taker_direction`, and `nonusdc_side`, which support SELL-semantics and consensus-vs-contrarian checks.
+- `row_in_split`, `split`, `market_id`, and `timestamp`, which let `01_data_prep.py` and `05_backtest.py` verify row-for-row alignment with the modeling parquet.
+
+The sidecar is derived from the archived raw Alex train/test parquets and sorted back into the same split order as `consolidated_modeling_data.parquet`. The alignment checks are recorded in `backtest_context.info.json`.
+
 ## Folder layout
 
 ```
 data/
-├── consolidated_modeling_data.parquet   # ← USE THIS for modeling
+├── consolidated_modeling_data.parquet   # USE THIS for modeling
 ├── consolidated_modeling_data.info.json
-├── wallet_enrichment.parquet            # wallet table joined into the modeling file
+├── backtest_context.parquet             # USE THIS for backtest context only
+├── backtest_context.info.json
 ├── README.md
-├── MISSING_DATA.md
-└── archive/                             # Frozen traceback only — not needed for modeling
-    ├── train_features_walletjoined.parquet
-    ├── test_features_walletjoined.parquet
-    ├── pipeline/                        # Upstream raw + intermediate pipeline files
-    └── alex/                            # Alex's pre-wallet-join pipeline artifacts
+├── constant_substitution_policy_and–audit_trail.md
+└── release-manifest-2026-04-29.md
 ```
 
-Only `consolidated_modeling_data.parquet` is needed for modeling. Everything in `archive/` is preserved for traceback.
+Only `consolidated_modeling_data.parquet` is needed for supervised modeling. `backtest_context.parquet` is required by `05_backtest.py`.
 
 ## Provenance
 
