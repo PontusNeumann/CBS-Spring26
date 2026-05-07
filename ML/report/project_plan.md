@@ -58,7 +58,7 @@ This framing makes the target observable (settlement is public), keeps the evalu
 | Sources | Hybrid pipeline: (a) market metadata via Polymarket Gamma API, (b) trade history for 67 markets via the HuggingFace mirror `SII-WANGZJ/Polymarket_data` (38.7 GB, streamed via duckdb httpfs), (c) trade history for 7 ceasefire markets via the Polymarket Data API, (d) CLOB mid-price for ceasefire markets, (e) on-chain wallet enrichment via Etherscan V2 (108,621 of 109,080 wallets enriched, 99.58% coverage). |
 | Target | `bet_correct ∈ {0, 1}` from market resolution and the side of the trade. Pos rate 50.31% train, 50.37% test (no resampling needed). |
 | Benchmark | `pre_yes_price_corrected` — pre-trade YES-token price reconstructed per-market via `compute_pre_yes_price_corrected()` (fixes the per-token vs YES-normalised price bug that previously inflated ROI by ~400×). |
-| Feature inventory | 87 columns total: 5 meta/id (`split`, `market_id`, `ts_dt`, `timestamp`, `bet_correct`) + 70 core features + 12 wallet features. The submission's `01_data_prep.py` produces a modelling feature list of **80 features** (87 minus 5 meta minus 1 target minus 1 leaky lifetime flag `wallet_funded_by_cex`). The 4 low-signal CEX features (`wallet_funded_by_cex_scoped`, `wallet_cex_usdc_cumulative_at_t`, `wallet_log_cex_usdc_cum`, `wallet_n_cex_deposits_at_t`) are kept in the feature list for inventory completeness; the 2026-04-29 audit recommended dropping them on signal grounds (mutual information ≤ 0.0014). See **§6 Open decisions**. |
+| Feature inventory | 87 columns total: 5 meta/id (`split`, `market_id`, `ts_dt`, `timestamp`, `bet_correct` — the last is the target) + 70 core features + 12 wallet features. The submission's `01_data_prep.py` produces a modelling feature list of **80 features** after dropping the 5 meta/id columns (which include the target) and the forbidden lifetime flags filtered at load time per `FORBIDDEN_LEAKY_COLS` (§6.2). The 4 low-signal CEX features (`wallet_funded_by_cex_scoped`, `wallet_cex_usdc_cumulative_at_t`, `wallet_log_cex_usdc_cum`, `wallet_n_cex_deposits_at_t`) are kept in the feature list for inventory completeness; the 2026-04-29 audit recommended dropping them on signal grounds (mutual information ≤ 0.0014). See **§6 Open decisions**. |
 | Feature groups | (1) trade-local — `log_size`, `side_buy`, `outcome_yes`, payoff/distance/count features; (2) time/cyclical — `pct_time_elapsed`, time-to-deadline, hour-of-day sin/cos; (3) pre-trade price + price-change features at 5min/1h/24h windows; (4) microstructure — Kyle's λ, realized vol, jump component, signed OI autocorrelation; (5) order flow — imbalance at 5min/1h/24h, YES volume share, taker side skew; (6) behaviour derivatives — contrarian/consensus scores, risk-reward, long-shot indicator; (7) per-taker history — log priors, cumvol, unique markets, directional purity, position size, yes-share; (8) on-chain wallet identity — Polygon age, nonce, inbound count, USDC funding history. |
 | Pre-modelling filter | Already applied upstream: post-resolution close-out trades (`settlement_minus_trade_sec ≤ 0`, ~16.5% of raw rows) dropped before consolidation. |
 | Split | Market-cohort-disjoint and temporally separated. **Train:** 63 markets, 1,114,003 trades, all `timestamp` < 2026-02-28 06:34:59 UTC (Operation Epic Fury launch). **Test:** 10 markets, 257,177 trades, all `timestamp` ≥ 2026-02-28 14:02:57 UTC. Zero market overlap. K-fold inside train uses `GroupKFold(n_splits=5)` on `market_id`. The cohort-disjoint split is the leak-defence mechanism for the within-market direction-determinism channel previously surfaced (see §5 Leakage policy). |
@@ -167,7 +167,7 @@ The HF `price` field is per-token (each token has its own price), not YES-normal
 
 ### 6.5 Open decisions
 
-- **Feature count: 80 vs 77.** The submission keeps 80 features; the 2026-04-29 audit recommended dropping 4 additional low-signal CEX features (mutual information ≤ 0.0014, marginal hit-rate diff ≤ 0.6 pp). Either is defensible. Drop them if the report wants a single tighter feature inventory.
+- **Feature count: 80 vs 76.** The submission keeps 80 features; the 2026-04-29 audit recommended dropping 4 additional low-signal CEX features (mutual information ≤ 0.0014, marginal hit-rate diff ≤ 0.6 pp), which would yield a 76-feature inventory. Either is defensible. Drop them if the report wants a single tighter feature inventory.
 - **`market_implied_prob` source asymmetry.** 100% of HF rows fall back to the trade's execution price (no CLOB history pulled for events 114242 and 236884); only 3% of API rows match `price` (the rest use CLOB mid). Not a feature leak (the column is excluded from features), but the trading-rule benchmark is the trade's own execution price on HF rows. To cite as a methodology limitation; or fetch CLOB history for the 67 HF markets (~1 h network) for a rigorous fix.
 
 ## 7. Missing-data policy
@@ -295,19 +295,19 @@ python 06_tuning_optuna.py        # ~120 min Optuna TPE for RF + HistGBM (MLP op
 
 Scripts can be run independently after `01_data_prep.py` produces `feature_cols.json`. `06_tuning_optuna.py` is optional and the report uses the side-by-side baseline-vs-tuned figure already in `submission/report_assets/figures/main/`.
 
-## 13. Status as of 2026-05-03
+## 13. Status as of 2026-05-07
 
 - **Data pipeline:** done. Single consolidated parquet shipped; row counts and target balance verified by `01_data_prep.py`.
-- **Modelling pipeline:** done. Six numbered scripts in `submission/scripts/`, all teacher-friendly and verified by syntax + import checks. `01_data_prep.py` runtime-verified end-to-end against the bundled data.
-- **Headline figures:** ready in `submission/report_assets/figures/main/` (baseline overview, tuned overview, capital curves).
+- **Modelling pipeline:** done. Six numbered scripts in `submission/scripts/`, all teacher-friendly and verified by syntax + import checks. `01_data_prep.py` runtime-verified end-to-end against the bundled data. **Alex is currently re-running the full pipeline**; `submission/outputs/{data,models,metrics,backtest,tuning}/` will populate from his run and feed the writing pass.
+- **Headline figures:** the 2026-04-30 set is ready in `submission/report_assets/figures/main/` (baseline overview, tuned overview, capital curves). To be refreshed against Alex's new outputs before final integration.
 - **EDA:** 19 figures + tables in `submission/report_assets/figures/appendix/eda/`, eda_appendix.docx generated.
-- **Tuning:** 30-trial RF + 30-trial MLP runs completed 2026-04-30; baseline kept as headline per team agreement.
-- **Report:** `KAN-CDSCO2004U_*.docx` exists; final integration of `submission/report_assets/` figures and tables is the open item.
+- **Tuning:** 30-trial RF and 30-trial MLP runs completed 2026-04-30; baseline kept as headline per team agreement. HistGBM is in the `06_tuning_optuna.py` scope per §5.5 but no HistGBM tuning has produced a headline number; treat the tuning summary as **RF + MLP** only when quoting numbers in the report.
+- **Report:** `KAN-CDSCO2004U_161989_160363_185912_160714_Polymarket_Mispricing.docx` is the live deliverable; final integration of `submission/report_assets/` figures and tables is the open item now that Alex's run has unblocked the writing pass.
 - **LLM disclosure:** template in `paper_guidelines.md` §7; needs filling in with actual percentages and validation notes per the extended guidelines.
 
 ## 14. Open Decisions
 
-- **Feature count: 80 vs 77.** See §6.5.
+- **Feature count: 80 vs 76.** See §6.5.
 - **Headline model.** Default RF leads on baseline test AUC (0.899) but the number is suspiciously high; tuned RF drops to 0.775. The MLP baseline (0.802) is the more honest headline if the report wants to cite a single number. Decision: present both, lead with the multi-model comparison table.
 - **Market-implied benchmark fix.** Whether to fetch CLOB history for the 67 HF markets (~1 h network) before submission, or document the asymmetry as a methodology limitation. Recommendation: document; cost-benefit doesn't justify the rebuild this close to deadline.
 - **Tuned predictions in headline backtest.** Tuned RF and MLP predictions exist (`outputs/v5/rigor/optuna/`) but are not currently isotonic-recalibrated, so threshold-based strategy results are not directly comparable to baseline. Either re-run `04_calibration.py + 05_backtest.py` against tuned predictions, or keep the side-by-side framing already in `submission/report_assets/figures/main/`.

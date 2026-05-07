@@ -8,11 +8,11 @@ Code, data, and report assets that accompany the written report for the KAN-CDSC
 submission/
 ├── README.md                   <- this file
 ├── requirements.txt            <- pinned Python dependencies
-├── config.py                   <- single source of paths and seeds
 ├── data/
 │   └── consolidated_modeling_data.parquet   <- the only data file you need
 │       + README.md, MISSING_DATA.md, release-manifest, info.json
 ├── scripts/                    <- six teacher-friendly scripts + the EDA script
+│   ├── config.py               single source of paths and seeds
 │   ├── 01_data_prep.py         load + leakage checks + feature list
 │   ├── 02_features.py          feature taxonomy + scaler + Isolation Forest score
 │   ├── 03_train_models.py      train 7-8 models with GroupKFold CV + complexity benchmark

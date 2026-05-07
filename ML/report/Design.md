@@ -1,6 +1,18 @@
 # Design System
 
-Visual conventions for figures and tables in the final exam paper. Figures are generated in Python scripts, saved as PNG to `report/outputs/`, and inserted into the Word document for export to PDF. Tables are produced in Python and either exported as CSV for native Word formatting or reproduced directly in Word using the styling below.
+Visual, structural, and editorial conventions for the final exam paper (KAN-CDSCO2004U Machine Learning and Deep Learning). The deliverable is a Word document exported to PDF, max 15 pages of body, group-written. Figures are generated in Python scripts, saved as PNG to `submission/report_assets/figures/`, and inserted into the Word document for export to PDF. Tables are produced in Python and either exported as CSV for native Word formatting or reproduced directly in Word using the styling below.
+
+This file inherits the **CBS Formal Requirements** (≤ 2,275 chars/page, margins, font size, page count) from `paper_guidelines.md`. Anything below either reaffirms a binding inherited rule or specifies how the docx implements it.
+
+## Active document and editing rule
+
+The active Word document is `KAN-CDSCO2004U_161989_160363_185912_160714_Polymarket_Mispricing.docx` in this folder. The mirror PDF (`KAN-CDSCO2004U_*.pdf`) is a regenerated export and not a source.
+
+- **Patch in place.** Modify only the active `.docx` (or `word/document.xml` and `word/styles.xml` inside it). Preserve every other package part: cover image, CBS logo, anchored drawings, fonts, media, headers, footers.
+- **Never rebuild from a template or archived snapshot.** Older `.pre_*.docx` files in `archive/` and `report_tools/backup/` are rollback artefacts, not templates. Rebuilding silently drops later formatting and front-page edits.
+- **The first two pages are frozen and manual-only.** Cover page and ToC page are off-limits to every script. Do not automate cover metadata, image/logo placement, anchored drawings, the TOC field, the `TOCHeading` paragraph, the Introduction `pageBreakBefore`, or page-1/2 `sectPr`/`pgMar`. Some visually blank cover paragraphs carry drawing anchors and editing them can make images disappear.
+- **Take a backup before any structural patch.** Scripts in `report_tools/` already write `.pre_*.docx` rollbacks into `report_tools/backup/`. New patchers must do the same with a `YYYY-MM-DD_<short-tag>` suffix.
+- **Comment-aware edits.** If Word comments or review markup are present in the area being edited, prefer a direct package patch that rewrites only the relevant `word/document.xml` nodes and preserves `word/comments*.xml`. `python-docx` patchers may normalise paragraph XML around comment markers; use them only after checking that comments are outside the edited range or can safely be removed.
 
 ## Language
 
@@ -15,11 +27,13 @@ The report uses **US English spelling** throughout (e.g. *behavior*, *modeling*,
 
 ## Page and Sizing
 
-Target Word layout: A4, 2.5 cm margins, approximately 16 cm (6.3 inches) text width.
+Body pages: A4, **3 cm top/bottom margin and 2 cm left/right margin** per `paper_guidelines.md` (≥ minima). Effective body text width ≈ 17 cm (6.7 inches). The cover page is exempt — its margins and layout are manual-only and must not be touched by automation.
+
+Figures are sized to `FIG_W = 6.3 in` (16 cm) for headroom, so they render without horizontal overflow even if the body margins are widened. This conservative width is intentional and should not be raised without re-checking every existing figure in the docx.
 
 | Parameter | Value |
 |---|---|
-| `FIG_W` | 6.3 (inches, full page width) |
+| `FIG_W` | 6.3 (inches, full body-text width with safety margin) |
 | `FIG_W_HALF` | 3.1 (inches, half width for side-by-side placement) |
 | `FIG_W_WIDE` | 7.5 to 8.5 (inches, rotated or landscape-style figures) |
 | Display DPI | 140 |
@@ -144,3 +158,17 @@ These rules are enforced programmatically by `scripts/23_docx_spacing_and_breaks
 ## Table captions
 
 All tables in the paper carry a single-line descriptive caption in the format `Table N. Descriptive caption text.` Where a caption needs additional clarification of columns or filter conventions (as on Table A.6), the descriptive text continues on the same line without a paragraph break; the entire caption is one `Normal`-styled paragraph.
+
+## Self-check after a docx edit
+
+A docx change passes only if every box is ticked. If any box fails, flag it explicitly before reporting the edit as done.
+
+- [ ] Pages 1 and 2 visually unchanged (cover image, CBS logo, anchored drawings, ToC field, Introduction `pageBreakBefore` all intact).
+- [ ] No new direct page breaks beyond **References** and **Appendix**; no inherited `pageBreakBefore` introduced on the `Heading 1` / `Heading 2` / `Heading 3` style definitions.
+- [ ] Every paragraph carries `space-before = 0` and `space-after = 0`; both autospacing flags are zeroed; vertical separation is created by blank `Normal` paragraphs only.
+- [ ] Tables: `cantSplit` on every row, `keepNext` on every paragraph in every non-last row, `keepNext` on the table's caption paragraph above it.
+- [ ] Figures: `keepNext` on the paragraph containing the figure so it stays with its caption.
+- [ ] US English spelling preserved across the edited area; no em dashes, en dashes, or sentence-shortcut semicolons/colons introduced into body prose.
+- [ ] Body still under the 15-page × 2,275-char-per-page budget (ToC + body sections + in-body figures count; cover, references, appendix do not).
+- [ ] Active `.docx` filename unchanged; no archive snapshot opened or saved over the live file.
+- [ ] A `.pre_*.docx` backup landed in `report_tools/backup/` before the patch.
