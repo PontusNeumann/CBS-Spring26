@@ -54,23 +54,43 @@ plt.rcParams.update({
     "legend.fontsize": 8,
 })
 C_MAP = sns.color_palette("rocket_r", as_cmap=True)
-# Polar-contrast colormap for panels that need to read as opposing extremes
-# (panels 12, 17, 18). Cool blue, dark centre, warm red, so above-vs-below
-# 0.5 reads cleanly as positive vs negative deviation.
+# Polar-contrast colormap reserved for panels where the visual story is
+# divergence around a centre (panels 17, 18). Cool blue, dark centre, warm
+# red, so above-vs-below the midpoint reads cleanly.
 C_MAP_CONTRAST = sns.color_palette("icefire", as_cmap=True)
-PAL_10 = sns.color_palette("rocket_r", 10)
+# Discrete palette: rocket (dark navy → cream through purple, wine-red,
+# red-orange, orange, peach). Switched from rocket_r so the dark, saturated
+# end sits at low indices and the multi-category spreads draw from the
+# weightier portion of the ramp.
+PAL_10 = sns.color_palette("rocket", 10)
+# Seven-colour categorical palette for feature-group bars and similar ≤8
+# category charts. Skips PAL_10[0] (near-black) and PAL_10[8..9] (peach,
+# cream) so all groups read with similar saturation.
+PAL_GROUPS = [PAL_10[i] for i in range(1, 8)]
 COL_DARK = "0.15"
-# Two-class anchor pair, sampled from rocket_r at indices 4 and 7. PAL_10[4]
-# sits in the red band and PAL_10[7] sits in the purple band, so binary
-# plots read as red vs purple rather than burgundy vs purple.
-COL_RED = PAL_10[4]          # cool medium-dark red — primary anchor
-COL_PURPLE = PAL_10[7]       # purple — opposite anchor
-COL_CORRECT = COL_RED
-COL_INCORRECT = COL_PURPLE
-COL_TRAIN = COL_RED
-COL_TEST = COL_PURPLE
-COL_BAR = COL_RED
-COL_BAR_ALT = COL_PURPLE
+# Two-class anchor pair, both warm reds at different temperatures. PAL_10[4]
+# is a cool wine-red, PAL_10[6] a warm red-orange. The temperature contrast
+# differentiates the two classes without leaving the rocket ramp.
+COL_RED_COOL = PAL_10[4]     # cool wine-red — primary anchor
+COL_RED_WARM = PAL_10[6]     # warm red-orange — opposite anchor
+COL_CORRECT = COL_RED_COOL
+COL_INCORRECT = COL_RED_WARM
+COL_TRAIN = COL_RED_COOL
+COL_TEST = COL_RED_WARM
+COL_BAR = COL_RED_COOL
+COL_BAR_ALT = COL_RED_WARM
+
+
+def rocket_gradient(n: int, lo: float = 0.2, hi: float = 0.95) -> list:
+    """Rank-gradient sampled from C_MAP (rocket_r), lightest → darkest.
+    Used for single-series ranked bar charts so colour reinforces the rank
+    already encoded by bar length. lo/hi clip the cmap so the lightest bar
+    is still readable on a white background and the darkest stays inside
+    saturated rocket territory.
+    """
+    if n <= 1:
+        return [C_MAP(0.5)]
+    return [C_MAP(lo + (hi - lo) * i / (n - 1)) for i in range(n)]
 
 FIG_W = 6.3
 FIG_W_WIDE = 7.8
@@ -364,7 +384,7 @@ def panel_outliers(df: pd.DataFrame, skew: pd.DataFrame, top_k: int = 8) -> None
                         medianprops=dict(color=COL_DARK, lw=1.0),
                         whiskerprops=dict(color=COL_DARK, lw=0.8),
                         capprops=dict(color=COL_DARK, lw=0.8))
-        bp["boxes"][0].set_facecolor(PAL_10[2 + (i % 5)])
+        bp["boxes"][0].set_facecolor(PAL_10[1 + (i % 8)])
         bp["boxes"][0].set_edgecolor(COL_DARK)
         bp["boxes"][0].set_alpha(0.85)
         ax.set_title(lbl, fontsize=7)
@@ -493,7 +513,10 @@ def panel_train_test_shift(df: pd.DataFrame) -> None:
     shift = shift.dropna().sort_values(ascending=False).head(15)
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.34 * len(shift) + 1.0))
-    ax.barh(shift.index[::-1], shift.values[::-1], color=COL_BAR)
+    ax.barh(
+        shift.index[::-1], shift.values[::-1],
+        color=rocket_gradient(len(shift)),
+    )
     ax.set_xlabel("|standardised mean shift| (test − train)")
     ax.set_title("Top 15 features with largest train→test mean shift")
     clean_ax(ax)
@@ -589,7 +612,7 @@ def panel_wallet_strata(df: pd.DataFrame) -> None:
         deciles = pd.qcut(sub["wallet_polygon_age_at_t_days"], 10, duplicates="drop")
         rate = sub.groupby(deciles, observed=True)[TARGET].agg(["mean", "size"])
         x = np.arange(len(rate))
-        ax.bar(x, rate["mean"], color=COL_BAR, edgecolor="white")
+        ax.bar(x, rate["mean"], color=rocket_gradient(len(rate)), edgecolor="white")
         ax.set_xticks(x)
         ax.set_xticklabels([str(i + 1) for i in range(len(rate))], fontsize=8)
         ax.set_xlabel("wallet age decile\n(1=youngest, 10=oldest)")
@@ -625,7 +648,7 @@ def panel_wallet_strata(df: pd.DataFrame) -> None:
         deciles = pd.qcut(sub["wallet_polygon_nonce_at_t"], 10, duplicates="drop")
         rate = sub.groupby(deciles, observed=True)[TARGET].agg(["mean", "size"])
         x = np.arange(len(rate))
-        ax.bar(x, rate["mean"], color=COL_BAR, edgecolor="white")
+        ax.bar(x, rate["mean"], color=rocket_gradient(len(rate)), edgecolor="white")
         ax.set_xticks(x)
         ax.set_xticklabels([str(i + 1) for i in range(len(rate))], fontsize=8)
         ax.set_xlabel("polygon-nonce decile\n(1=fewest tx, 10=most)")
@@ -802,10 +825,10 @@ def panel_mutual_information(df: pd.DataFrame) -> None:
     topN = mi_df.head(top_n)
 
     # Color each bar by feature group so the chart shows which engineering
-    # layer dominates, not just a uniform-looking ranking. Sample positions
-    # PAL_10[1..7] so groups draw from the saturated middle of the rocket
-    # palette (peach-to-purple) and skip the extreme pale and near-black ends.
-    group_palette = [PAL_10[i] for i in [1, 2, 3, 4, 5, 6, 7][:len(FEATURE_GROUPS)]]
+    # layer dominates, not just a uniform-looking ranking. PAL_GROUPS spans
+    # PAL_10[1..7] (dark purple → orange) and skips the near-black bottom
+    # and pale top of the rocket ramp.
+    group_palette = PAL_GROUPS[:len(FEATURE_GROUPS)]
     feat_to_group = {}
     for (group, members), _ in zip(FEATURE_GROUPS, group_palette):
         for m in members:
@@ -912,7 +935,9 @@ def panel_feature_taxonomy(df: pd.DataFrame) -> None:
     tax = pd.DataFrame(rows)
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.5 * len(tax) + 1.2))
-    bars = ax.barh(tax["group"][::-1], tax["n"][::-1], color=COL_BAR)
+    # Cycle PAL_GROUPS so the same feature group keeps its panel-13 colour.
+    tax_colors = [PAL_GROUPS[i % len(PAL_GROUPS)] for i in range(len(tax))][::-1]
+    bars = ax.barh(tax["group"][::-1], tax["n"][::-1], color=tax_colors)
     for bar, n in zip(bars, tax["n"][::-1]):
         ax.text(bar.get_width() + 0.3, bar.get_y() + bar.get_height() / 2,
                 str(n), va="center", fontsize=9)
@@ -971,7 +996,9 @@ def panel_tail_diagnostics(df: pd.DataFrame) -> None:
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.34 * len(tail_df) + 1.0))
     y = np.arange(len(tail_df))
-    ax.barh(y, tail_df["excess_kurtosis"], color=COL_BAR)
+    # tail_df is already ordered largest-kurtosis-first → reverse the gradient
+    # so the topmost bar (largest) reads darkest.
+    ax.barh(y, tail_df["excess_kurtosis"], color=rocket_gradient(len(tail_df))[::-1])
     ax.set_yticks(y)
     ax.set_yticklabels(tail_df.index, fontsize=8)
     ax.invert_yaxis()

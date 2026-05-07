@@ -44,22 +44,30 @@ Multi-panel layouts use a single `plt.subplots(1, 2, ...)` or `plt.subplots(2, 2
 
 ## Colour Palette
 
+The palette is the seaborn rocket ramp, used as a continuous colourmap for heatmaps and rank-gradients, as a discrete palette for categorical groups, and as a two-anchor pair for binary classes. A second colourmap, icefire, is reserved for plots whose visual story is divergence around a centre.
+
 | Token | Value | Usage |
 |---|---|---|
-| `C_MAP` | `sns.color_palette("rocket_r", as_cmap=True)` | Continuous colourmap for heatmaps |
-| `C_MAP_DIVERGING` | `LinearSegmentedColormap.from_list("rocket_diverging", [PAL_10[8], (0.97, 0.97, 0.97), PAL_10[6]], N=256)` | Diverging colourmap for signed heatmaps (single-feature ROC-AUC, train-test shift); purple ↔ white ↔ burgundy so the two extremes match the primary/opposite anchor pair |
-| `PAL_10` | `sns.color_palette("rocket_r", 10)` | Discrete palette for line, bar, and scatter plots |
-| `PAL_K` | `[PAL_10[i] for i in [1, 3, 6, 8, 9]]` | Cluster or category colours (up to five) |
-| `INK` | `PAL_10[8]` | Scatter point fill and annotation text |
-| `COL_DARK` | `"0.15"` | Heatmap annotation text and small over-bar labels |
-| `COL_CORRECT` | `PAL_10[6]` | Correct or positive class (burgundy red, primary anchor) |
-| `COL_INCORRECT` | `PAL_10[8]` | Incorrect or negative class (purple, opposite anchor) |
-| `COL_TRAIN` | `PAL_10[6]` | Train cohort in split-aware bar and line plots (= primary burgundy) |
-| `COL_TEST` | `PAL_10[8]` | Test cohort in split-aware bar and line plots (= opposite purple) |
-| `COL_BAR` | `PAL_10[6]` | Default single-series bar fill (= burgundy primary) |
-| `COL_BAR_ALT` | `PAL_10[8]` | Secondary single-series accent (= purple opposite); used when only two colours are needed |
+| `C_MAP` | `sns.color_palette("rocket_r", as_cmap=True)` | Continuous colourmap for sequential heatmaps and the rank-gradient on single-series ranked bars. Lower values render light, higher values render dark. |
+| `C_MAP_CONTRAST` | `sns.color_palette("icefire", as_cmap=True)` | Polar-contrast colourmap for plots where the visual point is divergence around a centre (wallet hit-rate scatter, market-time spread on price trajectories). Cool blue ↔ dark centre ↔ warm red. |
+| `PAL_10` | `sns.color_palette("rocket", 10)` | Discrete palette for bar and scatter plots. Indices 0 → 9 run near-black ↔ dark purple ↔ wine-red ↔ red-orange ↔ orange ↔ peach ↔ cream. |
+| `PAL_GROUPS` | `[PAL_10[i] for i in range(1, 8)]` | Seven-colour categorical palette for feature-group bars and similar ≤ 8-category charts. Skips `PAL_10[0]` (near-black) and `PAL_10[8..9]` (peach, cream) so all groups read with similar saturation. |
+| `COL_DARK` | `"0.15"` | Heatmap annotation text, dashed reference lines, small over-bar labels. |
+| `COL_TRAIN` / `COL_CORRECT` / `COL_BAR` | `PAL_10[4]` | Cool wine-red, primary anchor in two-class plots and default single-series fill where rank-gradient does not apply. |
+| `COL_TEST` / `COL_INCORRECT` / `COL_BAR_ALT` | `PAL_10[6]` | Warm red-orange, opposite anchor in two-class plots. |
 
-All plots draw from this palette. Ad-hoc hex colours are avoided. Categorical group colours (e.g. feature-taxonomy bars) pick from `[PAL_10[i] for i in [1, 2, 3, 4, 5, 6, 7]]` to skip the pale top and near-black bottom of the ramp.
+A helper, `rocket_gradient(n, lo=0.2, hi=0.95)`, samples `C_MAP` at `n` evenly spaced positions clipped to `[lo, hi]` so the lightest bar still reads on a white page and the darkest stays inside saturated rocket territory.
+
+**Chart-grammar rules.** Colour maps onto chart semantics so the reader can decode meaning without re-reading the legend.
+
+1. **Binary categorical** (train vs test, correct vs incorrect, YES-resolved vs NO-resolved): exactly two colours, the cool-warm anchor pair `COL_TRAIN` and `COL_TEST`. Never expand to three or more.
+2. **Multi-category** (feature groups, layer-by-layer breakdowns, ≤ 8 distinct labels): cycle `PAL_GROUPS` in declaration order so the same group keeps the same colour across panels.
+3. **Single-series ranked bars** (top-N features by skew, mutual information, kurtosis, train-test shift): apply `rocket_gradient(n)` so bar-rank reads as colour. The smallest value gets the lightest fill and the largest gets the darkest.
+4. **Single-series time-series bars** (daily trade counts, hourly volume zoom): single colour, `COL_BAR`. Rank-colouring would mislead because chronological order is not a value rank.
+5. **Continuous heatmaps**: `C_MAP` with `vmin=-1, vmax=1, center=0` for correlation, and with `vmin/vmax` set symmetrically around the natural midpoint for ROC-AUC-style maps centred at 0.5.
+6. **Polar-contrast plots**: `C_MAP_CONTRAST`. Reserved for cases where the visual point is divergence around a centre.
+
+Ad-hoc hex colours are avoided. When more than eight categories must be plotted in one chart, prefer to either collapse categories or switch to `C_MAP_CONTRAST` sampled across the categories rather than expanding `PAL_GROUPS`.
 
 ## Theme
 
