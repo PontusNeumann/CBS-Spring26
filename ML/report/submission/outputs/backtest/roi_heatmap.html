@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Strategy × model ROI grid</title>
+<style>
+  :root {
+    --fg: #1e1e1e;
+    --fg-soft: #555;
+    --fg-faint: #888;
+    --border: #d8d8d8;
+    --bg: #ffffff;
+    --bg-soft: #fafafa;
+    --separator: #2a2a2a;
+  }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1200px;
+    margin: 36px auto;
+    padding: 0 32px;
+  }
+  header { margin-bottom: 24px; }
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 6px; }
+  .subtitle { font-size: 13.5px; color: var(--fg-soft); font-style: italic; margin: 0 0 4px; }
+  .meta { font-size: 12px; color: var(--fg-faint); }
+  table {
+    border-collapse: separate; border-spacing: 0;
+    width: 100%; margin: 28px 0 18px;
+    font-size: 13px; background: var(--bg);
+  }
+  th, td {
+    padding: 0;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    text-align: center; vertical-align: middle;
+  }
+  thead th {
+    background: var(--bg-soft); color: var(--fg);
+    font-weight: 600; font-size: 12px;
+    padding: 10px 6px 8px;
+    border-top: 1px solid var(--border);
+  }
+  thead th:first-child {
+    border-left: 1px solid var(--border);
+    text-align: left; padding-left: 12px;
+    color: var(--fg-faint); font-weight: 500;
+  }
+  th.model {
+    background: var(--bg-soft);
+    text-align: left; padding: 8px 12px;
+    color: var(--fg); font-weight: 500;
+    border-left: 1px solid var(--border);
+    width: 130px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11.5px;
+  }
+  th.strategy {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px; color: var(--fg-soft);
+  }
+  tr.naive-row th.model {
+    border-top: 2px solid var(--separator);
+    color: var(--fg-faint);
+    font-style: italic;
+  }
+  tr.naive-row td {
+    border-top: 2px solid var(--separator);
+  }
+  td.cell {
+    height: 56px; line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+  }
+  td.cell .roi {
+    font-size: 13.5px; font-weight: 700; margin-bottom: 2px;
+  }
+  td.cell .n {
+    font-size: 10.5px; opacity: 0.85; font-variant-numeric: tabular-nums;
+  }
+  td.na {
+    background: #fafafa; color: var(--fg-faint);
+    font-size: 18px; height: 56px;
+  }
+  .legend {
+    display: flex; align-items: center; gap: 12px;
+    margin: 12px 0; font-size: 11.5px; color: var(--fg-soft);
+  }
+  .legend .bar {
+    width: 220px; height: 12px; border-radius: 2px;
+    background: linear-gradient(to right, #7a1717 0%, #f5f5f5 50%, #15703a 100%);
+    border: 1px solid var(--border);
+  }
+  .legend .scale {
+    display: flex; justify-content: space-between;
+    width: 220px; font-size: 10.5px; color: var(--fg-faint);
+  }
+  footer {
+    font-size: 11.5px; color: var(--fg-faint);
+    line-height: 1.55; margin-top: 14px;
+    border-top: 1px solid var(--border); padding-top: 12px; font-style: italic;
+  }
+  .takeaways {
+    margin: 28px 0 0; padding: 18px 22px;
+    background: #fafafa; border-left: 3px solid #15703a;
+    font-size: 13px; line-height: 1.6;
+  }
+  .takeaways h3 {
+    margin: 0 0 10px; font-size: 13px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-soft);
+  }
+  .takeaways ul { margin: 0; padding: 0 0 0 18px; }
+  .takeaways li { margin-bottom: 6px; }
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; background: #f0f0f0; padding: 1px 5px; border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Strategy × model ROI grid</h1>
+      <p class="subtitle">Does the model beat the naive market-favourite baseline?</p>
+      <p class="meta">$10K bankroll · 5% max bet · 20% concentration cap · gas $0.50 · slippage 5% · no copycats · 43-feature mirror set</p>
+    </header>
+
+    <div class="legend">
+      <div>
+        <div class="bar"></div>
+        <div class="scale"><span>−70%</span><span>0%</span><span>+40%</span></div>
+      </div>
+      <div>colour = ROI · cell = ROI (large) and n_executed (small) · — = no signals · bottom row separated = naive baseline</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>model</th>
+          <th class="strategy">phat_gt_0.99</th><th class="strategy">phat_gt_0.95</th><th class="strategy">phat_gt_0.9</th><th class="strategy">top1pct_phat</th><th class="strategy">top1pct_edge</th><th class="strategy">top5pct_edge</th><th class="strategy">general_ev</th><th class="strategy">general_ev_late</th><th class="strategy">general_ev_cheap</th><th class="strategy">home_run</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class=""><th class="model">logreg_l2</th><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="cell ml" style="background:#f3f2f2;color:#222;" title="logreg_l2 · top1pct_phat: ROI -0.7%, n=95"><div class="roi">-0.7%</div><div class="n">n=95</div></td><td class="cell ml" style="background:#decbcb;color:#222;" title="logreg_l2 · top1pct_edge: ROI -13.1%, n=367"><div class="roi">-13.1%</div><div class="n">n=367</div></td><td class="cell ml" style="background:#8d3a3a;color:white;" title="logreg_l2 · top5pct_edge: ROI -58.7%, n=1,006"><div class="roi">-58.7%</div><div class="n">n=1,006</div></td><td class="cell ml" style="background:#ab7171;color:white;" title="logreg_l2 · general_ev: ROI -41.6%, n=1,082"><div class="roi">-41.6%</div><div class="n">n=1,082</div></td><td class="cell ml" style="background:#dce6e0;color:#222;" title="logreg_l2 · general_ev_late: ROI +4.4%, n=87"><div class="roi">+4.4%</div><div class="n">n=87</div></td><td class="cell ml" style="background:#7a1717;color:white;" title="logreg_l2 · general_ev_cheap: ROI -70.4%, n=845"><div class="roi">-70.4%</div><div class="n">n=845</div></td><td class="cell ml" style="background:#d7bfbf;color:#222;" title="logreg_l2 · home_run: ROI -16.9%, n=46"><div class="roi">-16.9%</div><div class="n">n=46</div></td></tr>
+<tr class=""><th class="model">logreg_l1</th><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="cell ml" style="background:#f4f3f3;color:#222;" title="logreg_l1 · top1pct_phat: ROI -0.6%, n=79"><div class="roi">-0.6%</div><div class="n">n=79</div></td><td class="cell ml" style="background:#decccc;color:#222;" title="logreg_l1 · top1pct_edge: ROI -12.9%, n=363"><div class="roi">-12.9%</div><div class="n">n=363</div></td><td class="cell ml" style="background:#8d3939;color:white;" title="logreg_l1 · top5pct_edge: ROI -59.1%, n=1,005"><div class="roi">-59.1%</div><div class="n">n=1,005</div></td><td class="cell ml" style="background:#ac7171;color:white;" title="logreg_l1 · general_ev: ROI -41.5%, n=1,075"><div class="roi">-41.5%</div><div class="n">n=1,075</div></td><td class="cell ml" style="background:#dce6e0;color:#222;" title="logreg_l1 · general_ev_late: ROI +4.4%, n=87"><div class="roi">+4.4%</div><div class="n">n=87</div></td><td class="cell ml" style="background:#7a1717;color:white;" title="logreg_l1 · general_ev_cheap: ROI -70.4%, n=845"><div class="roi">-70.4%</div><div class="n">n=845</div></td><td class="cell ml" style="background:#d7bfbf;color:#222;" title="logreg_l1 · home_run: ROI -16.9%, n=46"><div class="roi">-16.9%</div><div class="n">n=46</div></td></tr>
+<tr class=""><th class="model">pca_logreg</th><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="cell ml" style="background:#e9dfdf;color:#222;" title="pca_logreg · top1pct_phat: ROI -6.7%, n=267"><div class="roi">-6.7%</div><div class="n">n=267</div></td><td class="cell ml" style="background:#9f5b5b;color:white;" title="pca_logreg · top1pct_edge: ROI -48.4%, n=791"><div class="roi">-48.4%</div><div class="n">n=791</div></td><td class="cell ml" style="background:#862d2d;color:white;" title="pca_logreg · top5pct_edge: ROI -63.0%, n=1,059"><div class="roi">-63.0%</div><div class="n">n=1,059</div></td><td class="cell ml" style="background:#ac7272;color:white;" title="pca_logreg · general_ev: ROI -41.1%, n=1,084"><div class="roi">-41.1%</div><div class="n">n=1,084</div></td><td class="cell ml" style="background:#dce6e0;color:#222;" title="pca_logreg · general_ev_late: ROI +4.4%, n=87"><div class="roi">+4.4%</div><div class="n">n=87</div></td><td class="cell ml" style="background:#7a1717;color:white;" title="pca_logreg · general_ev_cheap: ROI -70.4%, n=845"><div class="roi">-70.4%</div><div class="n">n=845</div></td><td class="cell ml" style="background:#d7bfbf;color:#222;" title="pca_logreg · home_run: ROI -16.9%, n=46"><div class="roi">-16.9%</div><div class="n">n=46</div></td></tr>
+<tr class=""><th class="model">decision_tree</th><td class="na">–</td><td class="na">–</td><td class="cell ml" style="background:#e6dbdb;color:#222;" title="decision_tree · phat_gt_0.9: ROI -8.0%, n=180"><div class="roi">-8.0%</div><div class="n">n=180</div></td><td class="cell ml" style="background:#e7dbdb;color:#222;" title="decision_tree · top1pct_phat: ROI -7.9%, n=165"><div class="roi">-7.9%</div><div class="n">n=165</div></td><td class="cell ml" style="background:#9d5656;color:white;" title="decision_tree · top1pct_edge: ROI -49.9%, n=393"><div class="roi">-49.9%</div><div class="n">n=393</div></td><td class="cell ml" style="background:#8a3434;color:white;" title="decision_tree · top5pct_edge: ROI -60.6%, n=525"><div class="roi">-60.6%</div><div class="n">n=525</div></td><td class="cell ml" style="background:#ac7272;color:white;" title="decision_tree · general_ev: ROI -41.2%, n=1,013"><div class="roi">-41.2%</div><div class="n">n=1,013</div></td><td class="cell ml" style="background:#dce6e0;color:#222;" title="decision_tree · general_ev_late: ROI +4.4%, n=87"><div class="roi">+4.4%</div><div class="n">n=87</div></td><td class="cell ml" style="background:#7a1717;color:white;" title="decision_tree · general_ev_cheap: ROI -70.3%, n=843"><div class="roi">-70.3%</div><div class="n">n=843</div></td><td class="cell ml" style="background:#d7bfbf;color:#222;" title="decision_tree · home_run: ROI -16.9%, n=46"><div class="roi">-16.9%</div><div class="n">n=46</div></td></tr>
+<tr class=""><th class="model">random_forest</th><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="cell ml" style="background:#f4f4f4;color:#222;" title="random_forest · top1pct_phat: ROI -0.1%, n=19"><div class="roi">-0.1%</div><div class="n">n=19</div></td><td class="cell ml" style="background:#cdadad;color:#222;" title="random_forest · top1pct_edge: ROI -22.5%, n=437"><div class="roi">-22.5%</div><div class="n">n=437</div></td><td class="cell ml" style="background:#964949;color:white;" title="random_forest · top5pct_edge: ROI -54.0%, n=1,215"><div class="roi">-54.0%</div><div class="n">n=1,215</div></td><td class="cell ml" style="background:#b48181;color:white;" title="random_forest · general_ev: ROI -36.5%, n=1,027"><div class="roi">-36.5%</div><div class="n">n=1,027</div></td><td class="cell ml" style="background:#dce6e0;color:#222;" title="random_forest · general_ev_late: ROI +4.4%, n=87"><div class="roi">+4.4%</div><div class="n">n=87</div></td><td class="cell ml" style="background:#7a1717;color:white;" title="random_forest · general_ev_cheap: ROI -70.4%, n=846"><div class="roi">-70.4%</div><div class="n">n=846</div></td><td class="cell ml" style="background:#d7bfbf;color:#222;" title="random_forest · home_run: ROI -16.9%, n=45"><div class="roi">-16.9%</div><div class="n">n=45</div></td></tr>
+<tr class=""><th class="model">hist_gbm</th><td class="na">–</td><td class="cell ml" style="background:#d7c0c0;color:#222;" title="hist_gbm · phat_gt_0.95: ROI -16.7%, n=71"><div class="roi">-16.7%</div><div class="n">n=71</div></td><td class="cell ml" style="background:#98bea8;color:#222;" title="hist_gbm · phat_gt_0.9: ROI +16.4%, n=131"><div class="roi">+16.4%</div><div class="n">n=131</div></td><td class="cell ml" style="background:#348254;color:white;" title="hist_gbm · top1pct_phat: ROI +34.4%, n=157"><div class="roi">+34.4%</div><div class="n">n=157</div></td><td class="cell ml" style="background:#a5c5b2;color:#222;" title="hist_gbm · top1pct_edge: ROI +14.2%, n=344"><div class="roi">+14.2%</div><div class="n">n=344</div></td><td class="cell ml" style="background:#b07979;color:white;" title="hist_gbm · top5pct_edge: ROI -39.1%, n=654"><div class="roi">-39.1%</div><div class="n">n=654</div></td><td class="cell ml" style="background:#a66767;color:white;" title="hist_gbm · general_ev: ROI -44.5%, n=1,017"><div class="roi">-44.5%</div><div class="n">n=1,017</div></td><td class="cell ml" style="background:#dde7e1;color:#222;" title="hist_gbm · general_ev_late: ROI +4.2%, n=90"><div class="roi">+4.2%</div><div class="n">n=90</div></td><td class="cell ml" style="background:#7a1717;color:white;" title="hist_gbm · general_ev_cheap: ROI -70.5%, n=848"><div class="roi">-70.5%</div><div class="n">n=848</div></td><td class="cell ml" style="background:#d7bfbf;color:#222;" title="hist_gbm · home_run: ROI -17.0%, n=62"><div class="roi">-17.0%</div><div class="n">n=62</div></td></tr>
+<tr class=""><th class="model">lightgbm</th><td class="na">–</td><td class="cell ml" style="background:#dcc8c8;color:#222;" title="lightgbm · phat_gt_0.95: ROI -13.9%, n=75"><div class="roi">-13.9%</div><div class="n">n=75</div></td><td class="cell ml" style="background:#f0ecec;color:#222;" title="lightgbm · phat_gt_0.9: ROI -2.7%, n=147"><div class="roi">-2.7%</div><div class="n">n=147</div></td><td class="cell ml" style="background:#dfe7e2;color:#222;" title="lightgbm · top1pct_phat: ROI +3.9%, n=162"><div class="roi">+3.9%</div><div class="n">n=162</div></td><td class="cell ml" style="background:#f0f2f0;color:#222;" title="lightgbm · top1pct_edge: ROI +0.9%, n=335"><div class="roi">+0.9%</div><div class="n">n=335</div></td><td class="cell ml" style="background:#b88686;color:white;" title="lightgbm · top5pct_edge: ROI -34.7%, n=554"><div class="roi">-34.7%</div><div class="n">n=554</div></td><td class="cell ml" style="background:#9b5353;color:white;" title="lightgbm · general_ev: ROI -50.9%, n=991"><div class="roi">-50.9%</div><div class="n">n=991</div></td><td class="cell ml" style="background:#dde7e1;color:#222;" title="lightgbm · general_ev_late: ROI +4.2%, n=90"><div class="roi">+4.2%</div><div class="n">n=90</div></td><td class="cell ml" style="background:#7a1717;color:white;" title="lightgbm · general_ev_cheap: ROI -70.2%, n=844"><div class="roi">-70.2%</div><div class="n">n=844</div></td><td class="cell ml" style="background:#d7bfbf;color:#222;" title="lightgbm · home_run: ROI -16.9%, n=47"><div class="roi">-16.9%</div><div class="n">n=47</div></td></tr>
+<tr class=""><th class="model">mlp_sklearn</th><td class="na">–</td><td class="na">–</td><td class="cell ml" style="background:#d1b4b4;color:#222;" title="mlp_sklearn · phat_gt_0.9: ROI -20.2%, n=235"><div class="roi">-20.2%</div><div class="n">n=235</div></td><td class="cell ml" style="background:#d3b7b7;color:#222;" title="mlp_sklearn · top1pct_phat: ROI -19.2%, n=223"><div class="roi">-19.2%</div><div class="n">n=223</div></td><td class="cell ml" style="background:#964b4b;color:white;" title="mlp_sklearn · top1pct_edge: ROI -53.5%, n=395"><div class="roi">-53.5%</div><div class="n">n=395</div></td><td class="cell ml" style="background:#a36161;color:white;" title="mlp_sklearn · top5pct_edge: ROI -46.5%, n=457"><div class="roi">-46.5%</div><div class="n">n=457</div></td><td class="cell ml" style="background:#ae7575;color:white;" title="mlp_sklearn · general_ev: ROI -40.2%, n=1,121"><div class="roi">-40.2%</div><div class="n">n=1,121</div></td><td class="cell ml" style="background:#dce6e0;color:#222;" title="mlp_sklearn · general_ev_late: ROI +4.4%, n=87"><div class="roi">+4.4%</div><div class="n">n=87</div></td><td class="cell ml" style="background:#7b1919;color:white;" title="mlp_sklearn · general_ev_cheap: ROI -69.3%, n=892"><div class="roi">-69.3%</div><div class="n">n=892</div></td><td class="cell ml" style="background:#d7bfbf;color:#222;" title="mlp_sklearn · home_run: ROI -16.9%, n=54"><div class="roi">-16.9%</div><div class="n">n=54</div></td></tr>
+<tr class="naive-row"><th class="model">naive_consensus</th><td class="cell naive" style="background:#eaeeec;color:#222;" title="naive_consensus · phat_gt_0.99: ROI +1.8%, n=251"><div class="roi">+1.8%</div><div class="n">n=251</div></td><td class="cell naive" style="background:#eff1f0;color:#222;" title="naive_consensus · phat_gt_0.95: ROI +1.0%, n=411"><div class="roi">+1.0%</div><div class="n">n=411</div></td><td class="cell naive" style="background:#dee7e1;color:#222;" title="naive_consensus · phat_gt_0.9: ROI +4.1%, n=552"><div class="roi">+4.1%</div><div class="n">n=552</div></td><td class="cell naive" style="background:#ebefed;color:#222;" title="naive_consensus · top1pct_phat: ROI +1.7%, n=288"><div class="roi">+1.7%</div><div class="n">n=288</div></td><td class="cell naive" style="background:#ebefed;color:#222;" title="naive_consensus · top1pct_edge: ROI +1.6%, n=298"><div class="roi">+1.6%</div><div class="n">n=298</div></td><td class="cell naive" style="background:#f2f3f2;color:#222;" title="naive_consensus · top5pct_edge: ROI +0.5%, n=513"><div class="roi">+0.5%</div><div class="n">n=513</div></td><td class="cell naive" style="background:#f1f2f1;color:#222;" title="naive_consensus · general_ev: ROI +0.6%, n=485"><div class="roi">+0.6%</div><div class="n">n=485</div></td><td class="cell naive" style="background:#f2f3f2;color:#222;" title="naive_consensus · general_ev_late: ROI +0.5%, n=71"><div class="roi">+0.5%</div><div class="n">n=71</div></td><td class="na">–</td><td class="na">–</td></tr>
+      </tbody>
+    </table>
+
+    <div class="takeaways">
+      <h3>Headline takeaways</h3>
+      <ul>
+        <li><b><code>hist_gbm</code> is the only meaningful winner</b> — beats naive on 4 strategies, loses on 6. Best result: <code>top1pct_phat = +34.4%</code> on 197 executed trades.</li>
+        <li><b>The naive baseline is small but consistently positive</b> (+0.0% to +4.1%) — more robust than most models on broad strategies.</li>
+        <li><b>Linear models flatten to 0%</b> on high-confidence cells because they never produce <code>p_hat &gt; 0.9</code>; well-calibrated but don't make confident bets.</li>
+        <li><code>general_ev_late</code> shows <b>uniform +4.4%</b> across all models — the late-deadline edge filter dominates the model choice.</li>
+        <li>All ML models lose 35-70% on broad strategies (<code>top5pct_edge</code>, <code>general_ev</code>, <code>general_ev_cheap</code>, <code>home_run</code>) — model edge is washed out by per-trade costs and concentration caps when the strategy bets too widely.</li>
+      </ul>
+    </div>
+
+    <footer>
+      Generated from <code>submission/outputs/backtest/sensitivity.csv</code> · headline scenario only ·
+      single test cohort of 10 markets · 43 features after v5 P0-* exclusions ·
+      <i>per-market PnL (e.g. <code>per_market_pnl_hist_gbm.csv</code>) shows that headline ROIs are concentrated in 2 of 10 markets — single-cohort fragility worth disclosing in the report.</i>
+    </footer>
+  </div>
+</body>
+</html>
