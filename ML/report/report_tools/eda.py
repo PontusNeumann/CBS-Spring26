@@ -54,23 +54,23 @@ plt.rcParams.update({
     "legend.fontsize": 8,
 })
 C_MAP = sns.color_palette("rocket_r", as_cmap=True)
+# Polar-contrast colormap for panels that need to read as opposing extremes
+# (panels 12, 17, 18). Cool blue, dark centre, warm red, so above-vs-below
+# 0.5 reads cleanly as positive vs negative deviation.
+C_MAP_CONTRAST = sns.color_palette("icefire", as_cmap=True)
 PAL_10 = sns.color_palette("rocket_r", 10)
 COL_DARK = "0.15"
-COL_CORRECT = PAL_10[6]      # burgundy red — primary, "correct/positive" anchor
-COL_INCORRECT = PAL_10[8]    # purple — opposite anchor
-COL_TRAIN = PAL_10[6]        # burgundy red — primary single-series in two-class plots
-COL_TEST = PAL_10[8]         # purple — opposite of train
-COL_BAR = PAL_10[6]          # default single-series bar fill (= burgundy)
-COL_BAR_ALT = PAL_10[8]      # secondary single-series accent (= purple)
-
-# Rocket-aligned diverging colormap for ROC-AUC style heatmaps.
-# Low end = burgundy (PAL[6]), centre = white, high end = red-orange (PAL[3]).
-from matplotlib.colors import LinearSegmentedColormap
-C_MAP_DIVERGING = LinearSegmentedColormap.from_list(
-    "rocket_diverging",
-    [PAL_10[8], (0.97, 0.97, 0.97), PAL_10[6]],
-    N=256,
-)
+# Two-class anchor pair, sampled from rocket_r at indices 4 and 7. PAL_10[4]
+# sits in the red band and PAL_10[7] sits in the purple band, so binary
+# plots read as red vs purple rather than burgundy vs purple.
+COL_RED = PAL_10[4]          # cool medium-dark red — primary anchor
+COL_PURPLE = PAL_10[7]       # purple — opposite anchor
+COL_CORRECT = COL_RED
+COL_INCORRECT = COL_PURPLE
+COL_TRAIN = COL_RED
+COL_TEST = COL_PURPLE
+COL_BAR = COL_RED
+COL_BAR_ALT = COL_PURPLE
 
 FIG_W = 6.3
 FIG_W_WIDE = 7.8
@@ -364,7 +364,7 @@ def panel_outliers(df: pd.DataFrame, skew: pd.DataFrame, top_k: int = 8) -> None
                         medianprops=dict(color=COL_DARK, lw=1.0),
                         whiskerprops=dict(color=COL_DARK, lw=0.8),
                         capprops=dict(color=COL_DARK, lw=0.8))
-        bp["boxes"][0].set_facecolor(PAL_10[min(1 + i, 9)])
+        bp["boxes"][0].set_facecolor(PAL_10[2 + (i % 5)])
         bp["boxes"][0].set_edgecolor(COL_DARK)
         bp["boxes"][0].set_alpha(0.85)
         ax.set_title(lbl, fontsize=7)
@@ -388,8 +388,7 @@ def panel_correlation(df: pd.DataFrame) -> None:
     # designed to surface. Diagonal is excluded so self-correlation does
     # not dominate the ranking.
     if len(corr_full) > 40:
-        without_self = corr_full.copy()
-        np.fill_diagonal(without_self.values, 0.0)
+        without_self = corr_full.where(~np.eye(len(corr_full), dtype=bool), 0.0)
         centrality = without_self.abs().mean().sort_values(ascending=False)
         keep = centrality.head(40).index.tolist()
         corr = corr_full.loc[keep, keep]
@@ -759,7 +758,7 @@ def panel_feature_stability(df: pd.DataFrame, top_k: int = 8) -> None:
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.45 * len(top) + 1.5))
     sns.heatmap(
-        pm, cmap=C_MAP_DIVERGING, center=0.5, vmin=0.2, vmax=0.8,
+        pm, cmap=C_MAP, center=0.5, vmin=0.2, vmax=0.8,
         ax=ax, cbar_kws={"label": "single-feature ROC-AUC"},
         xticklabels=False, linewidths=0,
     )
@@ -1097,7 +1096,7 @@ def panel_pca_wallets(df: pd.DataFrame) -> None:
     fig, ax = plt.subplots(figsize=(FIG_W, 4.4), constrained_layout=True)
     sc = ax.scatter(
         pcs[:, 0], pcs[:, 1],
-        c=agg["correct_rate"], cmap=C_MAP,
+        c=agg["correct_rate"], cmap=C_MAP_CONTRAST,
         s=6, alpha=0.6, vmin=0.3, vmax=0.7,
         edgecolors="none",
     )
@@ -1142,8 +1141,10 @@ def panel_price_trajectories(df: pd.DataFrame) -> None:
     market_order = (
         df2.groupby(MARKET)["_t"].min().sort_values().index.tolist()
     )
-    palette = sns.color_palette("husl", len(market_order))
-    market_colour = dict(zip(market_order, palette))
+    n_mkts = max(1, len(market_order) - 1)
+    market_colour = {
+        mid: C_MAP_CONTRAST(i / n_mkts) for i, mid in enumerate(market_order)
+    }
 
     train_max = df2.loc[df2[SPLIT] == "train", "_t"].max()
 

@@ -2,6 +2,7 @@
 wallet_cex_usdc_cumulative_at_t,420.3,183613.848
 signed_oi_autocorr_1h,227.022,56555.497
 trade_size_to_recent_volume_ratio,41.876,1919.343
+usd_amount,29.723,2093.261
 wallet_n_cex_deposits_at_t,24.114,670.143
 wallet_log_cex_usdc_cum,14.001,203.847
 avg_trade_size_recent_1h,11.029,577.813
@@ -45,8 +46,8 @@ side_buy,0.51,-1.739
 market_price_vol_last_5min,0.504,-0.515
 order_flow_imbalance_5min,0.494,-1.148
 log_taker_prior_trades_total,0.475,-0.392
-consensus_strength,-0.475,-1.124
 distance_from_boundary,0.475,-1.124
+consensus_strength,-0.475,-1.124
 log_taker_unique_markets_traded,0.41,-0.445
 is_within_24h_of_deadline,0.405,-1.836
 log_size,0.391,-0.307

@@ -1,5 +1,5 @@
 EDA summary, wallet-joined Alex cohort
-  rows: 1,371,180   cols: 88   numeric features: 79
+  rows: 1,371,180   cols: 89   numeric features: 80
 
 split sizes:
 split
@@ -15,7 +15,7 @@ wallet-feature coverage:
   test: 100.0% of 257,177 trades enriched
   train: 100.0% of 1,114,003 trades enriched
 
-non-zero-null columns: 67 of 88
+non-zero-null columns: 68 of 89
 top 10 missing columns:
 wallet_funded_by_cex_scoped        0.9957
 wallet_funded_by_cex               0.9957
