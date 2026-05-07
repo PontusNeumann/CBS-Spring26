@@ -56,10 +56,21 @@ plt.rcParams.update({
 C_MAP = sns.color_palette("rocket_r", as_cmap=True)
 PAL_10 = sns.color_palette("rocket_r", 10)
 COL_DARK = "0.15"
-COL_CORRECT = PAL_10[6]
-COL_INCORRECT = PAL_10[2]
-COL_TRAIN = PAL_10[3]
-COL_TEST = PAL_10[7]
+COL_CORRECT = PAL_10[6]      # burgundy red — primary, "correct/positive" anchor
+COL_INCORRECT = PAL_10[8]    # purple — opposite anchor
+COL_TRAIN = PAL_10[6]        # burgundy red — primary single-series in two-class plots
+COL_TEST = PAL_10[8]         # purple — opposite of train
+COL_BAR = PAL_10[6]          # default single-series bar fill (= burgundy)
+COL_BAR_ALT = PAL_10[8]      # secondary single-series accent (= purple)
+
+# Rocket-aligned diverging colormap for ROC-AUC style heatmaps.
+# Low end = burgundy (PAL[6]), centre = white, high end = red-orange (PAL[3]).
+from matplotlib.colors import LinearSegmentedColormap
+C_MAP_DIVERGING = LinearSegmentedColormap.from_list(
+    "rocket_diverging",
+    [PAL_10[8], (0.97, 0.97, 0.97), PAL_10[6]],
+    N=256,
+)
 
 FIG_W = 6.3
 FIG_W_WIDE = 7.8
@@ -483,7 +494,7 @@ def panel_train_test_shift(df: pd.DataFrame) -> None:
     shift = shift.dropna().sort_values(ascending=False).head(15)
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.34 * len(shift) + 1.0))
-    ax.barh(shift.index[::-1], shift.values[::-1], color=PAL_10[6])
+    ax.barh(shift.index[::-1], shift.values[::-1], color=COL_BAR)
     ax.set_xlabel("|standardised mean shift| (test − train)")
     ax.set_title("Top 15 features with largest train→test mean shift")
     clean_ax(ax)
@@ -517,7 +528,7 @@ def panel_late_flow(df: pd.DataFrame) -> None:
         .reset_index()
     )
 
-    fig, axes = plt.subplots(1, 2, figsize=(FIG_W_WIDE, 3.4))
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_W_WIDE, 4.2))
     ax = axes[0]
     width = 0.4
     x = np.arange(len(labels))
@@ -529,10 +540,12 @@ def panel_late_flow(df: pd.DataFrame) -> None:
         )
     ax.axhline(0.5, color=COL_DARK, ls="--", lw=0.8)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=8)
+    ax.set_xticklabels(labels, rotation=35, ha="right", fontsize=8)
+    ax.set_ylim(0, 0.62)
     ax.set_ylabel("base rate (bet_correct)")
-    ax.set_title("Hit rate vs time-to-deadline (Mitts & Ofir-style buckets)")
-    ax.legend(frameon=False, loc="upper left")
+    ax.set_xlabel("time-to-deadline bucket")
+    ax.set_title("Hit rate vs time-to-deadline", pad=8)
+    ax.legend(frameon=False, loc="upper left", ncol=2)
     clean_ax(ax)
 
     ax = axes[1]
@@ -545,13 +558,15 @@ def panel_late_flow(df: pd.DataFrame) -> None:
             color=colour, edgecolor="white", label=split_name,
         )
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=8)
+    ax.set_xticklabels(labels, rotation=35, ha="right", fontsize=8)
     ax.set_ylabel("% of trades in bucket")
-    ax.set_title("Trade-count share by time-to-deadline bucket")
-    ax.legend(frameon=False, loc="upper left")
+    ax.set_xlabel("time-to-deadline bucket")
+    ax.set_title("Trade-count share by bucket", pad=8)
+    ax.legend(frameon=False, loc="upper center", ncol=2)
     clean_ax(ax)
 
-    fig.tight_layout()
+    fig.tight_layout(pad=1.2, h_pad=1.5, w_pad=2.0)
+    fig.subplots_adjust(bottom=0.22, top=0.90)
     save_fig(fig, OUT_DIR / "09_late_flow.png")
 
     csv_path = OUT_DIR / "09_late_flow_table.csv"
@@ -563,7 +578,10 @@ def panel_late_flow(df: pd.DataFrame) -> None:
 # 10. Wallet-stratum base rates, motivates Layer-6 enrichment.
 # ---------------------------------------------------------------------------
 def panel_wallet_strata(df: pd.DataFrame) -> None:
-    fig, axes = plt.subplots(1, 3, figsize=(FIG_W_WIDE, 3.4))
+    fig, axes = plt.subplots(
+        1, 3, figsize=(FIG_W_WIDE + 0.6, 4.2),
+        gridspec_kw={"width_ratios": [3, 2.4, 3]},
+    )
 
     # 10a. age decile
     ax = axes[0]
@@ -572,26 +590,33 @@ def panel_wallet_strata(df: pd.DataFrame) -> None:
         deciles = pd.qcut(sub["wallet_polygon_age_at_t_days"], 10, duplicates="drop")
         rate = sub.groupby(deciles, observed=True)[TARGET].agg(["mean", "size"])
         x = np.arange(len(rate))
-        ax.bar(x, rate["mean"], color=PAL_10[5], edgecolor="white")
-        ax.axhline(0.5, color=COL_DARK, ls="--", lw=0.8)
+        ax.bar(x, rate["mean"], color=COL_BAR, edgecolor="white")
         ax.set_xticks(x)
         ax.set_xticklabels([str(i + 1) for i in range(len(rate))], fontsize=8)
-        ax.set_xlabel("wallet age decile (1=youngest, 10=oldest)")
+        ax.set_xlabel("wallet age decile\n(1=youngest, 10=oldest)")
         ax.set_ylabel("base rate")
-        ax.set_title("Hit rate by wallet polygon-age decile")
+        ax.set_ylim(0, 0.62)
+        ax.set_title("By wallet polygon-age decile", pad=8)
         clean_ax(ax)
 
     # 10b. funded-by-cex split
     ax = axes[1]
     if "wallet_funded_by_cex_scoped" in df.columns:
         rate = df.groupby("wallet_funded_by_cex_scoped")[TARGET].agg(["mean", "size"])
-        rate.index = ["not CEX-funded", "CEX-funded (causal)"]
-        ax.bar(rate.index, rate["mean"], color=[PAL_10[3], PAL_10[7]], edgecolor="white")
-        ax.axhline(0.5, color=COL_DARK, ls="--", lw=0.8)
+        rate.index = ["Not\nCEX-funded", "CEX-funded\n(causal)"]
+        x = np.arange(len(rate))
+        ax.bar(x, rate["mean"], width=0.55,
+               color=[COL_TRAIN, COL_TEST], edgecolor="white")
+        ax.set_xticks(x)
+        ax.set_xticklabels(rate.index, fontsize=8)
+        ax.set_xlim(-0.7, len(rate) - 0.3)
         ax.set_ylabel("base rate")
-        ax.set_title("Hit rate by CEX-funding (scoped, causal)")
-        for i, (m, n) in enumerate(zip(rate["mean"], rate["size"])):
-            ax.text(i, m + 0.005, f"{m:.3f}\n(n={n:,})", ha="center", fontsize=8)
+        ax.set_ylim(0, 0.62)
+        ax.set_title("By CEX-funding", pad=8)
+        for xi, (m, n) in enumerate(zip(rate["mean"], rate["size"])):
+            n_str = f"{n / 1e6:.2f}M" if n >= 1e6 else (f"{n / 1e3:.0f}k" if n >= 1e3 else f"{n}")
+            ax.text(xi, m + 0.012, f"{m:.3f}\nn={n_str}", ha="center", va="bottom",
+                    fontsize=7, color=COL_DARK)
         clean_ax(ax)
 
     # 10c. nonce decile (overall trader experience)
@@ -601,44 +626,97 @@ def panel_wallet_strata(df: pd.DataFrame) -> None:
         deciles = pd.qcut(sub["wallet_polygon_nonce_at_t"], 10, duplicates="drop")
         rate = sub.groupby(deciles, observed=True)[TARGET].agg(["mean", "size"])
         x = np.arange(len(rate))
-        ax.bar(x, rate["mean"], color=PAL_10[5], edgecolor="white")
-        ax.axhline(0.5, color=COL_DARK, ls="--", lw=0.8)
+        ax.bar(x, rate["mean"], color=COL_BAR, edgecolor="white")
         ax.set_xticks(x)
         ax.set_xticklabels([str(i + 1) for i in range(len(rate))], fontsize=8)
-        ax.set_xlabel("polygon-nonce decile (1=fewest tx, 10=most)")
+        ax.set_xlabel("polygon-nonce decile\n(1=fewest tx, 10=most)")
         ax.set_ylabel("base rate")
-        ax.set_title("Hit rate by trader-experience decile")
+        ax.set_ylim(0, 0.62)
+        ax.set_title("By trader-experience decile", pad=8)
         clean_ax(ax)
 
-    fig.tight_layout()
+    fig.suptitle("Hit rate stratified by Layer 6 wallet features", y=0.99, fontsize=10)
+    fig.tight_layout(pad=1.2, w_pad=2.4)
+    fig.subplots_adjust(top=0.86, bottom=0.20)
     save_fig(fig, OUT_DIR / "10_wallet_strata.png")
 
 
 # ---------------------------------------------------------------------------
-# 11. Per-market base rate, the single-event-resolution bimodality.
+# 11. Per-market YES-side vs NO-side hit rate, the true single-event-resolution
+# bimodality. Within each market, YES buyers are all correct (mkt resolves YES)
+# or all wrong (mkt resolves NO), and NO buyers are the mirror image. The plot
+# therefore collapses to two clusters at (1, 0) and (0, 1) and explains why
+# single-feature ROC inverts across markets.
 # ---------------------------------------------------------------------------
 def panel_per_market_bimodality(df: pd.DataFrame) -> None:
-    per = df.groupby([SPLIT, MARKET]).agg(
-        n=(TARGET, "size"),
-        base_rate=(TARGET, "mean"),
-    ).reset_index()
+    if "outcome_yes" not in df.columns:
+        print("skipping per-market resolution panel, outcome_yes missing")
+        return
 
-    fig, axes = plt.subplots(1, 2, figsize=(FIG_W_WIDE, 3.0))
-    for ax, split_name, colour in (
-        (axes[0], "train", COL_TRAIN),
-        (axes[1], "test", COL_TEST),
+    grouped = df.groupby([SPLIT, MARKET])
+    yes_rate = grouped.apply(
+        lambda g: g.loc[g["outcome_yes"] == 1, TARGET].mean() if (g["outcome_yes"] == 1).any() else np.nan
+    )
+    no_rate = grouped.apply(
+        lambda g: g.loc[g["outcome_yes"] == 0, TARGET].mean() if (g["outcome_yes"] == 0).any() else np.nan
+    )
+    n_trades = grouped.size()
+    per = (
+        pd.DataFrame({"yes_hit": yes_rate, "no_hit": no_rate, "n": n_trades})
+        .reset_index()
+        .dropna(subset=["yes_hit", "no_hit"])
+    )
+
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 4.6))
+    sizes = (np.log10(per["n"].clip(lower=1)) + 0.5) * 25
+    for split_name, colour, marker in (
+        ("train", COL_TRAIN, "o"),
+        ("test", COL_TEST, "s"),
     ):
         sub = per[per[SPLIT] == split_name]
-        ax.hist(sub["base_rate"], bins=20, color=colour, edgecolor="white")
-        ax.axvline(0.5, color=COL_DARK, ls="--", lw=0.8)
-        ax.set_xlim(0, 1)
-        ax.set_xlabel("per-market base rate")
-        ax.set_ylabel("# markets")
-        ax.set_title(f"{split_name}: {len(sub)} markets")
-        clean_ax(ax)
+        if sub.empty:
+            continue
+        ax.scatter(
+            sub["yes_hit"], sub["no_hit"],
+            s=sizes.loc[sub.index], color=colour, marker=marker,
+            edgecolor="white", linewidths=0.6, alpha=0.85,
+            label=f"{split_name} ({len(sub)} markets)",
+        )
 
-    fig.suptitle("Per-market bet_correct base rate (single-event-resolution bimodality)", y=1.02)
-    fig.tight_layout()
+    yes_mask = per["yes_hit"] > 0.5
+    no_mask = per["no_hit"] > 0.5
+    n_yes = (yes_mask & ~no_mask).sum()
+    n_no = (~yes_mask & no_mask).sum()
+
+    yes_center_x = per.loc[yes_mask & ~no_mask, "yes_hit"].mean()
+    yes_center_y = per.loc[yes_mask & ~no_mask, "no_hit"].mean()
+    no_center_x = per.loc[~yes_mask & no_mask, "yes_hit"].mean()
+    no_center_y = per.loc[~yes_mask & no_mask, "no_hit"].mean()
+
+    ax.text(
+        yes_center_x, yes_center_y - 0.13,
+        f"YES-resolved markets\n({n_yes} markets, YES buyers win)",
+        ha="center", va="top", fontsize=9, color=COL_DARK,
+        bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="0.8", lw=0.5),
+    )
+    ax.text(
+        no_center_x, no_center_y + 0.13,
+        f"NO-resolved markets\n({n_no} markets, NO buyers win)",
+        ha="center", va="bottom", fontsize=9, color=COL_DARK,
+        bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="0.8", lw=0.5),
+    )
+
+    ax.axhline(0.5, color=COL_DARK, ls=":", lw=0.6, alpha=0.5)
+    ax.axvline(0.5, color=COL_DARK, ls=":", lw=0.6, alpha=0.5)
+    ax.set_xlim(-0.05, 1.05)
+    ax.set_ylim(-0.05, 1.05)
+    ax.set_xlabel("hit rate among YES-side trades (per market)")
+    ax.set_ylabel("hit rate among NO-side trades (per market)")
+    ax.set_title("Per-market hit rate, YES-side vs NO-side trades", pad=8)
+    ax.legend(frameon=False, loc="upper right",
+              title="marker size scales with log10(trades)", title_fontsize=8)
+    clean_ax(ax)
+    fig.tight_layout(pad=1.2)
     save_fig(fig, OUT_DIR / "11_per_market_bimodality.png")
 
 
@@ -681,7 +759,7 @@ def panel_feature_stability(df: pd.DataFrame, top_k: int = 8) -> None:
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.45 * len(top) + 1.5))
     sns.heatmap(
-        pm, cmap="RdBu_r", center=0.5, vmin=0.2, vmax=0.8,
+        pm, cmap=C_MAP_DIVERGING, center=0.5, vmin=0.2, vmax=0.8,
         ax=ax, cbar_kws={"label": "single-feature ROC-AUC"},
         xticklabels=False, linewidths=0,
     )
@@ -721,12 +799,50 @@ def panel_mutual_information(df: pd.DataFrame) -> None:
     mi = mutual_info_classif(X, y, discrete_features=False, random_state=42)
     mi_df = pd.Series(mi, index=feats).sort_values(ascending=False)
 
-    top20 = mi_df.head(20)
-    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.34 * len(top20) + 1.0))
-    ax.barh(top20.index[::-1], top20.values[::-1], color=PAL_10[6])
+    top_n = 25
+    topN = mi_df.head(top_n)
+
+    # Color each bar by feature group so the chart shows which engineering
+    # layer dominates, not just a uniform-looking ranking. Sample positions
+    # PAL_10[1..7] so groups draw from the saturated middle of the rocket
+    # palette (peach-to-purple) and skip the extreme pale and near-black ends.
+    group_palette = [PAL_10[i] for i in [1, 2, 3, 4, 5, 6, 7][:len(FEATURE_GROUPS)]]
+    feat_to_group = {}
+    for (group, members), _ in zip(FEATURE_GROUPS, group_palette):
+        for m in members:
+            feat_to_group[m] = group
+    group_to_color = {g: c for (g, _), c in zip(FEATURE_GROUPS, group_palette)}
+    bar_colors = [group_to_color.get(feat_to_group.get(f, "Other"), "0.5") for f in topN.index]
+
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.32 * top_n + 1.4))
+    bars = ax.barh(topN.index[::-1], topN.values[::-1],
+                   color=bar_colors[::-1], edgecolor="white")
+
+    # Zoom x-axis so the top-vs-bottom gap is visible at this rank-range.
+    xmax = topN.values.max() * 1.08
+    xmin = max(0.0, topN.values.min() - (topN.values.max() - topN.values.min()) * 0.35)
+    ax.set_xlim(xmin, xmax)
+
+    # Inline value labels make the (small) numeric differences readable.
+    for bar, v in zip(bars, topN.values[::-1]):
+        ax.text(v + xmax * 0.005, bar.get_y() + bar.get_height() / 2,
+                f"{v:.3f}", va="center", fontsize=7.5, color=COL_DARK)
+
     ax.set_xlabel("mutual information with bet_correct (nats)")
-    ax.set_title("Top-20 features by mutual information with target")
+    ax.set_title(f"Top-{top_n} features by mutual information, colored by group", pad=8)
+
+    # Build a compact legend keyed by feature group.
+    used_groups = []
+    for f in topN.index:
+        g = feat_to_group.get(f, "Other / unclassified")
+        if g not in used_groups:
+            used_groups.append(g)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=group_to_color.get(g, "0.5"))
+               for g in used_groups]
+    ax.legend(handles, used_groups, loc="lower right", frameon=False,
+              fontsize=7.5, title="Feature group", title_fontsize=8)
     clean_ax(ax)
+    fig.tight_layout(pad=1.2)
     save_fig(fig, OUT_DIR / "13_mutual_information.png")
 
     out_path = OUT_DIR / "13_mutual_information.csv"
@@ -797,7 +913,7 @@ def panel_feature_taxonomy(df: pd.DataFrame) -> None:
     tax = pd.DataFrame(rows)
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.5 * len(tax) + 1.2))
-    bars = ax.barh(tax["group"][::-1], tax["n"][::-1], color=PAL_10[6])
+    bars = ax.barh(tax["group"][::-1], tax["n"][::-1], color=COL_BAR)
     for bar, n in zip(bars, tax["n"][::-1]):
         ax.text(bar.get_width() + 0.3, bar.get_y() + bar.get_height() / 2,
                 str(n), va="center", fontsize=9)
@@ -856,7 +972,7 @@ def panel_tail_diagnostics(df: pd.DataFrame) -> None:
 
     fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 0.34 * len(tail_df) + 1.0))
     y = np.arange(len(tail_df))
-    ax.barh(y, tail_df["excess_kurtosis"], color=PAL_10[6])
+    ax.barh(y, tail_df["excess_kurtosis"], color=COL_BAR)
     ax.set_yticks(y)
     ax.set_yticklabels(tail_df.index, fontsize=8)
     ax.invert_yaxis()
@@ -886,7 +1002,9 @@ def panel_temporal_drift(df: pd.DataFrame) -> None:
     times = pd.to_datetime(df["timestamp"], unit="s", utc=True)
     df2 = df.assign(_t=times).copy()
 
-    fig, axes = plt.subplots(1, 2, figsize=(FIG_W_WIDE, 3.6), sharey=True)
+    import matplotlib.dates as mdates
+
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_W_WIDE, 4.2), sharey=True)
     for ax, split_name, colour in (
         (axes[0], "train", COL_TRAIN),
         (axes[1], "test", COL_TEST),
@@ -910,17 +1028,23 @@ def panel_temporal_drift(df: pd.DataFrame) -> None:
         ax.plot(daily.index, daily["rate"], lw=0.5, color=colour, alpha=0.4, label="daily")
         ax.plot(rolling.index, rolling.values, lw=1.6, color=colour, label="7-day rolling")
         ax.axhline(0.5, color=COL_DARK, ls="--", lw=0.8)
-        ax.set_ylim(0.30, 0.70)
+        ax.set_ylim(0.30, 0.78)
         ax.set_ylabel("base rate")
-        ax.set_title(f"{split_name}: {len(sub):,} trades, {sub['_t'].min().date()} → {sub['_t'].max().date()}")
-        ax.legend(frameon=False, loc="lower left", fontsize=8)
-        ax.tick_params(axis="x", rotation=30)
+        date_range = f"{sub['_t'].min().date()} to {sub['_t'].max().date()}"
+        ax.set_title(f"{split_name}: {len(sub):,} trades\n{date_range}", fontsize=9, pad=6)
+
+        ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=6))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %d"))
+        ax.tick_params(axis="x", rotation=30, labelsize=8)
         for lbl in ax.get_xticklabels():
             lbl.set_ha("right")
+        ax.legend(frameon=False, loc="upper right", fontsize=8, ncol=2)
         clean_ax(ax)
 
-    fig.suptitle("Daily bet_correct base rate (≥50 trades/day) with 7-day rolling mean", y=1.03)
-    fig.tight_layout()
+    fig.suptitle("Daily bet_correct base rate (≥50 trades/day) with 7-day rolling mean",
+                 y=0.99, fontsize=10)
+    fig.tight_layout(pad=1.2, w_pad=2.0)
+    fig.subplots_adjust(top=0.84, bottom=0.18)
     save_fig(fig, OUT_DIR / "16_temporal_drift.png")
 
 
@@ -1074,23 +1198,32 @@ def panel_event_timing(df: pd.DataFrame) -> None:
     STRIKE = pd.Timestamp("2026-02-28T06:35:00", tz="UTC")
     CEASEFIRE = pd.Timestamp("2026-04-07T23:59:00", tz="UTC")
 
-    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 3.4), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(FIG_W_WIDE, 4.0), constrained_layout=True)
     for split_name, colour in (("train", COL_TRAIN), ("test", COL_TEST)):
         sub = daily[daily[SPLIT] == split_name].sort_values("_t")
         if sub.empty:
             continue
         ax.bar(sub["_t"], sub["n_trades"], width=0.9, color=colour,
                label=split_name, alpha=0.85, edgecolor="none")
+
+    y_top = ax.get_ylim()[1]
+    ax.set_ylim(0, y_top * 1.30)
+    y_top = ax.get_ylim()[1]
+    label_y = y_top * 0.98
+
     ax.axvline(STRIKE, color=COL_DARK, ls="--", lw=0.9)
-    ax.text(STRIKE, ax.get_ylim()[1] * 0.95, "  strike (28 Feb)",
-            ha="left", va="top", fontsize=8, color=COL_DARK)
+    ax.text(STRIKE + pd.Timedelta(hours=18), label_y,
+            "strike (28 Feb)", ha="left", va="top",
+            fontsize=8, color=COL_DARK)
     ax.axvline(CEASEFIRE, color=COL_DARK, ls="--", lw=0.9)
-    ax.text(CEASEFIRE, ax.get_ylim()[1] * 0.95, "  ceasefire announcement (7 Apr)",
-            ha="left", va="top", fontsize=8, color=COL_DARK)
+    ax.text(CEASEFIRE - pd.Timedelta(hours=18), label_y,
+            "ceasefire (7 Apr)", ha="right", va="top",
+            fontsize=8, color=COL_DARK)
+
     ax.set_xlabel("trade date (UTC)")
     ax.set_ylabel("trades per day")
-    ax.set_title("Trade volume over calendar time, with key events")
-    ax.legend(frameon=False, loc="upper right")
+    ax.set_title("Trade volume over calendar time, with key events", pad=8)
+    ax.legend(frameon=False, loc="upper left", ncol=2)
     ax.tick_params(axis="x", rotation=20)
     for lbl in ax.get_xticklabels():
         lbl.set_ha("right")
@@ -1223,9 +1356,9 @@ def write_index(out_dir: Path) -> None:
         ("09_late_flow.png", "Hit rate vs time-to-deadline (Mitts & Ofir-style buckets)."),
         ("09_late_flow_table.csv", "Per-bucket base rate and trade count by split. Report-ready CSV."),
         ("10_wallet_strata.png", "Hit rate by wallet age decile, CEX-funding, polygon nonce decile."),
-        ("11_per_market_bimodality.png", "Per-market base-rate histogram (single-event resolution)."),
+        ("11_per_market_bimodality.png", "Per-market hit-rate scatter, YES-side vs NO-side trades; resolves into two clusters by market outcome."),
         ("12_feature_stability.png", "Single-feature ROC-AUC heatmap per market for top-8 features."),
-        ("13_mutual_information.png", "Top-20 features by mutual information with bet_correct."),
+        ("13_mutual_information.png", "Top-25 features by mutual information with bet_correct, colored by feature group."),
         ("13_mutual_information.csv", "Per-feature MI to bet_correct. Report-ready CSV."),
         ("14_feature_taxonomy.png", "How the numeric features split across feature-engineering layers."),
         ("14_feature_taxonomy_table.csv", "Group + feature membership for each modelling feature. Report-ready CSV."),

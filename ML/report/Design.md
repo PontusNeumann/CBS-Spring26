@@ -47,14 +47,19 @@ Multi-panel layouts use a single `plt.subplots(1, 2, ...)` or `plt.subplots(2, 2
 | Token | Value | Usage |
 |---|---|---|
 | `C_MAP` | `sns.color_palette("rocket_r", as_cmap=True)` | Continuous colourmap for heatmaps |
+| `C_MAP_DIVERGING` | `LinearSegmentedColormap.from_list("rocket_diverging", [PAL_10[8], (0.97, 0.97, 0.97), PAL_10[6]], N=256)` | Diverging colourmap for signed heatmaps (single-feature ROC-AUC, train-test shift); purple ↔ white ↔ burgundy so the two extremes match the primary/opposite anchor pair |
 | `PAL_10` | `sns.color_palette("rocket_r", 10)` | Discrete palette for line, bar, and scatter plots |
 | `PAL_K` | `[PAL_10[i] for i in [1, 3, 6, 8, 9]]` | Cluster or category colours (up to five) |
 | `INK` | `PAL_10[8]` | Scatter point fill and annotation text |
-| `COL_DARK` | `"0.15"` | Heatmap annotation text |
-| `COL_CORRECT` | `PAL_10[6]` | Correct or positive class |
-| `COL_INCORRECT` | `PAL_10[2]` | Incorrect or negative class |
+| `COL_DARK` | `"0.15"` | Heatmap annotation text and small over-bar labels |
+| `COL_CORRECT` | `PAL_10[6]` | Correct or positive class (burgundy red, primary anchor) |
+| `COL_INCORRECT` | `PAL_10[8]` | Incorrect or negative class (purple, opposite anchor) |
+| `COL_TRAIN` | `PAL_10[6]` | Train cohort in split-aware bar and line plots (= primary burgundy) |
+| `COL_TEST` | `PAL_10[8]` | Test cohort in split-aware bar and line plots (= opposite purple) |
+| `COL_BAR` | `PAL_10[6]` | Default single-series bar fill (= burgundy primary) |
+| `COL_BAR_ALT` | `PAL_10[8]` | Secondary single-series accent (= purple opposite); used when only two colours are needed |
 
-All plots draw from this palette. Ad-hoc hex colours are avoided.
+All plots draw from this palette. Ad-hoc hex colours are avoided. Categorical group colours (e.g. feature-taxonomy bars) pick from `[PAL_10[i] for i in [1, 2, 3, 4, 5, 6, 7]]` to skip the pale top and near-black bottom of the ramp.
 
 ## Theme
 

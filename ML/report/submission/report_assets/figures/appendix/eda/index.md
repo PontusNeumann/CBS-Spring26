@@ -19,9 +19,9 @@
 - [✓] **09_late_flow.png**: Hit rate vs time-to-deadline (Mitts & Ofir-style buckets).
 - [✓] **09_late_flow_table.csv**: Per-bucket base rate and trade count by split. Report-ready CSV.
 - [✓] **10_wallet_strata.png**: Hit rate by wallet age decile, CEX-funding, polygon nonce decile.
-- [✓] **11_per_market_bimodality.png**: Per-market base-rate histogram (single-event resolution).
+- [✓] **11_per_market_bimodality.png**: Per-market hit-rate scatter, YES-side vs NO-side trades; resolves into two clusters by market outcome.
 - [✓] **12_feature_stability.png**: Single-feature ROC-AUC heatmap per market for top-8 features.
-- [✓] **13_mutual_information.png**: Top-20 features by mutual information with bet_correct.
+- [✓] **13_mutual_information.png**: Top-25 features by mutual information with bet_correct, colored by feature group.
 - [✓] **13_mutual_information.csv**: Per-feature MI to bet_correct. Report-ready CSV.
 - [✓] **14_feature_taxonomy.png**: How the numeric features split across feature-engineering layers.
 - [✓] **14_feature_taxonomy_table.csv**: Group + feature membership for each modelling feature. Report-ready CSV.
@@ -31,4 +31,9 @@
 - [✓] **16_temporal_drift.png**: Daily bet_correct base rate with 7-day rolling mean, per split.
 - [✓] **17_pca_wallets.png**: Wallet behavioural archetypes via 2-D PCA on per-wallet aggregates, coloured by hit rate.
 - [✓] **17_pca_wallets.txt**: PC1/PC2 explained variance + loadings for the panel-17 PCA.
+- [✓] **18_price_trajectories.png**: Per-market `pre_trade_price` over calendar time, one colour per market, with a dashed line at the train→test boundary.
+- [✓] **19_event_timing.png**: Trades per day with the strike and ceasefire announcement marked. Cohort design visible in calendar time.
+- [✓] **19_event_timing_table.csv**: Trades per day per split. Report-ready CSV.
+- [✓] **19b_event_zoom.png**: Hourly trade counts in a ±48h window around the strike and ceasefire announcements.
+- [✓] **19c_event_volume.png**: Daily $-volume (`usd_amount`) over calendar time, with the strike and ceasefire marked.
 - [✓] **summary.txt**: Plain-text summary of dataset shape, base rates, missingness.

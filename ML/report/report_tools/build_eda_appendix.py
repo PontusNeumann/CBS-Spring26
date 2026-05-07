@@ -35,18 +35,6 @@ FIG_W_IN = 6.3  # Design.md FIG_W for A4 text-width
 APPENDIX_ITEMS: list[dict] = [
     {
         "label": "Figure A.10.",
-        "image": "02_wallet_coverage.png",
-        "caption": (
-            "Wallet enrichment coverage by split. After two PolygonScan "
-            "extension passes, every taker in Alex's idea1 cohort is "
-            "matched to a row in the wallet enrichment table, giving "
-            "100.0 percent train and 100.0 percent test coverage on the "
-            "1,371,180-trade cohort. The Layer 6 NaN rate falls to 0 "
-            "percent after the retry passes."
-        ),
-    },
-    {
-        "label": "Figure A.11.",
         "image": "08_train_test_shift.png",
         "caption": (
             "Train-to-test mean shift for the top 15 numeric features, "
@@ -60,7 +48,7 @@ APPENDIX_ITEMS: list[dict] = [
         ),
     },
     {
-        "label": "Figure A.12.",
+        "label": "Figure A.11.",
         "image": "09_late_flow.png",
         "caption": (
             "Hit rate and trade-count share by time-to-deadline bucket "
@@ -74,7 +62,7 @@ APPENDIX_ITEMS: list[dict] = [
         ),
     },
     {
-        "label": "Figure A.13.",
+        "label": "Figure A.12.",
         "image": "10_wallet_strata.png",
         "caption": (
             "Bet-correct base rate stratified by three Layer 6 wallet "
@@ -88,51 +76,69 @@ APPENDIX_ITEMS: list[dict] = [
         ),
     },
     {
-        "label": "Figure A.14.",
+        "label": "Figure A.13.",
         "image": "11_per_market_bimodality.png",
         "caption": (
-            "Per-market bet_correct base rate, split by train and test "
-            "cohorts. The single-event resolution of each market "
-            "produces a bimodal distribution: markets resolving with "
-            "the consensus side cluster near 1, markets resolving "
-            "against consensus cluster near 0. The shape is the "
-            "structural reason single-feature ROC across markets is "
-            "highly variable and motivates the GroupKFold(market_id) "
-            "evaluation protocol."
+            "Per-market hit rate decomposed by trade side. The x-axis "
+            "plots the share of YES-side trades that ended bet_correct "
+            "in a market, and the y-axis plots the same share for "
+            "NO-side trades. Marker size is proportional to log10 "
+            "trade count per market. The 73 markets cleanly partition "
+            "into two clusters: 49 YES-resolved markets in the "
+            "lower-right (high YES-side hit rate, low NO-side) and 24 "
+            "NO-resolved markets in the upper-left (mirror image). "
+            "The clusters sit near (0.7, 0.3) rather than (1.0, 0.0) "
+            "because bet_correct also reflects BUY vs SELL direction "
+            "within each side, so YES SELL trades behave like NO "
+            "bets. The two-cluster structure is the reason "
+            "single-feature ROC inverts across markets and motivates "
+            "the GroupKFold(market_id) evaluation protocol."
         ),
     },
     {
-        "label": "Figure A.15.",
+        "label": "Figure A.14.",
         "image": "12_feature_stability.png",
         "caption": (
             "Single-feature ROC-AUC heatmap across markets for the "
             "top eight features by absolute Pearson correlation with "
-            "the target. Several features (log_payoff_if_correct, "
+            "the target. ROC-AUC ranges from 0 to 1 and measures, "
+            "for one feature alone, the probability that a randomly "
+            "chosen positive trade (bet_correct=1) has a higher "
+            "feature value than a randomly chosen negative trade "
+            "(bet_correct=0). 0.5 is no signal, values above 0.5 "
+            "mean the feature ranks positives higher, and values "
+            "below 0.5 mean the relationship inverts. Per-market "
+            "AUCs straddling 0.5 therefore indicate a feature whose "
+            "direction flips between YES- and NO-resolved markets. "
+            "Several features (log_payoff_if_correct, "
             "contrarian_score, risk_reward_ratio_pre) achieve median "
-            "single-feature AUC near 0.31 with p95 above 0.67, "
-            "indicating a single transferable rule that inverts "
-            "between YES- and NO-resolved markets. This is the "
-            "structural finding behind the per-market bimodality "
-            "and reinforces the use of group-aware cross validation."
+            "single-feature AUC near 0.31 with p95 above 0.67, the "
+            "structural finding behind the per-market resolution "
+            "split in Figure A.13 and the reason group-aware cross "
+            "validation is required."
+        ),
+    },
+    {
+        "label": "Figure A.15.",
+        "image": "13_mutual_information.png",
+        "caption": (
+            "Top 25 features by mutual information with bet_correct, "
+            "computed on a 150,000-row stratified sample using "
+            "scikit-learn's mutual_info_classif and colored by "
+            "feature group. Mutual information captures non-linear "
+            "dependence that the Pearson correlation in Figure A.5 "
+            "cannot detect. The x-axis is zoomed to the relevant "
+            "range so the rank gap between adjacent features is "
+            "legible. The leading features are short-window "
+            "market-state and price microstructure variables "
+            "(realized volatility, jump component, order-flow "
+            "imbalance, recent volume) rather than wallet-identity "
+            "features, consistent with the literature emphasis on "
+            "flow signals."
         ),
     },
     {
         "label": "Figure A.16.",
-        "image": "13_mutual_information.png",
-        "caption": (
-            "Top 20 features by mutual information with bet_correct, "
-            "computed on a 150,000-row stratified sample using "
-            "scikit-learn's mutual_info_classif. Mutual information "
-            "captures non-linear dependence that the Pearson "
-            "correlation in Figure A.5 cannot detect. The leading "
-            "features are short-window microstructure variables "
-            "(realized volatility, jump component, order-flow "
-            "imbalance) rather than wallet-identity features, "
-            "consistent with the literature emphasis on flow signals."
-        ),
-    },
-    {
-        "label": "Figure A.17.",
         "image": "14_feature_taxonomy.png",
         "caption": (
             "Numeric feature counts by engineering layer. Of the 79 "
@@ -146,19 +152,24 @@ APPENDIX_ITEMS: list[dict] = [
         ),
     },
     {
-        "label": "Figure A.18.",
-        "image": "15_tail_diagnostics.png",
+        "label": "Figure A.17.",
+        "image": "19_event_timing.png",
         "caption": (
-            "Excess kurtosis ranking for the 15 most fat-tailed "
-            "numeric features, with the |kurt|=3 fat-tail threshold "
-            "marked. The accompanying CSV (15_tail_diagnostics.csv) "
-            "reports the 1st, 5th, 95th, and 99th percentiles plus "
-            "tail-conditional means for each feature, supporting the "
-            "winsorisation choice during pre-processing."
+            "Trade volume per day across the joined cohort, colored by "
+            "split and annotated with the two events that anchor the "
+            "cohort design. The train cohort runs from late December "
+            "through the Iran strike on 28 February, ending in a single "
+            "intraday spike of roughly ninety-three thousand trades on "
+            "the day of the event. The test cohort runs from 1 March "
+            "through 7 April and is distributed across the run-up to "
+            "the ceasefire announcement, with no comparable spike. The "
+            "calendar separation between the two regimes is the "
+            "structural reason the cohort is split by event rather "
+            "than randomly."
         ),
     },
     {
-        "label": "Figure A.19.",
+        "label": "Figure A.18.",
         "image": "16_temporal_drift.png",
         "caption": (
             "Daily bet_correct base rate during the strike-countdown "
@@ -169,6 +180,27 @@ APPENDIX_ITEMS: list[dict] = [
             "temporal drift in the target within either cohort that "
             "would invalidate the static train and test split."
         ),
+    },
+]
+
+
+# Inline tables that ride alongside the figures. Each entry: caption
+# label, source CSV name, header row, body rows.
+APPENDIX_TABLES: list[dict] = [
+    {
+        "label": "Table A.1.",
+        "caption": (
+            "Cohort sizing per split, summarising the wide trade-count "
+            "spread across the 73 markets that motivates the "
+            "GroupKFold(market_id) protocol used in the modeling "
+            "section. Source: 07_cohort_sizing_table.csv."
+        ),
+        "headers": ["Split", "n markets", "Min trades / market",
+                    "Median trades / market", "Max trades / market"],
+        "rows": [
+            ["Train", "63", "1,274", "9,753", "119,842"],
+            ["Test", "10", "5,127", "14,692", "90,730"],
+        ],
     },
 ]
 
@@ -186,6 +218,19 @@ def _add_figure(doc: Document, image_path: Path) -> None:
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.add_run().add_picture(str(image_path), width=Inches(FIG_W_IN))
+
+
+def _add_table(doc: Document, headers: list[str], rows: list[list[str]]) -> None:
+    table = doc.add_table(rows=1 + len(rows), cols=len(headers))
+    table.style = "Light Grid Accent 1"
+    for j, h in enumerate(headers):
+        cell = table.rows[0].cells[j]
+        cell.text = h
+        for run in cell.paragraphs[0].runs:
+            run.bold = True
+    for i, row in enumerate(rows, start=1):
+        for j, val in enumerate(row):
+            table.rows[i].cells[j].text = val
 
 
 def build_docx() -> None:
@@ -217,8 +262,16 @@ def build_docx() -> None:
         _add_caption(doc, item["label"], item["caption"])
         doc.add_paragraph("")
 
+    for tbl in APPENDIX_TABLES:
+        _add_table(doc, tbl["headers"], tbl["rows"])
+        _add_caption(doc, tbl["label"], tbl["caption"])
+        doc.add_paragraph("")
+
     doc.save(str(OUT_DOCX))
-    print(f"saved {OUT_DOCX.relative_to(ROOT)}  ({len(APPENDIX_ITEMS)} figures)")
+    print(
+        f"saved {OUT_DOCX.relative_to(ROOT)}  "
+        f"({len(APPENDIX_ITEMS)} figures, {len(APPENDIX_TABLES)} tables)"
+    )
 
 
 def build_md() -> None:
@@ -236,6 +289,16 @@ def build_md() -> None:
         lines.append(f"`{item['image']}`")
         lines.append("")
         lines.append(item["caption"])
+        lines.append("")
+    for tbl in APPENDIX_TABLES:
+        lines.append(f"### {tbl['label']}")
+        lines.append("")
+        lines.append("| " + " | ".join(tbl["headers"]) + " |")
+        lines.append("|" + "|".join(["---"] * len(tbl["headers"])) + "|")
+        for row in tbl["rows"]:
+            lines.append("| " + " | ".join(row) + " |")
+        lines.append("")
+        lines.append(tbl["caption"])
         lines.append("")
     OUT_MD.write_text("\n".join(lines) + "\n")
     print(f"saved {OUT_MD.relative_to(ROOT)}")
