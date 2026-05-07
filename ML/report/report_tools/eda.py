@@ -1,5 +1,8 @@
 """EDA for the wallet-joined Alex cohort.
 
+Requires: pandas, numpy, matplotlib, seaborn
+    conda activate py312 && pip install pandas numpy matplotlib seaborn
+
 Reads `data/consolidated_modeling_data.parquet` (Alex's 70 engineered
 features + 12 Layer-6 wallet features + meta cols, with `split = {train,
 test}` already in the frame) and writes the report-style panels to

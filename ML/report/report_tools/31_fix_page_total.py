@@ -1,6 +1,8 @@
 """
 31_fix_page_total.py
 
+Requires: standard library only (zipfile, shutil, pathlib).
+
 Fix: footer page total reads 34 but the last visible page is 32. Cause: the
 docx has two sections (section 1 = cover + ToC, section 2 = body + refs +
 appendix). Section 2 restarts page numbering at 1 (`pgNumType start=1`),

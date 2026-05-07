@@ -1,6 +1,8 @@
 """
 28_finalise_report.py
 
+Requires: python-docx  (conda activate py312 && pip install python-docx)
+
 Final-pass docx edits required after the reviewer flagged inconsistencies
 between the methods spec and the reported results, and after running
 script 27 to compute (a) the wallet-level bootstrap CI on the MLP and

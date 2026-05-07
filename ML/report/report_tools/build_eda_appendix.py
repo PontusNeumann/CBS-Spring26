@@ -1,5 +1,7 @@
 """Build a sidecar appendix docx for the wallet-joined EDA panels.
 
+Requires: python-docx  (conda activate py312 && pip install python-docx)
+
 Produces `outputs/eda/eda_appendix.docx` (and a matching .md preview).
 Each panel from `outputs/eda/` lands as a captioned figure, formatted to
 match the report's existing Appendix A style (A.10 onward).

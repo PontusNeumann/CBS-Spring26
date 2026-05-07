@@ -1,6 +1,8 @@
 """
 30_us_spelling_and_table_fix.py
 
+Requires: python-docx  (conda activate py312 && pip install python-docx)
+
 Two final corrections requested by the user after reviewing the docx:
 
 1. **Bulletproof fix for orphaned Table A.6 and A.7 titles.** The previous

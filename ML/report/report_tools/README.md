@@ -14,6 +14,21 @@ Live automation for editing the report `.docx`. These are NOT part of the submis
 | `31_fix_page_total.py` | Fix the page total field. |
 | `36_remove_stray_logo.py` | Remove a stray logo that crept into one body page. |
 
+## Setup
+
+Project Python is the conda env at `/Applications/anaconda3/envs/py312/` (Python 3.12). Activate it before running scripts or installing packages:
+
+```bash
+conda activate py312
+pip install python-docx lxml lxml-stubs pandas numpy matplotlib seaborn
+```
+
+(All of the above are already installed in `py312` as of 2026-05-07; the command is here for reproducibility / fresh-clone setup.)
+
+`python-docx` is the import name `docx`. `lxml-stubs` is editor-only — it silences Pylance's "unknown import symbol" warning on `from lxml import etree` (lxml.etree is a C extension Pylance cannot introspect without stubs). Reload VS Code (Cmd+Shift+P → `Developer: Reload Window`) for new stubs to register.
+
+If Pylance still flags imports as red, VS Code is pointing at the wrong interpreter. Cmd+Shift+P → `Python: Select Interpreter` → pick `/Applications/anaconda3/envs/py312/bin/python3.12`.
+
 ## Path conventions
 
 - `ROOT = Path(__file__).resolve().parents[1]` — i.e. `ML/report/`.

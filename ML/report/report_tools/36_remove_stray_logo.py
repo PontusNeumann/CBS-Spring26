@@ -1,6 +1,9 @@
 """
 36_remove_stray_logo.py
 
+Requires: lxml  (conda activate py312 && pip install lxml lxml-stubs)
+    lxml-stubs is editor-only; runtime needs lxml alone.
+
 Remove the mid-cover Logo_CBS anchor (the one positioned at
 H=margin -9525, V=page 4022374). It sits over the cover image's
 colored background and is not present in Report.dotm. Its parent run
@@ -16,7 +19,7 @@ import shutil
 import zipfile
 from pathlib import Path
 
-from lxml import etree
+from lxml import etree  # type: ignore[attr-defined]  # lxml.etree is a C ext, Pylance can't introspect
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCX = ROOT / "KAN-CDSCO2004U_161989_160363_185912_160714_Polymarket_Mispricing.docx"

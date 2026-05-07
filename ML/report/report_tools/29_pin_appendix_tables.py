@@ -1,6 +1,8 @@
 """
 29_pin_appendix_tables.py
 
+Requires: python-docx  (conda activate py312 && pip install python-docx)
+
 Fix the orphaned-title problem on the last two appendix tables (A.6 and A.7).
 Both are long (~55 and ~34 rows) and currently leave the title paragraph
 stranded on its own page above an empty page, then the table starts on the
