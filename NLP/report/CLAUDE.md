@@ -24,8 +24,11 @@ exam based on a max-15-page written product. Confidential data.
 ## Live filenames
 
 - Live docx: `KAN-CDSCO1002U_161989_160363_185912_160714_NLP_Spring2026.docx`
-- Live notebook: `onestream_architecture_comparison.ipynb`
-- Backup snapshot: `backup/`
+- Live pipeline notebook: `onestream_pipeline_v3.ipynb` (Codex build)
+- Live spot-check notebook: `onestream_spot_check.ipynb` (Codex build)
+- Parallel Claude build: `claude_implementation/claude_pipeline_v3.ipynb` and `claude_spot_check.ipynb`, fully isolated
+- KB refiner script: `scripts/refine_md_kb.py`
+- Backup snapshots: `backup/`
 
 ## Who runs what
 

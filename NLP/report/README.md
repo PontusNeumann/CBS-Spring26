@@ -24,9 +24,10 @@ drafts the paper.
 |---|---|
 | `KAN-CDSCO1002U_161989_160363_185912_160714_NLP_Spring2026.docx` | Live paper on the CBS template. Page 1 (cover) and page 2 (ToC) are manual-only; body starts on page 3. |
 | `KAN-CDSCO1002U_161989_160363_185912_160714_NLP_Intent_Routing.pdf` | Static PDF export of the live docx. Filename predates the rename and is regenerated on next export. |
-| `onestream_architecture_comparison.ipynb` | Live analysis notebook. Currently implements the v2 plan, pending refactor to v3 per `onestream_nlp_pipeline.md`. |
+| `onestream_pipeline_v3.ipynb` | Live analysis notebook (Codex build). Implements the eight-phase v3 plan from `onestream_nlp_pipeline.md`. |
+| `onestream_spot_check.ipynb` | Stand-alone semi-manual notebook for the Maersk LLM before-and-after experiment (Codex build). |
 | `Design.md` | Visual, structural, and editorial conventions. Binding for any docx edit. |
-| `onestream_nlp_pipeline.md` | Pipeline phase plan (v3, KB-driven). Authoritative for what the notebook should do. |
+| `onestream_nlp_pipeline.md` | Pipeline phase plan (v3, KB-driven). Authoritative for what the notebooks should do. |
 | `CLAUDE.md` | Short pointer doc for AI agents working in this folder. |
 | `AGENTS.md` | One-line entry point that defers to `CLAUDE.md`. |
 
@@ -37,13 +38,14 @@ drafts the paper.
 | `assets/architecture/` | System architecture spec (`cleaned_architecture.docx` / `.pdf`). |
 | `assets/figures/` | Figures rendered for the paper. |
 | `literature/` | SLP3 chapter PDFs, Blei (2012), and supplementary readings. |
-| `notebooks/` | Superseded analysis notebooks (`onestream_poc.ipynb`, `onestream_pipeline_v1.ipynb`). |
-| `planning/` | `paper_scope_and_narrative.md` (current scope), `kasper_call_takeaways.md` (practitioner cross-check), Kasper call source docx, NLP exam plan, early chatbot blueprint. |
+| `notebooks/` | Superseded notebooks: `onestream_architecture_comparison_v2.ipynb` (the pre-refactor v2 build), `onestream_poc.ipynb`, `onestream_pipeline_v1.ipynb`. |
+| `planning/` | `paper_scope_and_narrative.md` (current scope), `kasper_call_takeaways.md` (practitioner cross-check), `codex_handoff_notes.md` (Codex's notebook hand-off summary). |
+| `claude_implementation/` | Parallel Claude build of the v3 pipeline, fully isolated. Contains its own notebooks, builder script, `dify_exports/`, and `figures/`. Run independently of the Codex notebooks for comparison. |
 | `admin/` | CBS confidentiality agreement and other admin paperwork. |
 | `archive/` | Original CBS template and other historical artefacts. |
-| `backup/` | Pre-edit snapshots of the live docx, written by the build scripts. |
-| `dify_exports/` | Output destination for Dify configuration JSON (populated by notebook on run). |
-| `scripts/` | Docx build and patch scripts: `build_initial_nlp_paper.py`, `insert_toc_page.py`, `drop_nlp_old_cover_and_toc.py`, `import_ml_first_two_pages.py`. |
+| `backup/` | Pre-edit snapshots of the live docx and superseded planning artefacts (`nlp_exam_plan.docx`, `nlp_paper_chatbot_blueprint.pdf`). |
+| `dify_exports/` | Codex notebook outputs: phase CSVs, `dify_config.json`, `runtime_metadata.json`, spot-check trace CSVs. |
+| `scripts/` | Docx build and patch scripts plus the v3 KB refiner: `build_initial_nlp_paper.py`, `insert_toc_page.py`, `drop_nlp_old_cover_and_toc.py`, `import_ml_first_two_pages.py`, `refine_md_kb.py`. |
 
 ## Pipeline phase plan (current target)
 

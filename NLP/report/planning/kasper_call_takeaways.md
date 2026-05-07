@@ -1,6 +1,6 @@
 # Kasper Call, RAG Practitioner Takeaways (Cross-Checked Against Literature)
 
-**Source.** `planning/Kasper call on some ideas.docx`. Internal call with a practitioner (Kasper) on building RAG systems for enterprise customer support, dated 2026-05-06.
+**Source.** Internal call with a practitioner (Kasper) on building RAG systems for enterprise customer support, dated 2026-05-06. The original transcript docx (`planning/Kasper call on some ideas.docx`) was retired after distillation into this file; recoverable from git history at commit `c19c2b0` if a verbatim quote is ever needed.
 **Purpose.** Distil the operationally useful guidance from the call and anchor each point to course or primary literature so the report can cite it.
 **Reader.** Project group writing the NLP final exam paper on Maersk customer support automation.
 

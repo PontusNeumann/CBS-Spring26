@@ -124,16 +124,14 @@ If a section does not serve at least one of the six learning objectives in `Desi
 
 ## 5. Pipeline status and what each member runs
 
-The pipeline notebook (`onestream_architecture_comparison.ipynb`) currently implements v2 (taxonomy from tickets, no chunking, fake RAG) and is **not ready** to send to Linus. The targeted refactor:
+The v3 refactor is complete in two parallel implementations, both ready for Linus:
 
-1. Phase 1, add documented chunking with a quality sanity table.
-2. Phases 2 to 4, swap the training corpus from tickets to KB documents with KB-derived labels.
-3. Phase 6, replace the doc-level cosine "RAG" with a real chunk-level retrieval, top-k, optional re-ranker, LLM call.
-4. Phase 9, new, the spot-check harness and result table.
+- **Codex build (live).** `onestream_pipeline_v3.ipynb` and `onestream_spot_check.ipynb` at the report root. Outputs land in `dify_exports/` and `assets/figures/`. Codex also added `scripts/refine_md_kb.py` for deterministic md-to-md KB cleanup, a precondition for `KB_FOLDER_NEW`. The hand-off summary lives in `planning/codex_handoff_notes.md`.
+- **Claude build (parallel comparison).** `claude_implementation/claude_pipeline_v3.ipynb` and `claude_spot_check.ipynb`, fully isolated with their own `dify_exports/`, `figures/`, and builder script. Distinctive design choices (heading-aware chunking with overlap, BM25 plus dense hybrid retrieval in Arch D, chunking ablation, stronger Sentence-BERT default) are documented in `claude_implementation/README.md`.
 
-A separate **stand-alone spot-check notebook** for Phase 9 can be drafted first so Linus can run the before-and-after experiment on his machine while the rest of the pipeline is being refactored. This parallelises the data-access bottleneck.
+Both implementations cover the eight phases plus the new spot-check harness. They share the same `onestream_nlp_pipeline.md` spec; the team picks one (or merges the strongest parts of each) before final paper draft.
 
-**Hand-off contract.** Linus edits only path placeholders (`TICKETS_CSV`, `KB_FOLDER_OLD`, `KB_FOLDER_NEW`) and an optional API key, then runs end-to-end. Outputs (figures, metrics, exports, spot-check trace tables) flow back to the rest of the group for paper incorporation.
+**Hand-off contract for Linus.** Edit only the path placeholders (`TICKETS_CSV`, `KB_FOLDER_OLD`, `KB_FOLDER_NEW`) and optional API keys. Run notebooks top to bottom on a fresh kernel. Outputs (figures, metrics, exports, spot-check trace tables) flow back to the rest of the group for paper incorporation. The Codex hand-off note in `planning/codex_handoff_notes.md` lists the exact run order, including the `refine_md_kb.py` step that produces `KB_FOLDER_NEW` from the unrefined corpus.
 
 ---
 
