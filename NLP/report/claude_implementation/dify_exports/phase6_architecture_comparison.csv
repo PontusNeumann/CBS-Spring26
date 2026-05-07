@@ -1,0 +1,6 @@
+arch,r_at_1,r_at_1_lo,r_at_1_hi,r_at_3,r_at_3_lo,r_at_3_hi,r_at_10,r_at_10_lo,r_at_10_hi
+A_flat_classifier,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
+B_hierarchical_proxy,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
+C_multilabel_fanout,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
+D_hybrid_RAG,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+F_classifier_plus_RAG,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

@@ -1,0 +1,21 @@
+run_label_before,ticket_id,ticket_text_redacted_before,class_hint_before,retrieved_document_before,retrieved_chunk_excerpt_redacted_before,final_llm_answer_redacted_before,latency_seconds_before,correctness_before,usefulness_before,notes_before,captured_at_before,run_label_after,ticket_text_redacted_after,class_hint_after,retrieved_document_after,retrieved_chunk_excerpt_redacted_after,final_llm_answer_redacted_after,latency_seconds_after,correctness_after,usefulness_after,notes_after,captured_at_after,correctness_transition,usefulness_transition
+before,Q01,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q02,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q03,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q04,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q05,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q06,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q07,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q08,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q09,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q10,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q11,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q12,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q13,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q14,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q15,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q16,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q17,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q18,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q19,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending
+before,Q20,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:00Z,after,,,,,NO_ANSWER,,pending,pending,,2026-05-07T00:20:01Z,pending -> pending,pending -> pending

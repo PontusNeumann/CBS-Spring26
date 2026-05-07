@@ -1,0 +1,5 @@
+model,macro_f1_mean,macro_f1_lo,macro_f1_hi,n_folds
+4A_NB_BoW,1.0,1.0,1.0,3
+4B_TFIDF_uni_LR,1.0,1.0,1.0,3
+4C_TFIDF_bi_LR,1.0,1.0,1.0,3
+4D_TFIDF_SVM,1.0,1.0,1.0,3

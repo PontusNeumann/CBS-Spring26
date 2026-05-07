@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "created_at": "2026-05-07T00:20:00Z",
+    "seed": 42,
+    "selected_k": 2,
+    "keyword_n": 4,
+    "taxonomy_mode": "folder",
+    "embedding_model": "tfidf_svd_fallback",
+    "classifier": "4A Bag-of-Words + MultinomialNB",
+    "recommended_architecture": "A flat classifier to class KB"
+  },
+  "classes": [
+    {
+      "class_id": "access_security",
+      "keywords": [
+        "access",
+        "role",
+        "reset",
+        "browser"
+      ],
+      "kb_documents": [
+        "access_security/login_mfa.md",
+        "access_security/role_assignment.md",
+        "close_process/month_end_close.md"
+      ],
+      "redirect_url": ""
+    },
+    {
+      "class_id": "close_process",
+      "keywords": [
+        "translation",
+        "adjustment",
+        "partner",
+        "close"
+      ],
+      "kb_documents": [
+        "close_process/intercompany_matching.md",
+        "close_process/month_end_close.md"
+      ],
+      "redirect_url": ""
+    },
+    {
+      "class_id": "access_change_request",
+      "keywords": [
+        "change request",
+        "role access",
+        "request access",
+        "access portal"
+      ],
+      "kb_documents": [],
+      "redirect_url": "https://maersk-access-portal.example/..."
+    }
+  ],
+  "orphan_documents": [],
+  "evaluation": {
+    "coherence": 0.13962212184797027,
+    "macro_f1": 0.873015873015873,
+    "macro_f1_ci": [
+      0.4666666666666667,
+      1.0
+    ],
+    "retrieval_at_3": 1.0,
+    "retrieval_at_3_ci": [
+      1.0,
+      1.0
+    ]
+  }
+}

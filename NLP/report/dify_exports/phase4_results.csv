@@ -1,0 +1,7 @@
+representation,macro_f1,weighted_f1,macro_f1_ci_low,macro_f1_ci_high,per_class_f1,status
+4A Bag-of-Words + MultinomialNB,0.873015873015873,0.873015873015873,0.4666666666666667,1.0,"{""access_security"": 0.8571428571428571, ""close_process"": 0.8888888888888888}",ok
+4B TF-IDF unigram + LogisticRegression,0.873015873015873,0.873015873015873,0.4666666666666667,1.0,"{""access_security"": 0.8571428571428571, ""close_process"": 0.8888888888888888}",ok
+4C TF-IDF unigram_bigram + LogisticRegression,0.873015873015873,0.873015873015873,0.4666666666666667,1.0,"{""access_security"": 0.8571428571428571, ""close_process"": 0.8888888888888888}",ok
+4D TF-IDF + LinearSVM,0.873015873015873,0.873015873015873,0.4666666666666667,1.0,"{""access_security"": 0.8571428571428571, ""close_process"": 0.8888888888888888}",ok
+4E Word2Vec averaged + LogisticRegression,0.6190476190476191,0.6190476190476191,0.25,1.0,"{""access_security"": 0.6666666666666666, ""close_process"": 0.5714285714285714}",tfidf_svd_fallback_no_gensim
+4F Sentence-BERT all-MiniLM-L6-v2 + LogisticRegression,0.6190476190476191,0.6190476190476191,0.25,1.0,"{""access_security"": 0.6666666666666666, ""close_process"": 0.5714285714285714}",tfidf_svd

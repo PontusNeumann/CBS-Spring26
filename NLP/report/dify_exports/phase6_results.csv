@@ -1,0 +1,19 @@
+architecture,k,n_eval,retrieval_at_k,ci_low,ci_high,dense_encoder,reranker
+A flat classifier to class KB,1,30,1.0,1.0,1.0,tfidf_svd,not_used
+A flat classifier to class KB,3,30,1.0,1.0,1.0,tfidf_svd,not_used
+A flat classifier to class KB,10,30,1.0,1.0,1.0,tfidf_svd,not_used
+B two-stage hierarchical,1,30,1.0,1.0,1.0,tfidf_svd,not_used
+B two-stage hierarchical,3,30,1.0,1.0,1.0,tfidf_svd,not_used
+B two-stage hierarchical,10,30,1.0,1.0,1.0,tfidf_svd,not_used
+C multi-label fan-out cosine merge,1,30,1.0,1.0,1.0,tfidf_svd,not_used
+C multi-label fan-out cosine merge,3,30,1.0,1.0,1.0,tfidf_svd,not_used
+C multi-label fan-out cosine merge,10,30,1.0,1.0,1.0,tfidf_svd,not_used
+D pure RAG chunk dense retrieval,1,30,1.0,1.0,1.0,tfidf_svd,not_used
+D pure RAG chunk dense retrieval,3,30,1.0,1.0,1.0,tfidf_svd,not_used
+D pure RAG chunk dense retrieval,10,30,1.0,1.0,1.0,tfidf_svd,not_used
+E classifier plus cross-encoder reranker,1,30,1.0,1.0,1.0,tfidf_svd,lexical_tfidf_fallback
+E classifier plus cross-encoder reranker,3,30,1.0,1.0,1.0,tfidf_svd,lexical_tfidf_fallback
+E classifier plus cross-encoder reranker,10,30,1.0,1.0,1.0,tfidf_svd,lexical_tfidf_fallback
+F classifier plus RAG hybrid,1,30,1.0,1.0,1.0,tfidf_svd,not_used
+F classifier plus RAG hybrid,3,30,1.0,1.0,1.0,tfidf_svd,not_used
+F classifier plus RAG hybrid,10,30,1.0,1.0,1.0,tfidf_svd,not_used
