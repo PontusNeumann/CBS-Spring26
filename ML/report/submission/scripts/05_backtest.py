@@ -320,10 +320,25 @@ def main() -> int:
     test = df[df["split"] == "test"].reset_index(drop=True).copy()
     test["market_id"] = test["market_id"].astype(str)
 
-    # what: helpers — time-to-deadline per cohort, market resolution times
-    test_res_ts = float(CEASEFIRE_EVENT_UTC)
-    test["time_to_deadline"] = test_res_ts - test["timestamp"].astype(float)
-    market_res_times = {mid: int(test_res_ts) for mid in test["market_id"].unique()}
+    # what: per-market resolve_ts, reconstructed from log_time_to_deadline_hours, capped at the ceasefire event
+    # why: prior code assumed all 10 test markets resolve at the ceasefire. In reality the recovered deadlines
+    #      span 28 days (Mar 19 to Dec 31 2026). Markets with deadlines before the ceasefire resolve at their
+    #      own deadline; markets with later deadlines resolve at the ceasefire event itself. A single
+    #      cohort-level resolve_ts held capital tied up 7 to 90 days too long, biasing ROI and concentration.
+    # how: deadline_ts = timestamp + exp(log_time_to_deadline_hours) * 3600; median over the market's trades.
+    test["recovered_deadline"] = (
+        test["timestamp"] + np.exp(test["log_time_to_deadline_hours"]) * 3600
+    )
+    per_market_resolve = (
+        test.groupby("market_id")["recovered_deadline"].median()
+        .fillna(CEASEFIRE_EVENT_UTC)
+        .clip(upper=CEASEFIRE_EVENT_UTC)
+    )
+    test["time_to_deadline"] = (
+        test["market_id"].map(per_market_resolve).values
+        - test["timestamp"].astype(float).values
+    )
+    market_res_times = {str(mid): int(ts) for mid, ts in per_market_resolve.items()}
 
     # what: gather calibrated predictions written by 04_calibration.py
     models_dir = OUTPUTS_DIR / "models"
