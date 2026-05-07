@@ -176,7 +176,13 @@ def objective_kfold(make_fn, params: dict, X, y, groups, n_folds: int, scale: bo
 
 
 def objective_holdout(make_fn, params: dict, X, y, groups, scale: bool) -> float:
-    """Single GroupShuffleSplit holdout AUC — used for slow models like MLP."""
+    """Single GroupShuffleSplit holdout AUC — used for slow models like MLP.
+
+    NOTE: MLP best_oof_auc reported here is NOT directly comparable to RF/HGBM's
+    5-fold GroupKFold mean AUC (which is what 03_train_models reports). Treat as
+    a coarse holdout estimate, and surface the caveat in the methodology section
+    of the report when citing tuning results across model families.
+    """
     # what: 80/20 group-aware holdout; 5x faster than full KFold; trade rigour for runtime
     # why: MLP fit takes ~5 min per fold -> 25 min per trial -> 30 trials = 12.5 hr (too slow)
     splitter = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=RANDOM_SEED)
