@@ -1,0 +1,11 @@
+{
+  "n_test_rows": 257177,
+  "n_sells": 166868,
+  "n_sells_closing": 60771,
+  "n_sells_open_short": 106097,
+  "pct_sells_closing": 0.36418606323561137,
+  "top1pct_model": "lightgbm",
+  "top1pct_n": 2571,
+  "top1pct_sell_share": 0.7086736678335278,
+  "top1pct_sells_closing_share": 0.12294182217343579
+}
