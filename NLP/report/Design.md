@@ -27,8 +27,8 @@ The NLP docx is built from the CBS branded template inherited from the DPD repor
 
 **Active document base and editing rule**
 
-- The active Word document is `KAN-CDSCO1002U_161989_160363_185912_160714_OneStream_Intent_Routing.docx` in this report folder.
-- The pre-edit baseline template lives at `backup/KAN-CDSCO1002U_161989_160363_185912_160714_OneStream_Intent_Routing.docx.pre_initial_template`. Do not overwrite the live cover from this snapshot unless the user explicitly asks for a one-off cover restore.
+- The active Word document is `KAN-CDSCO1002U_161989_160363_185912_160714_NLP_Spring2026.docx` in this report folder.
+- The pre-edit baseline template lives in `backup/` as `KAN-CDSCO1002U_161989_160363_185912_160714_NLP_Intent_Routing.docx`. Do not overwrite the live cover from this snapshot unless the user explicitly asks for a one-off cover restore.
 - Content-only edits to the live Word file should patch the existing `.docx` in place and leave cover, header, footer, styles, and media untouched. Replace only non-cover `word/document.xml` text content while preserving all other `.docx` package parts.
 - The first page is frozen and manual-only after the initial template build. Front-page metadata, confidentiality wording, character count, page count, image and logo placement, and visually blank cover rows are not edited by automation. Some blank cover paragraphs carry drawing anchors.
 - The final hand-in has no decorative CBS back page.
@@ -267,6 +267,8 @@ Four-author logistics that protect the writing flow:
 - Cover-page authorship list lives in the `<w:sdt>` block on page 1 and is updated only by manual edit in Word, never by automation.
 - A short *Indications of individualisation* paragraph at the end of the Method section lists which member led which subsection. CBS counts this paragraph toward both pages and characters.
 - The oral exam is 20 minutes per student. The 5-minute opening presentation is shared, but each student must be ready to answer questions on every section, including those they did not draft.
+
+**Data access and notebook execution.** Only **Linus** has access to the raw Maersk OneStream knowledge base and the help-desk ticket export, because the data is confidential and lives on Maersk infrastructure he is employed to operate. All notebooks, scripts, and pipelines in this report folder are designed, parameter-cleaned, and code-reviewed by the rest of the group, then handed to Linus for execution against the live data. The hand-off contract is: every notebook runs end-to-end on a fresh kernel with only `TICKETS_CSV` and `KB_FOLDER` to fill in, no other path edits. Outputs (figures, metrics, exports) flow back to the group for incorporation into the paper. Reproducibility for the examiner is preserved by shipping a synthetic or aggressively redacted sample alongside the notebook (see section 10).
 
 ## 12. Self-Check Before Any Draft Is Returned
 

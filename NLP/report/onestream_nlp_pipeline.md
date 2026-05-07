@@ -3,6 +3,8 @@
 **Course.** KAN-CDSCO1002U — Natural Language Processing and Text Analytics, CBS BADS.
 **Companion notebook.** `report/onestream_architecture_comparison.ipynb`.
 **Companion notes.** `planning/kasper_call_takeaways.md` — practitioner takeaways from the Kasper call cross-checked against SLP3 and primary literature. Covers chunking, embedding-model choice, k-selection, and the no-classifier-RAG argument that motivates Phase 6. Read before any change to Phases 1, 4, or 6.
+**Paper scope.** `planning/paper_scope_and_narrative.md` — three-act paper plan, model bench, before-and-after Maersk LLM spot-check methodology, hand-off contract with Linus. Read before refactoring any phase, since some current phases are slated to move from headline to appendix or to be replaced.
+**Data access.** The raw Maersk KB and ticket file are confidential and accessible only to **Linus** (Maersk-employed group member). Every executable phase below is designed by the group, then run by Linus on his corporate machine against the real data. Path placeholders (`TICKETS_CSV`, `KB_FOLDER`) are the only fields Linus edits before a run. Outputs return to the group for paper incorporation.
 **Status.** Plan document. Updates from v2 are flagged in each section.
 
 ---
